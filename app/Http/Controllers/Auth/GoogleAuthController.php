@@ -1,0 +1,52 @@
+<?php
+
+/**
+ * HTTP entry points for customer Google OAuth login.
+ */
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Auth;
+
+use App\Actions\Auth\LinkAccountIdentifier;
+use App\Actions\Auth\LoginWithGoogle;
+use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
+use Laravel\Socialite\Facades\Socialite;
+use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse;
+
+/**
+ * Thin redirect/callback pair — all account creation/linking logic lives in
+ * LoginWithGoogle (guest login/registration) and LinkAccountIdentifier
+ * (adding Google to an already-authenticated account).
+ */
+class GoogleAuthController extends Controller
+{
+    /**
+     * Redirect the customer to Google's OAuth consent screen.
+     */
+    public function redirect(): SymfonyRedirectResponse
+    {
+        return Socialite::driver('google')->redirect();
+    }
+
+    /**
+     * Handle Google's OAuth callback: log the guest in via LoginWithGoogle,
+     * or link the identifier to the current session if already authenticated.
+     */
+    public function callback(): RedirectResponse
+    {
+        $googleUser = Socialite::driver('google')->user();
+
+        if (Auth::check()) {
+            LinkAccountIdentifier::run(Auth::user(), $googleUser->getId(), $googleUser->getEmail());
+
+            return redirect()->intended(route('dashboard', absolute: false));
+        }
+
+        LoginWithGoogle::run($googleUser);
+
+        return redirect()->intended(route('dashboard', absolute: false));
+    }
+}

@@ -87,6 +87,26 @@ class ProductVariant extends Model
     }
 
     /**
+     * This variant's stock movement history.
+     *
+     * @return HasMany<StockMovement, $this>
+     */
+    public function stockMovements(): HasMany
+    {
+        return $this->hasMany(StockMovement::class);
+    }
+
+    /**
+     * Stock reservations held against this variant.
+     *
+     * @return HasMany<StockReservation, $this>
+     */
+    public function stockReservations(): HasMany
+    {
+        return $this->hasMany(StockReservation::class);
+    }
+
+    /**
      * The variant's price formatted for display (e.g. "GH₵15.50").
      */
     public function getPriceFormattedAttribute(): string

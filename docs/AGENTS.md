@@ -152,6 +152,7 @@ Use this table to jump straight to the relevant code instead of searching:
 | Reservation expiry cleanup | `ReleaseExpiredReservations` | `app/Actions/Inventory/` (scheduled job) |
 | Manual stock correction conflicting with active reservations | `AdjustStockWithReservationCheck` (real-world count wins; flags affected reservations `at_risk` for Admin) | `app/Actions/Inventory/` |
 | Cart operations | `AddItemToCart`, `RemoveItemFromCart` | `app/Actions/Cart/` |
+| Merging a guest cart into a user's cart on login | `MergeGuestCartIntoUser` (not a documented BRD requirement — added for expected real-world behaviour) | `app/Actions/Cart/` |
 | Order creation | `CreateOrderFromCart` | `app/Actions/Checkout/` |
 | Coupon application | `ApplyCouponToOrder` | `app/Actions/Checkout/` |
 | Payment initiation | `InitiatePayment` (calls `PaymentGateway::initiate()`) | `app/Actions/Payment/`, `app/Payments/` |

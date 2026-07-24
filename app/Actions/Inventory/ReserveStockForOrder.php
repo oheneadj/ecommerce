@@ -10,6 +10,7 @@ namespace App\Actions\Inventory;
 
 use App\Enums\StockReservationStatus;
 use App\Exceptions\InsufficientStockException;
+use App\Models\Order;
 use App\Models\ProductVariant;
 use App\Models\StockReservation;
 use App\Models\StoreSetting;
@@ -32,16 +33,11 @@ class ReserveStockForOrder
     use AsAction;
 
     /**
-     * @param  int  $orderId  accepted as a raw ID rather than an Order model —
-     *                        the Order model doesn't exist yet (Checkout sprint);
-     *                        `stock_reservations.order_id` has no FK constraint
-     *                        until that table exists.
-     *
      * @throws InsufficientStockException when available stock can't cover the request
      */
-    public function handle(ProductVariant $variant, int $quantity, int $orderId): StockReservation
+    public function handle(ProductVariant $variant, int $quantity, Order $order): StockReservation
     {
-        return DB::transaction(function () use ($variant, $quantity, $orderId): StockReservation {
+        return DB::transaction(function () use ($variant, $quantity, $order): StockReservation {
             $locked = ProductVariant::query()->whereKey($variant->id)->lockForUpdate()->firstOrFail();
 
             $reserved = StockReservation::query()
@@ -55,7 +51,7 @@ class ReserveStockForOrder
 
             return StockReservation::query()->create([
                 'product_variant_id' => $locked->id,
-                'order_id' => $orderId,
+                'order_id' => $order->id,
                 'quantity' => $quantity,
                 'status' => StockReservationStatus::Active,
                 'expires_at' => now()->addMinutes(StoreSetting::current()->stock_reservation_minutes),

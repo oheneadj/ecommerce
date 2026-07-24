@@ -11,6 +11,7 @@ use App\Actions\Inventory\ReserveStockForOrder;
 use App\Enums\StockMovementType;
 use App\Enums\StockReservationStatus;
 use App\Exceptions\InsufficientStockException;
+use App\Models\Order;
 use App\Models\ProductVariant;
 use App\Models\StockReservation;
 use App\Models\StoreSetting;
@@ -46,7 +47,7 @@ class InventoryManagementTest extends TestCase
     {
         $variant = ProductVariant::factory()->create(['stock' => 5]);
 
-        $reservation = ReserveStockForOrder::run($variant, 3, orderId: 1);
+        $reservation = ReserveStockForOrder::run($variant, 3, Order::factory()->create());
 
         $this->assertSame(3, $reservation->quantity);
         $this->assertSame(StockReservationStatus::Active, $reservation->status);
@@ -56,12 +57,12 @@ class InventoryManagementTest extends TestCase
     {
         $variant = ProductVariant::factory()->create(['stock' => 5]);
 
-        ReserveStockForOrder::run($variant, 5, orderId: 1);
+        ReserveStockForOrder::run($variant, 5, Order::factory()->create());
 
         $this->expectException(InsufficientStockException::class);
 
         // Nothing left after the first reservation consumed all 5 units.
-        ReserveStockForOrder::run($variant, 1, orderId: 2);
+        ReserveStockForOrder::run($variant, 1, Order::factory()->create());
     }
 
     /**
@@ -76,13 +77,13 @@ class InventoryManagementTest extends TestCase
     {
         $variant = ProductVariant::factory()->create(['stock' => 1]);
 
-        ReserveStockForOrder::run($variant, 1, orderId: 1);
+        ReserveStockForOrder::run($variant, 1, Order::factory()->create());
 
         $rejectedCount = 0;
 
         for ($i = 2; $i <= 5; $i++) {
             try {
-                ReserveStockForOrder::run($variant, 1, orderId: $i);
+                ReserveStockForOrder::run($variant, 1, Order::factory()->create());
             } catch (InsufficientStockException) {
                 $rejectedCount++;
             }
@@ -98,7 +99,7 @@ class InventoryManagementTest extends TestCase
 
         $variant = ProductVariant::factory()->create(['stock' => 5]);
 
-        $reservation = ReserveStockForOrder::run($variant, 1, orderId: 1);
+        $reservation = ReserveStockForOrder::run($variant, 1, Order::factory()->create());
 
         $this->assertTrue($reservation->expires_at->between(now()->addMinutes(44), now()->addMinutes(46)));
     }

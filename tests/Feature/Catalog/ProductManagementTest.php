@@ -125,4 +125,69 @@ class ProductManagementTest extends TestCase
         $this->assertSame('ulid', $variant->getRouteKeyName());
         $this->assertNotSame((string) $variant->id, $variant->getRouteKey());
     }
+
+    public function test_product_deletion_rolls_back_slug_mutation_on_failure(): void
+    {
+        $product = Product::factory()->create(['slug' => 'my-product']);
+
+        Product::deleting(function (): void {
+            throw new \RuntimeException('simulated failure after slug mutation');
+        });
+
+        try {
+            DeleteProduct::run($product);
+            $this->fail('Expected exception was not thrown.');
+        } catch (\RuntimeException) {
+            // expected
+        }
+
+        $product->refresh();
+        $this->assertSame('my-product', $product->slug);
+        $this->assertNull($product->deleted_at);
+    }
+
+    public function test_product_variant_deletion_rolls_back_sku_mutation_on_failure(): void
+    {
+        $variant = ProductVariant::factory()->create(['sku' => 'MY-SKU']);
+
+        ProductVariant::deleting(function (): void {
+            throw new \RuntimeException('simulated failure after sku mutation');
+        });
+
+        try {
+            DeleteProductVariant::run($variant);
+            $this->fail('Expected exception was not thrown.');
+        } catch (\RuntimeException) {
+            // expected
+        }
+
+        $variant->refresh();
+        $this->assertSame('MY-SKU', $variant->sku);
+        $this->assertNull($variant->deleted_at);
+    }
+
+    public function test_failed_product_creation_rolls_back_the_product_and_its_variants(): void
+    {
+        $category = Category::factory()->create();
+
+        ProductVariant::creating(function (): void {
+            throw new \RuntimeException('simulated failure creating a variant');
+        });
+
+        try {
+            CreateProduct::run([
+                'category_id' => $category->id,
+                'name' => 'Rollback Product',
+                'slug' => 'rollback-product',
+                'status' => ProductStatus::Active,
+            ], [
+                ['sku' => 'SKU-ROLLBACK', 'price' => 1000, 'stock' => 1],
+            ]);
+            $this->fail('Expected exception was not thrown.');
+        } catch (\RuntimeException) {
+            // expected
+        }
+
+        $this->assertSame(0, Product::query()->where('slug', 'rollback-product')->count());
+    }
 }

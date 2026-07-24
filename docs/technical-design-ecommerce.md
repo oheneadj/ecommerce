@@ -671,6 +671,63 @@ Two cross-cutting conventions apply to **every** table in this schema, adopted f
 
 ---
 
+## 4g. ACID Guarantees & Where Integrity Actually Lives
+
+This system is designed to be ACID-compliant, but several business invariants are enforced by application code rather than by database constraints. That is a deliberate tradeoff, and it has a direct consequence: **the Action layer is the real integrity boundary.** Any write that bypasses an Action can produce data the database will happily accept but the business considers invalid. This is the primary reason for the "business logic lives in Actions, nowhere else" rule in `AGENTS.md`.
+
+### Database platform (required, not optional)
+
+- **MySQL 8.x with the InnoDB storage engine on every table**, or PostgreSQL 14+. The engine must be verified, not assumed — a table silently created as MyISAM accepts transactions without error and rolls back nothing, so every guarantee below evaporates with no failure signal.
+- **Isolation level: MySQL InnoDB default (REPEATABLE READ) is expected and sufficient.** The locking design in this document is correct under both REPEATABLE READ and READ COMMITTED, but the level must not be lowered below READ COMMITTED. If the project moves to PostgreSQL, note that its default is READ COMMITTED — still safe here, but the difference should be a conscious decision rather than an accident of platform choice.
+- Foreign keys declared in Section 3 must be created as **real constraints** (`foreignId()->constrained()`), never as bare `unsignedBigInteger` columns. An unconstrained integer column is indistinguishable from a foreign key in an ERD while enforcing nothing.
+
+### Atomicity
+
+Guaranteed via `DB::transaction()` for every multi-write operation. The complete list of Actions requiring transactional wrapping (built and not-yet-built) is maintained in `AGENTS.md` Section 4a.
+
+### Isolation — and the lock-discipline rule
+
+Two resources in this system are finite and contested, and both use `lockForUpdate()` on the parent row: stock (`ReserveStockForOrder`) and coupon usage (`ApplyCouponToOrder`).
+
+> **The lock protects a convention, not a table.** `ReserveStockForOrder` locks the `product_variants` row and then reads from `stock_reservations` — a different table. This is correct *only because every writer takes the same variant lock first*. Any code path that inserts a `StockReservation` without first locking its parent variant breaks serialisation for every other path, silently, even if that code path is itself inside a transaction. The database enforces the lock; nothing enforces that all code remembers to request it.
+>
+> **Rule:** every write affecting a variant's available stock must go through `ReserveStockForOrder`, `RecordStockMovement`, or `AdjustStockWithReservationCheck`. Never insert or update `stock_reservations` or `stock_movements` directly. The same applies to `coupon_usages` and `ApplyCouponToOrder`.
+
+### Consistency — invariants enforced by application code, not the database
+
+The following are **not** enforceable as database constraints in this schema and are guaranteed only by the Action layer:
+
+| Invariant | Why it isn't a DB constraint |
+|---|---|
+| `product_variants.stock` equals the sum of its `stock_movements` | Deliberate denormalised cache for read performance |
+| A `User` has at least one of `phone`, `email`, `google_id` | "At least one of N nullable columns" isn't expressible as a single constraint |
+| Status values (`pending`, `paid`, `shipped`, …) are valid | `CLAUDE.md` §6 bans MySQL `enum` in favour of `string` columns |
+| A `Product` has at least one `ProductVariant` | Circular dependency at insert time |
+| `refunds.amount` does not exceed its parent payment's `amount` | Cross-row arithmetic constraint |
+| A `Review` belongs to a genuinely purchased `order_item` | FK guarantees the row exists, not that it represents a completed purchase |
+
+Each of these must have a corresponding feature test, since tests are the only enforcement mechanism available.
+
+### Durability
+
+A deployment concern rather than a schema one — see the infrastructure documentation for required settings (`innodb_flush_log_at_trx_commit=1`, backup cadence, retention).
+
+### The audit-log exemption — where transactions are actively wrong
+
+Three tables record **events that happened outside this system** and must therefore survive a rollback of the work they describe:
+
+- `payment_api_logs` — an outbound call to Moolre/Paystack that genuinely occurred
+- `webhook_events` — an inbound notification that genuinely arrived
+- `activity_log` (Spatie) — depending on use
+
+> If `webhook_events` is written inside the same transaction that processes the webhook, and processing fails, the rollback erases the evidence that the webhook ever arrived — destroying exactly the record needed to debug the failure. Worse, for `payment_api_logs`, the customer may have genuinely been charged while your database retains no trace of the call.
+>
+> **Rule:** record the external event and commit that write **first**, then open a separate transaction for the resulting business writes. External events are facts about the world; a rollback in this database cannot undo them, so erasing the record only makes them invisible.
+
+This is the one place where the otherwise-correct instinct to "wrap it in a transaction" produces a worse outcome than not wrapping at all.
+
+---
+
 ## 5. Indexing Notes
 
 - `products.slug`, `categories.slug`, `product_variants.sku` — unique indexes

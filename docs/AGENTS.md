@@ -171,6 +171,72 @@ Use this table to jump straight to the relevant code instead of searching:
 
 ---
 
+## 4a. Transaction & Locking Requirements for Not-Yet-Built Actions
+
+Recorded ahead of the Inventory/Checkout/Payment phases so these Actions are built correctly the first time rather than retrofitted. Two different problems, two different mechanisms — do not confuse them:
+
+- **Atomicity** (`DB::transaction()` only) — several related writes must all succeed or all fail together.
+- **Concurrency** (`DB::transaction()` + `lockForUpdate()`) — two simultaneous requests both pass a check against a finite resource (stock, coupon usage). Failure here is silent — the resource is oversold/over-redeemed and nothing throws until reconciliation.
+
+**Only two Actions in the whole system need locking. Nothing else does.**
+
+### Requires locking (build with a concurrency test from day one — never retrofit)
+
+**`ReserveStockForOrder`** (`app/Actions/Inventory/`)
+```php
+return DB::transaction(function () use ($variant, $quantity, $order) {
+    $locked = ProductVariant::whereKey($variant->id)->lockForUpdate()->firstOrFail();
+
+    $reserved = StockReservation::where('product_variant_id', $locked->id)
+        ->where('status', 'active')
+        ->sum('quantity');
+
+    if (($locked->stock - $reserved) < $quantity) {
+        throw new InsufficientStockException();
+    }
+
+    return StockReservation::create([
+        'product_variant_id' => $locked->id,
+        'order_id'           => $order->id,
+        'quantity'           => $quantity,
+        'status'             => 'active',
+        'expires_at'         => now()->addMinutes(
+            StoreSetting::current()->stock_reservation_minutes
+        ),
+    ]);
+}, 3);
+```
+Non-negotiable: the availability check and the insert must happen inside the *same* transaction as the lock — checking outside and inserting inside defeats the mechanism entirely. Expiry comes from `store_settings.stock_reservation_minutes`, never hardcoded. The `3` is a deadlock retry count.
+
+**`ApplyCouponToOrder`** (`app/Actions/Checkout/`)
+Same shape: lock the `Coupon` row, count actual `coupon_usages` rows (never a denormalised counter column — counters drift, rows don't), enforce `usage_limit` and `usage_limit_per_user`, then insert the usage row and update the order — all inside the one transaction.
+
+Required tests before either ships:
+```
+test_concurrent_checkout_on_last_unit_prevents_overselling
+test_concurrent_coupon_use_respects_usage_limit
+```
+Each must prove that two simultaneous requests for the last available unit result in exactly one success and one rejection.
+
+### Requires a transaction only (no lock)
+
+| Action | Writes that must be atomic |
+|---|---|
+| `CreateOrderFromCart` | `Order` + `OrderItem` rows with `item_snapshot` + `StockReservation` + `CouponUsage` |
+| `HandlePaymentWebhook` (success) | `Payment.status` + `Order.status` + `StockMovement` per item + reservation → `fulfilled` + `OrderStatusHistory` |
+| `ProcessRefund` | `Refund` + `StockMovement` (type `return`) + `Order.status` + `OrderStatusHistory` |
+| `HandleLatePaymentConfirmation` | Either branch — fulfil or refund — each touching multiple tables |
+| `AdjustStockWithReservationCheck` | `StockMovement` + flag affected reservations `at_risk` |
+| `ReleaseExpiredReservations` | Reservation → `released` + availability restored |
+| `VerifyOtp` (new user) | `User` created + `otp_code.consumed_at` set |
+| `ClaimGuestOrder` | `Order.user_id` set + related record reassignment |
+
+Every one of these must also keep external side effects (SMS, payment gateway calls, job dispatches, notifications) **outside** the transaction — dispatch/send only after commit (`->afterCommit()` on queued jobs, or `DB::afterCommit(fn () => ...)` for inline calls). A rollback cannot un-send an SMS or un-charge a card.
+
+Constraints that apply everywhere above: never use `DB::beginTransaction()`/`commit()`/`rollBack()` manually — always the `DB::transaction(closure)` form, which rolls back on exception and supports the deadlock-retry argument. Keep transactions short (no HTTP calls, file I/O, or heavy computation inside one — lock duration is contention). Don't add a transaction to a single-write Action; a lone `create()`/`update()` is already atomic. Don't add locking to anything other than the two Actions named above.
+
+---
+
 ## 5. Multi-Client Deployment Rules
 
 - `app/Actions/`, `app/Models/`, `app/Filament/` are **never client-specific**. If a client's request requires changing logic here, question whether it's actually a business rule change (rare, needs care) or should be a presentation-layer choice instead.

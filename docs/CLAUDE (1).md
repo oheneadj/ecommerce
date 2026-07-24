@@ -34,6 +34,10 @@ At the start of every session:
   - Are tests needed for this change?
   - Does CHANGELOG.md need an entry for this session's work?
 
+After every successfully implemented and verified unit of work (tests/Pint/PHPStan green):
+- Add the corresponding `CHANGELOG.md` entry first
+- Then create a git commit covering that implementation + its CHANGELOG entry (Conventional Commits format, per Section 23) — don't batch multiple unrelated pieces of work into one commit, and don't leave completed, verified work uncommitted
+
 ## 2. Commands
 
 Every Laravel project must define these standard Composer scripts in `composer.json`
@@ -514,6 +518,7 @@ Testing & delivery:
 - [ ] No test deleted, skipped, or weakened without explicit approval?
 - [ ] Full test suite green?
 - [ ] `CHANGELOG.md` updated (created if it didn't exist, per Section 1)?
+- [ ] Git commit created for this implementation, made after the CHANGELOG entry (per Section 1/23)?
 
 ## 21. Error Handling & Logging
 

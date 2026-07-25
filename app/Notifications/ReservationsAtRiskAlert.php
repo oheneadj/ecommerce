@@ -9,6 +9,8 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Models\ProductVariant;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -17,9 +19,12 @@ use Illuminate\Notifications\Notification;
  * AdjustStockWithReservationCheck flags one or more reservations `at_risk`
  * — a manual correction is never blocked by this, but a human must resolve
  * the affected orders (contact customer, cancel, or expedite restock).
+ * Queued — see App\Notifications\OrderNotification's docblock for why.
  */
-class ReservationsAtRiskAlert extends Notification
+class ReservationsAtRiskAlert extends Notification implements ShouldQueue
 {
+    use Queueable;
+
     /**
      * @param  array<int, int>  $reservationIds
      */

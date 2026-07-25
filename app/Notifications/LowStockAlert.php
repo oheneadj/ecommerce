@@ -9,16 +9,21 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Models\ProductVariant;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
  * Sent to every Store Keeper (BRD/agile-docs E10.2 — low-stock alerts go
  * to Store Keeper, not Admin). Database channel surfaces it on the
- * Filament admin bell; mail gives an off-panel heads-up.
+ * Filament admin bell; mail gives an off-panel heads-up. Queued — see
+ * App\Notifications\OrderNotification's docblock for why.
  */
-class LowStockAlert extends Notification
+class LowStockAlert extends Notification implements ShouldQueue
 {
+    use Queueable;
+
     public function __construct(
         private readonly ProductVariant $variant,
     ) {}

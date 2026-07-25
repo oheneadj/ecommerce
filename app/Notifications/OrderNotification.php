@@ -10,6 +10,8 @@ namespace App\Notifications;
 
 use App\Models\Order;
 use App\Models\User;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 
 /**
@@ -20,9 +22,21 @@ use Illuminate\Notifications\Notification;
  * customer's account, and via the Filament bell for staff notifications)
  * is only added for a real registered User — an anonymous guest
  * notifiable has no row to attach a database notification to.
+ *
+ * Queued (ShouldQueue): actual delivery must never block the request that
+ * triggered it — this matters most for HandlePaymentWebhook, a synchronous
+ * HTTP endpoint the payment provider calls; blocking on an SMS/email
+ * round-trip there risks the provider timing out and retrying the webhook.
+ * Dispatch still only happens after the triggering transaction commits
+ * (each call site wraps the send in `DB::afterCommit()`), so the queued
+ * job never runs against uncommitted data. Requires a real queue worker in
+ * production (`QUEUE_CONNECTION=database` is already configured) — with no
+ * worker running, jobs sit in the `jobs` table undelivered.
  */
-abstract class OrderNotification extends Notification
+abstract class OrderNotification extends Notification implements ShouldQueue
 {
+    use Queueable;
+
     public function __construct(
         protected readonly Order $order,
     ) {}

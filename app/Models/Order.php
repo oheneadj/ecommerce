@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -139,10 +140,40 @@ class Order extends Model
     }
 
     /**
+     * This order's shipment, if one has been assigned.
+     *
+     * @return HasOne<Shipment, $this>
+     */
+    public function shipment(): HasOne
+    {
+        return $this->hasOne(Shipment::class);
+    }
+
+    /**
      * The order's grand total formatted for display (e.g. "GH₵150.00").
      */
     public function getGrandTotalFormattedAttribute(): string
     {
         return $this->formattedMoney($this->grand_total);
+    }
+
+    public function getSubtotalFormattedAttribute(): string
+    {
+        return $this->formattedMoney($this->subtotal);
+    }
+
+    public function getDiscountTotalFormattedAttribute(): string
+    {
+        return $this->formattedMoney($this->discount_total);
+    }
+
+    public function getShippingTotalFormattedAttribute(): string
+    {
+        return $this->formattedMoney($this->shipping_total);
+    }
+
+    public function getTaxTotalFormattedAttribute(): string
+    {
+        return $this->formattedMoney($this->tax_total);
     }
 }

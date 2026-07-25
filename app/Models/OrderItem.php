@@ -75,4 +75,12 @@ class OrderItem extends Model
     {
         return $this->formattedMoney($this->unit_price);
     }
+
+    /**
+     * This line item's quantity-multiplied total formatted for display.
+     */
+    public function getLineTotalFormattedAttribute(): string
+    {
+        return $this->formattedMoney($this->unit_price * $this->quantity);
+    }
 }

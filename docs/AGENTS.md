@@ -167,6 +167,7 @@ Use this table to jump straight to the relevant code instead of searching:
 | Order status changes | `UpdateOrderStatus` | `app/Actions/Order/` |
 | Guest linking a past order to their account | `ClaimGuestOrder` — requires authentication first, never automatic | `app/Actions/Order/` |
 | Invoice/receipt PDF | `GenerateOrderInvoice` | `app/Actions/Order/` |
+| Assigning/updating a shipment | `AssignShipment` (upserts the order's single shipment — one parcel per order, no splitting) | `app/Actions/Order/` |
 | Review submission | `SubmitReview` | `app/Actions/Review/` |
 
 *(This table should be kept up to date as new Actions are added — treat it as the canonical index.)*

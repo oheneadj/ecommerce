@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Payments\PaymentManager;
 use App\Sms\Contracts\SmsGateway;
 use App\Sms\SmsManager;
 use Carbon\CarbonImmutable;
@@ -20,6 +21,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(SmsManager::class);
 
         $this->app->bind(SmsGateway::class, fn ($app) => $app->make(SmsManager::class)->driver());
+
+        $this->app->singleton(PaymentManager::class);
     }
 
     /**

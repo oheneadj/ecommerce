@@ -129,6 +129,16 @@ class Order extends Model
     }
 
     /**
+     * Every payment attempt made against this order.
+     *
+     * @return HasMany<Payment, $this>
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    /**
      * The order's grand total formatted for display (e.g. "GH₵150.00").
      */
     public function getGrandTotalFormattedAttribute(): string

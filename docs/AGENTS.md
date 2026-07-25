@@ -161,6 +161,7 @@ Use this table to jump straight to the relevant code instead of searching:
 | Refunds | `ProcessRefund` (calls `PaymentGateway::refund()`) | `app/Actions/Payment/`, `app/Payments/` |
 | Polling fallback for slow/missing webhooks | `VerifyPendingPayments` (scheduled job) | `app/Actions/Payment/` |
 | Payment confirmed after reservation expired | `HandleLatePaymentConfirmation` | `app/Actions/Payment/` |
+| Applying a confirmed payment's effects (shared by webhook + polling paths) | `SettlePaymentSuccess` (fulfills directly if the reservation is still active, else delegates to `HandleLatePaymentConfirmation`) | `app/Actions/Payment/` |
 | SMS sending | any Action needing SMS calls `SmsGateway::send()` | `app/Sms/` |
 | Adding/swapping a payment or SMS provider | new driver class implementing `PaymentGateway`/`SmsGateway` + config entry — no Action changes | `app/Payments/Drivers/`, `app/Sms/Drivers/`, `config/payments.php`, `config/sms.php` |
 | Order status changes | `UpdateOrderStatus` | `app/Actions/Order/` |

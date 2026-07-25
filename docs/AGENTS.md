@@ -173,7 +173,11 @@ Use this table to jump straight to the relevant code instead of searching:
 | Guest linking a past order to their account | `ClaimGuestOrder` — requires authentication first, never automatic | `app/Actions/Order/` |
 | Invoice/receipt PDF | `GenerateOrderInvoice` | `app/Actions/Order/` |
 | Assigning/updating a shipment | `AssignShipment` (upserts the order's single shipment — one parcel per order, no splitting) | `app/Actions/Order/` |
-| Review submission | `SubmitReview` | `app/Actions/Review/` |
+| Review submission | `SubmitReview` (verified purchase = order_item's parent order is paid/processing/shipped/delivered, not just the FK existing; `reviews.order_item_id` unique — one review per purchased line item) | `app/Actions/Review/` |
+| Editing a review's own content | `EditReview` — author only, always resets `status` back to `pending` | `app/Actions/Review/` |
+| Deleting a review | `DeleteReview` — the author, or Admin/Super Admin as moderation | `app/Actions/Review/` |
+| Approving/rejecting a review | `ModerateReview` — staff only, may change only `status`, never content | `app/Actions/Review/` |
+| Wishlist operations | `AddToWishlist`, `RemoveFromWishlist` (registered users only — no guest wishlist, BRD FR-8.1) | `app/Actions/Wishlist/` |
 
 *(This table should be kept up to date as new Actions are added — treat it as the canonical index.)*
 

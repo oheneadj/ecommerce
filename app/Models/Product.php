@@ -104,6 +104,17 @@ class Product extends Model
     }
 
     /**
+     * This product's customer reviews (all statuses — filter by `status`
+     * for public display).
+     *
+     * @return HasMany<Review, $this>
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    /**
      * Scope to only publicly purchasable products.
      *
      * @param  Builder<Product>  $query

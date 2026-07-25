@@ -39,7 +39,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $guest_phone
  * @property int $address_id
  * @property int|null $coupon_id
- * @property string $status
+ * @property OrderStatus $status
  * @property int $subtotal
  * @property int $discount_total
  * @property int $tax_total

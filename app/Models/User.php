@@ -112,4 +112,24 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
     {
         return $this->hasMany(Order::class);
     }
+
+    /**
+     * Reviews this account has written.
+     *
+     * @return HasMany<Review, $this>
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    /**
+     * Variants this account has wishlisted.
+     *
+     * @return HasMany<WishlistItem, $this>
+     */
+    public function wishlistItems(): HasMany
+    {
+        return $this->hasMany(WishlistItem::class);
+    }
 }

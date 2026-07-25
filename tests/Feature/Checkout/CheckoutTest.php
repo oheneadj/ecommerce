@@ -100,7 +100,7 @@ class CheckoutTest extends TestCase
     public function test_guest_order_is_never_auto_attached_to_an_account_on_matching_email(): void
     {
         $existingUser = User::factory()->create(['email' => 'shopper@example.com']);
-        $variant = ProductVariant::factory()->create();
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
         $guestCart = Cart::factory()->create(['user_id' => null, 'session_id' => 'guest-session']);
         AddItemToCart::run($guestCart, $variant, 1);
         $address = Address::factory()->create(['user_id' => null]);
@@ -114,7 +114,7 @@ class CheckoutTest extends TestCase
 
     public function test_order_number_is_generated_on_creation(): void
     {
-        $variant = ProductVariant::factory()->create();
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
         $cart = Cart::factory()->create();
         AddItemToCart::run($cart, $variant, 1);
         $address = Address::factory()->create(['user_id' => $cart->user_id]);

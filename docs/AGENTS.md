@@ -162,8 +162,13 @@ Use this table to jump straight to the relevant code instead of searching:
 | Polling fallback for slow/missing webhooks | `VerifyPendingPayments` (scheduled job) | `app/Actions/Payment/` |
 | Payment confirmed after reservation expired | `HandleLatePaymentConfirmation` | `app/Actions/Payment/` |
 | Applying a confirmed payment's effects (shared by webhook + polling paths) | `SettlePaymentSuccess` (fulfills directly if the reservation is still active, else delegates to `HandleLatePaymentConfirmation`) | `app/Actions/Payment/` |
+| Payment failed (shared by webhook + polling paths) | `MarkPaymentFailed` | `app/Actions/Payment/` |
 | SMS sending | any Action needing SMS calls `SmsGateway::send()` | `app/Sms/` |
 | Adding/swapping a payment or SMS provider | new driver class implementing `PaymentGateway`/`SmsGateway` + config entry — no Action changes | `app/Payments/Drivers/`, `app/Sms/Drivers/`, `config/payments.php`, `config/sms.php` |
+| Order placed / payment success / payment failed / order shipped notifications | `App\Notifications\{OrderPlaced,PaymentSucceeded,PaymentFailed,OrderShipped}`, dispatched via `App\Notifications\Support\SafeNotifier` (never lets a delivery failure break the triggering Action) and routed via `App\Notifications\Support\OrderRecipient` (registered User vs. on-demand guest notifiable) | `app/Notifications/` |
+| Low-stock alert (Store Keeper) | `RecordStockMovement` fires in real time on a threshold crossing; `CheckLowStockLevels` is the daily safety-net sweep — both send `App\Notifications\LowStockAlert` | `app/Actions/Inventory/`, `app/Notifications/` |
+| Reservations flagged at_risk → Admin alert | `AdjustStockWithReservationCheck` sends `App\Notifications\ReservationsAtRiskAlert` | `app/Actions/Inventory/`, `app/Notifications/` |
+| Custom "sms" notification channel | `App\Notifications\Channels\SmsChannel`, registered via `Notification::extend('sms', ...)` in `AppServiceProvider` — routes through `SmsGateway`, never a vendor SDK | `app/Notifications/Channels/` |
 | Order status changes | `UpdateOrderStatus` | `app/Actions/Order/` |
 | Guest linking a past order to their account | `ClaimGuestOrder` — requires authentication first, never automatic | `app/Actions/Order/` |
 | Invoice/receipt PDF | `GenerateOrderInvoice` | `app/Actions/Order/` |

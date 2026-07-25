@@ -12,6 +12,9 @@ use App\Enums\ShipmentStatus;
 use App\Models\Order;
 use App\Models\Shipment;
 use App\Models\ShippingMethod;
+use App\Notifications\OrderShipped;
+use App\Notifications\Support\OrderRecipient;
+use App\Notifications\Support\SafeNotifier;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
@@ -26,7 +29,7 @@ class AssignShipment
 
     public function handle(Order $order, ShippingMethod $shippingMethod, ?string $trackingNumber = null): Shipment
     {
-        return Shipment::query()->updateOrCreate(
+        $shipment = Shipment::query()->updateOrCreate(
             ['order_id' => $order->id],
             [
                 'shipping_method_id' => $shippingMethod->id,
@@ -35,5 +38,9 @@ class AssignShipment
                 'dispatched_at' => now(),
             ],
         );
+
+        SafeNotifier::send(OrderRecipient::for($order), new OrderShipped($order, $shipment));
+
+        return $shipment;
     }
 }

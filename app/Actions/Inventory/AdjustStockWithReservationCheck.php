@@ -10,10 +10,14 @@ namespace App\Actions\Inventory;
 
 use App\Enums\StockMovementType;
 use App\Enums\StockReservationStatus;
+use App\Enums\UserRole;
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
 use App\Models\StockReservation;
 use App\Models\User;
+use App\Notifications\ReservationsAtRiskAlert;
+use App\Notifications\Support\SafeNotifier;
+use App\Notifications\Support\StaffRecipients;
 use Illuminate\Support\Facades\DB;
 use Lorisleiva\Actions\Concerns\AsAction;
 
@@ -75,6 +79,13 @@ class AdjustStockWithReservationCheck
                     $atRiskIds[] = $reservation->id;
                     $shortfall -= $reservation->quantity;
                 }
+            }
+
+            if ($atRiskIds !== []) {
+                DB::afterCommit(fn () => SafeNotifier::send(
+                    StaffRecipients::forRole(UserRole::Admin->value)->merge(StaffRecipients::forRole(UserRole::SuperAdmin->value)),
+                    new ReservationsAtRiskAlert($variant, $atRiskIds),
+                ));
             }
 
             return ['movement' => $movement, 'at_risk_reservation_ids' => $atRiskIds];

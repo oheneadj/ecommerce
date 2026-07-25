@@ -21,8 +21,10 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Currently exposes only `stock_reservation_minutes` (BRD E3.2 — the
- * checkout reservation window must be admin-editable without a deploy).
+ * Currently exposes `stock_reservation_minutes` (BRD E3.2 — the checkout
+ * reservation window must be admin-editable without a deploy) and
+ * `low_stock_threshold` (the store-wide default low-stock alert threshold,
+ * overridable per variant via `product_variants.low_stock_threshold`).
  * Grows to cover branding/business details in later sprints.
  */
 class ManageStoreSettings extends Page implements HasForms
@@ -40,7 +42,7 @@ class ManageStoreSettings extends Page implements HasForms
 
     public function mount(): void
     {
-        $this->getSchema('form')?->fill(StoreSetting::current()->only(['stock_reservation_minutes']));
+        $this->getSchema('form')?->fill(StoreSetting::current()->only(['stock_reservation_minutes', 'low_stock_threshold']));
     }
 
     public function form(Schema $schema): Schema
@@ -53,6 +55,13 @@ class ManageStoreSettings extends Page implements HasForms
                     ->numeric()
                     ->required()
                     ->minValue(1),
+
+                TextInput::make('low_stock_threshold')
+                    ->label('Low-stock alert threshold (default)')
+                    ->helperText('Store Keeper is alerted when a variant\'s stock falls to or below this. Overridable per variant.')
+                    ->numeric()
+                    ->required()
+                    ->minValue(0),
             ])
             ->statePath('data');
     }

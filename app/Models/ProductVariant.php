@@ -32,12 +32,13 @@ use Illuminate\Support\Carbon;
  * @property string $sku
  * @property int $price
  * @property int $stock
+ * @property int|null $low_stock_threshold
  * @property string $status
  * @property Carbon|null $deleted_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['product_id', 'sku', 'price', 'stock', 'status'])]
+#[Fillable(['product_id', 'sku', 'price', 'stock', 'low_stock_threshold', 'status'])]
 #[Hidden(['deleted_at'])]
 class ProductVariant extends Model
 {
@@ -112,5 +113,21 @@ class ProductVariant extends Model
     public function getPriceFormattedAttribute(): string
     {
         return $this->formattedMoney($this->price);
+    }
+
+    /**
+     * This variant's own threshold, or the store-wide default if unset.
+     */
+    public function effectiveLowStockThreshold(): int
+    {
+        return $this->low_stock_threshold ?? StoreSetting::current()->low_stock_threshold;
+    }
+
+    /**
+     * Whether this variant's cached stock is at or below its low-stock threshold.
+     */
+    public function isLowStock(): bool
+    {
+        return $this->stock <= $this->effectiveLowStockThreshold();
     }
 }

@@ -89,7 +89,7 @@ class HandlePaymentWebhook
         if ($result->status === PaymentStatus::Success) {
             SettlePaymentSuccess::run($payment);
         } elseif ($result->status === PaymentStatus::Failed) {
-            $payment->update(['status' => PaymentStatus::Failed]);
+            MarkPaymentFailed::run($payment);
         }
 
         $event->update(['processed_at' => now()]);

@@ -96,6 +96,14 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
     }
 
     /**
+     * Route "sms" channel notifications to this account's phone number, if any.
+     */
+    public function routeNotificationForSms(): ?string
+    {
+        return $this->phone;
+    }
+
+    /**
      * This account's past orders.
      *
      * @return HasMany<Order, $this>

@@ -16,6 +16,9 @@ use App\Models\Cart;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Notifications\OrderPlaced;
+use App\Notifications\Support\OrderRecipient;
+use App\Notifications\Support\SafeNotifier;
 use Illuminate\Support\Facades\DB;
 use Lorisleiva\Actions\Concerns\AsAction;
 
@@ -40,10 +43,9 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * coincidental email match. Linking only ever happens via ClaimGuestOrder,
  * which requires the customer to authenticate first (BRD FR-3.2a).
  *
- * External side effects (order confirmation SMS/email) are not part of
- * this Action yet — the notification system doesn't exist in this codebase
- * yet. When it's added, it must fire only `->afterCommit()`, never inside
- * this transaction.
+ * The order-placed notification fires only `->afterCommit()`, never inside
+ * this transaction — a rollback can't un-send an SMS. A delivery failure
+ * never fails checkout itself (SafeNotifier logs and swallows it).
  *
  * @throws EmptyCartException when the cart has no items
  */
@@ -113,6 +115,8 @@ class CreateOrderFromCart
                 ApplyCouponToOrder::run($order, $couponCode);
                 $order->refresh();
             }
+
+            DB::afterCommit(fn () => SafeNotifier::send(OrderRecipient::for($order), new OrderPlaced($order)));
 
             return $order;
         });

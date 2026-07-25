@@ -2,12 +2,14 @@
 
 namespace App\Providers;
 
+use App\Notifications\Channels\SmsChannel;
 use App\Payments\PaymentManager;
 use App\Sms\Contracts\SmsGateway;
 use App\Sms\SmsManager;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -31,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        Notification::extend('sms', fn ($app) => new SmsChannel($app->make(SmsGateway::class)));
     }
 
     /**

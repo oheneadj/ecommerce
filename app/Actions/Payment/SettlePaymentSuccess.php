@@ -17,6 +17,9 @@ use App\Enums\StockMovementType;
 use App\Enums\StockReservationStatus;
 use App\Models\Payment;
 use App\Models\StockReservation;
+use App\Notifications\PaymentSucceeded;
+use App\Notifications\Support\OrderRecipient;
+use App\Notifications\Support\SafeNotifier;
 use Illuminate\Support\Facades\DB;
 use Lorisleiva\Actions\Concerns\AsAction;
 
@@ -74,7 +77,10 @@ class SettlePaymentSuccess
 
             UpdateOrderStatus::run($order, OrderStatus::Paid, note: 'Payment confirmed.');
 
-            DB::afterCommit(fn () => GenerateOrderInvoice::run($order));
+            DB::afterCommit(function () use ($order): void {
+                GenerateOrderInvoice::run($order);
+                SafeNotifier::send(OrderRecipient::for($order), new PaymentSucceeded($order));
+            });
         });
     }
 }

@@ -42,6 +42,11 @@ class VariantsRelationManager extends RelationManager
                     ->minValue(0)
                     ->default(0),
 
+                TextInput::make('low_stock_threshold')
+                    ->numeric()
+                    ->minValue(0)
+                    ->helperText('Leave blank to use the store-wide default.'),
+
                 Select::make('status')
                     ->options(VariantStatus::class)
                     ->required()

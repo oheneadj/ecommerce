@@ -18,15 +18,23 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @property int $id
  * @property int $stock_reservation_minutes
+ * @property int $low_stock_threshold
  */
-#[Fillable(['stock_reservation_minutes'])]
+#[Fillable(['stock_reservation_minutes', 'low_stock_threshold'])]
 class StoreSetting extends Model
 {
     /**
      * Get the single settings row, creating it with defaults if missing.
+     *
+     * `firstOrCreate` leaves DB-default column values unset on the
+     * in-memory instance when it inserts a new row (Eloquent doesn't
+     * re-read the row after insert), so a freshly created row is re-fetched
+     * to guarantee every attribute reflects what's actually in the database.
      */
     public static function current(): self
     {
-        return self::query()->firstOrCreate([]);
+        $settings = self::query()->firstOrCreate([]);
+
+        return $settings->wasRecentlyCreated ? ($settings->fresh() ?? $settings) : $settings;
     }
 }

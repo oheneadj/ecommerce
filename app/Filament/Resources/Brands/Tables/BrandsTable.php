@@ -19,6 +19,7 @@ class BrandsTable
             ->columns([
                 ImageColumn::make('logo_path')
                     ->label('Logo')
+                    ->disk('public')
                     ->circular(),
                 TextColumn::make('name')
                     ->searchable()
@@ -37,7 +38,8 @@ class BrandsTable
                 //
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->button(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

@@ -83,6 +83,7 @@ class ImagesRelationManager extends RelationManager
             ->columns([
                 ImageColumn::make('path')
                     ->label('Image')
+                    ->disk('public')
                     ->imageHeight('60'),
                 TextColumn::make('productVariant.sku')
                     ->label('Scope')

@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -26,6 +27,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -121,10 +123,15 @@ class VariantsRelationManager extends RelationManager
                 CreateAction::make(),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->button(),
-                self::addImageAction(),
-                DeleteAction::make()
+                ActionGroup::make([
+                    EditAction::make(),
+                    self::addImageAction(),
+                    DeleteAction::make(),
+                ])
+                    ->label('More actions')
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->size(Size::Small)
+                    ->color('primary')
                     ->button(),
             ])
             ->toolbarActions([
@@ -151,7 +158,6 @@ class VariantsRelationManager extends RelationManager
         return Action::make('addImage')
             ->label('Add image')
             ->icon(Heroicon::OutlinedPhoto)
-            ->button()
             ->authorize(fn (): bool => Auth::user()?->can('create', ProductImage::class) ?? false)
             ->schema([
                 FileUpload::make('path')

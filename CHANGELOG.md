@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Changed — Table row actions
+- `VariantsRelationManager`'s three row actions (Edit, Add image, Delete) are now grouped into a single "More actions" dropdown (`ActionGroup`, small primary button, `heroicon-m-ellipsis-vertical`), matching `OrdersTable`'s existing grouped-actions convention. Every other table in the admin panel has two or fewer row actions and was left as individual buttons.
+
 ### Added — Product/variant image uploads
 - `ImagesRelationManager` on `ProductResource`'s edit page: upload an image scoped to the whole product (leave "Scope" blank) or to one specific variant (e.g. one photo per shirt color), with display order and a primary-image toggle. `ProductImagePolicy` (viewAny/view/create/update mirror `ProductPolicy`; delete restricted to Admin/Super Admin, auto-discovered by Laravel's model↔policy convention) and `ProductImageFactory` added; deleting an image also removes its stored file so nothing is orphaned in storage.
 - An "Add image" row action directly on `VariantsRelationManager`'s table: attaches an image straight to that row's variant (no variant picker needed — the row itself is the context), plus an `images_count` badge on each variant row so it's obvious at a glance which variants already have photos. The top-level Images tab remains the place for general (non-variant) product images and for reordering/re-flagging primary/deleting across everything.

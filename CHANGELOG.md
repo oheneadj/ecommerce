@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Added — Filter tabs
+- Filter tabs (`getTabs()`) added to every List page with a natural status/type dimension: Orders (`OrderStatus`), Payments (`PaymentStatus`), Products (`ProductStatus`), Reviews (`ReviewStatus`, so the moderation queue is a click away), Stock Reservations (`StockReservationStatus`), Stock Movements (`StockMovementType`), and Activity Log (created/updated/deleted). Each tab shows a live count badge. Coupons gets bespoke Active/Inactive/Expired tabs derived from `active` + `expires_at` (the same "is this coupon actually usable" logic `ApplyCouponToOrder` enforces), rather than a single enum column. Resources with no status/type column (Brands, Categories, Shipping Methods) were left without tabs — not applicable there.
+
 ### Changed — Table row actions
 - `VariantsRelationManager`'s three row actions (Edit, Add image, Delete) are now grouped into a single "More actions" dropdown (`ActionGroup`, small primary button, `heroicon-m-ellipsis-vertical`), matching `OrdersTable`'s existing grouped-actions convention. Every other table in the admin panel has two or fewer row actions and was left as individual buttons.
 

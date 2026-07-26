@@ -14,6 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - An "Add image" row action directly on `VariantsRelationManager`'s table: attaches an image straight to that row's variant (no variant picker needed — the row itself is the context), plus an `images_count` badge on each variant row so it's obvious at a glance which variants already have photos. The top-level Images tab remains the place for general (non-variant) product images and for reordering/re-flagging primary/deleting across everything.
 - 6 new feature tests covering general vs. variant-scoped uploads, file cleanup on delete, the Store Keeper delete-authorization gate, and adding an image from a variant row.
 
+### Fixed — Product/variant images
+- Marking an image primary no longer allows more than one primary image within the same scope (a product's general images, or one specific variant's images) — `ProductImageObserver::saving()` unsets `is_primary` on that scope's other images whenever one is saved as primary. Runs on every create/update regardless of entry point (the Images tab or the per-variant "Add image" action), so the invariant holds no matter how an image gets marked primary. 2 new tests covering the unset-on-create case and that marking one variant's image primary leaves a different variant's primary image untouched.
+
 ### Fixed
 - `FileUpload` fields (`ProductImage`'s `path`, `Brand`'s `logo_path`) were saving to the app's default `local` disk (private, `FILESYSTEM_DISK=local`) instead of `public`, since neither explicitly declared a disk. Both now explicitly use `->disk('public')` — these are genuinely public catalog assets, so no signed-URL handling is needed, but leaving the disk to an ambiguous default meant uploaded images were silently unreachable via their public URL.
 

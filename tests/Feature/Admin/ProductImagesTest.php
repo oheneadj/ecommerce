@@ -158,4 +158,54 @@ class ProductImagesTest extends TestCase
 
         $this->assertSame($variant->id, $product->images()->sole()->product_variant_id);
     }
+
+    public function test_marking_a_new_general_image_primary_unmarks_the_previous_primary_general_image(): void
+    {
+        Storage::fake('public');
+        $this->actingAs($this->admin());
+
+        $product = Product::factory()->create();
+        $existingPrimary = ProductImage::factory()->create([
+            'product_id' => $product->id,
+            'product_variant_id' => null,
+            'is_primary' => true,
+        ]);
+
+        Livewire::test(ImagesRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
+            ->callTableAction('create', data: [
+                'path' => UploadedFile::fake()->image('new-front.jpg'),
+                'sort_order' => 0,
+                'is_primary' => true,
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $this->assertFalse($existingPrimary->fresh()->is_primary);
+        $this->assertSame(1, $product->images()->where('is_primary', true)->count());
+    }
+
+    public function test_marking_a_variant_image_primary_does_not_affect_a_different_variants_primary_image(): void
+    {
+        Storage::fake('public');
+        $this->actingAs($this->admin());
+
+        $product = Product::factory()->create();
+        $variantA = ProductVariant::factory()->create(['product_id' => $product->id]);
+        $variantB = ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        $primaryForA = ProductImage::factory()->create([
+            'product_id' => $product->id,
+            'product_variant_id' => $variantA->id,
+            'is_primary' => true,
+        ]);
+
+        Livewire::test(VariantsRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
+            ->callTableAction('addImage', $variantB, data: [
+                'path' => UploadedFile::fake()->image('variant-b.jpg'),
+                'sort_order' => 0,
+                'is_primary' => true,
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $this->assertTrue($primaryForA->fresh()->is_primary);
+    }
 }

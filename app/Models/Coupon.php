@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Concerns\HasUlid;
+use App\Concerns\LogsAdminActivity;
 use App\Enums\CouponType;
 use Database\Factories\CouponFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -41,7 +42,7 @@ use Illuminate\Support\Carbon;
 class Coupon extends Model
 {
     /** @use HasFactory<CouponFactory> */
-    use HasFactory, HasUlid;
+    use HasFactory, HasUlid, LogsAdminActivity;
 
     /**
      * @return array<string, string>

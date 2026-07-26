@@ -10,6 +10,7 @@ namespace App\Models;
 
 use App\Concerns\HasFormattedMoney;
 use App\Concerns\HasUlid;
+use App\Concerns\LogsAdminActivity;
 use App\Enums\RefundStatus;
 use Database\Factories\RefundFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -37,7 +38,7 @@ use Illuminate\Support\Carbon;
 class Refund extends Model
 {
     /** @use HasFactory<RefundFactory> */
-    use HasFactory, HasFormattedMoney, HasUlid;
+    use HasFactory, HasFormattedMoney, HasUlid, LogsAdminActivity;
 
     /**
      * @return array<string, string>

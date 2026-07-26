@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Orders\Tables;
 
 use App\Actions\Order\AssignShipment;
+use App\Actions\Order\UpdateOrderStatus;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\ShippingMethod;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -16,7 +19,11 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use pxlrbt\FilamentExcel\Actions\ExportBulkAction;
+use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
 class OrdersTable
 {
@@ -55,8 +62,47 @@ class OrdersTable
                 self::downloadInvoiceAction(),
             ])
             ->toolbarActions([
-                //
+                BulkActionGroup::make([
+                    self::bulkUpdateStatusAction(),
+                    ExportBulkAction::make()
+                        ->exports([
+                            ExcelExport::make()
+                                ->fromTable()
+                                ->withColumns([
+                                    'order_number',
+                                    'status',
+                                    'subtotal',
+                                    'discount_total',
+                                    'shipping_total',
+                                    'tax_total',
+                                    'grand_total',
+                                    'created_at',
+                                ]),
+                        ]),
+                ]),
             ]);
+    }
+
+    private static function bulkUpdateStatusAction(): BulkAction
+    {
+        return BulkAction::make('bulkUpdateStatus')
+            ->label('Update status')
+            ->schema([
+                Select::make('status')
+                    ->options(OrderStatus::class)
+                    ->required(),
+            ])
+            ->action(function (Collection $records, array $data): void {
+                $status = $data['status'] instanceof OrderStatus ? $data['status'] : OrderStatus::from($data['status']);
+
+                foreach ($records as $record) {
+                    if ($record instanceof Order) {
+                        UpdateOrderStatus::run($record, $status, Auth::user());
+                    }
+                }
+
+                Notification::make()->title('Orders updated')->success()->send();
+            });
     }
 
     private static function assignShipmentAction(): Action

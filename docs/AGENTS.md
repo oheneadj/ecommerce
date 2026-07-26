@@ -178,6 +178,10 @@ Use this table to jump straight to the relevant code instead of searching:
 | Deleting a review | `DeleteReview` — the author, or Admin/Super Admin as moderation | `app/Actions/Review/` |
 | Approving/rejecting a review | `ModerateReview` — staff only, may change only `status`, never content | `app/Actions/Review/` |
 | Wishlist operations | `AddToWishlist`, `RemoveFromWishlist` (registered users only — no guest wishlist, BRD FR-8.1) | `app/Actions/Wishlist/` |
+| Admin dashboard metrics (today's sales, monthly revenue, pending orders, low stock, new customers, top products) | `DashboardMetricsQuery` — read-only, no side effects; "sales"/"revenue" are always counted from successful `Payment` rows, never `Order` totals (an order can exist unpaid) | `app/Queries/` |
+| Admin activity logging on "key records" (FR-10.2) | `App\Concerns\LogsAdminActivity` (wraps Spatie's `LogsActivity`, logs only dirty fillable attributes, skips no-op saves) — applied to `Product`, `ProductVariant`, `Category`, `Brand`, `Coupon`, `ShippingMethod`, `StoreSetting`, `Order`, `Payment`, `Refund`, `Review`; viewable only via the Super-Admin-only `ActivityLogResource` (BRD E11.4 — narrower than every other staff resource, which are Admin+Super Admin) | `app/Concerns/`, `app/Filament/Resources/ActivityLogs/` |
+| CSV/Excel export (FR-10.4) | `pxlrbt/filament-excel`'s `ExportBulkAction` on `OrdersTable`/`ProductsTable` — the only two resources the BRD names | — |
+| Bulk actions (FR-10.3) | Order status bulk-update on `OrdersTable` (calls `UpdateOrderStatus` per record); stock/price bulk-adjustment on `VariantsRelationManager` (calls `AdjustStockWithReservationCheck` per record for stock, a direct field update for price — consistent with every other single-field Filament edit in this codebase, which also bypasses an Action) | — |
 
 *(This table should be kept up to date as new Actions are added — treat it as the canonical index.)*
 

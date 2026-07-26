@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Concerns\LogsAdminActivity;
 use Database\Factories\ShippingMethodFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -27,7 +28,7 @@ use Illuminate\Support\Carbon;
 class ShippingMethod extends Model
 {
     /** @use HasFactory<ShippingMethodFactory> */
-    use HasFactory;
+    use HasFactory, LogsAdminActivity;
 
     /**
      * @return array<string, string>

@@ -10,6 +10,7 @@ namespace App\Models;
 
 use App\Concerns\HasFormattedMoney;
 use App\Concerns\HasUlid;
+use App\Concerns\LogsAdminActivity;
 use App\Enums\PaymentStatus;
 use Database\Factories\PaymentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -43,7 +44,7 @@ use Illuminate\Support\Carbon;
 class Payment extends Model
 {
     /** @use HasFactory<PaymentFactory> */
-    use HasFactory, HasFormattedMoney, HasUlid;
+    use HasFactory, HasFormattedMoney, HasUlid, LogsAdminActivity;
 
     /**
      * @return array<string, string>

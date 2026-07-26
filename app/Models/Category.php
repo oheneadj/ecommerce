@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Concerns\LogsAdminActivity;
 use Database\Factories\CategoryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -32,7 +33,7 @@ use Illuminate\Support\Carbon;
 class Category extends Model
 {
     /** @use HasFactory<CategoryFactory> */
-    use HasFactory;
+    use HasFactory, LogsAdminActivity;
 
     /**
      * Use `slug` for route-model binding — never expose the raw bigint `id`.

@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Concerns\LogsAdminActivity;
 use App\Enums\ProductStatus;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -41,7 +42,7 @@ use Illuminate\Support\Carbon;
 class Product extends Model
 {
     /** @use HasFactory<ProductFactory> */
-    use HasFactory, SoftDeletes;
+    use HasFactory, LogsAdminActivity, SoftDeletes;
 
     /**
      * Get the attributes that should be cast.

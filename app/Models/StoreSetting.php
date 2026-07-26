@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Concerns\LogsAdminActivity;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
@@ -23,6 +24,8 @@ use Illuminate\Database\Eloquent\Model;
 #[Fillable(['stock_reservation_minutes', 'low_stock_threshold'])]
 class StoreSetting extends Model
 {
+    use LogsAdminActivity;
+
     /**
      * Get the single settings row, creating it with defaults if missing.
      *

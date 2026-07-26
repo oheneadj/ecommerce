@@ -10,6 +10,7 @@ namespace App\Models;
 
 use App\Concerns\HasFormattedMoney;
 use App\Concerns\HasUlid;
+use App\Concerns\LogsAdminActivity;
 use App\Enums\VariantStatus;
 use Database\Factories\ProductVariantFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -43,7 +44,7 @@ use Illuminate\Support\Carbon;
 class ProductVariant extends Model
 {
     /** @use HasFactory<ProductVariantFactory> */
-    use HasFactory, HasFormattedMoney, HasUlid, SoftDeletes;
+    use HasFactory, HasFormattedMoney, HasUlid, LogsAdminActivity, SoftDeletes;
 
     /**
      * Get the attributes that should be cast.

@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Concerns\HasUlid;
+use App\Concerns\LogsAdminActivity;
 use App\Enums\ReviewStatus;
 use Database\Factories\ReviewFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -45,7 +46,7 @@ use Illuminate\Support\Carbon;
 class Review extends Model
 {
     /** @use HasFactory<ReviewFactory> */
-    use HasFactory, HasUlid, SoftDeletes;
+    use HasFactory, HasUlid, LogsAdminActivity, SoftDeletes;
 
     /**
      * @return array<string, string>

@@ -10,6 +10,7 @@ namespace App\Models;
 
 use App\Concerns\HasFormattedMoney;
 use App\Concerns\HasUlid;
+use App\Concerns\LogsAdminActivity;
 use App\Enums\OrderStatus;
 use App\Observers\OrderObserver;
 use Database\Factories\OrderFactory;
@@ -57,7 +58,7 @@ use Illuminate\Support\Carbon;
 class Order extends Model
 {
     /** @use HasFactory<OrderFactory> */
-    use HasFactory, HasFormattedMoney, HasUlid;
+    use HasFactory, HasFormattedMoney, HasUlid, LogsAdminActivity;
 
     /**
      * @return array<string, string>

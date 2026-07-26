@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Fixed — Order status updates
+- Orders' "Update status" row action was a Filament `EditAction`, which navigates to a full edit page instead of opening a modal. Replaced with a custom `Action` (same status + note fields) that opens as a modal directly from the table, matching every other row action on this table (Assign shipment, Download invoice). Removed the now-redundant `OrderResource` edit page/route and `OrderForm` schema — their only purpose was this exact status-update form. 3 new tests covering the modal update, that it's not a URL-based navigation, and that the old edit route is gone.
+
 ### Added — Low-stock visibility
 - The dashboard's "Low Stock Items" stat was just a bare count with no way to see which products it referred to. Added `LowStockVariantsWidget` (Store Keeper/Admin/Super Admin) listing each affected variant's product, SKU, stock, and effective threshold, with a "View product" link straight to it. Added a "Low Stock" tab to the Products list (badge count included) that filters to products with at least one active low-stock variant. `ProductVariant::scopeLowStock()` added — the query-level equivalent of the existing `isLowStock()` check, so low-stock variants can be filtered/counted directly in SQL; `DashboardMetricsQuery::lowStockCount()` refactored to use it instead of loading every active variant into PHP just to check each one. The Variants tab's stock column is now bold/amber when a variant is at or below its threshold.
 - 2 new feature tests covering the widget's contents and the Products low-stock tab's filtering.

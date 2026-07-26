@@ -10,10 +10,11 @@ use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\ShippingMethod;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
@@ -57,10 +58,16 @@ class OrdersTable
                     ->options(OrderStatus::class),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->label('Update status'),
-                self::assignShipmentAction(),
-                self::downloadInvoiceAction(),
+                ActionGroup::make([
+                    self::updateStatusAction()
+                        ->button(),
+                    self::assignShipmentAction()
+                        ->button(),
+                    self::downloadInvoiceAction()
+                        ->button(),
+                ])
+                    ->label('Actions')
+                    ->buttonGroup(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -106,6 +113,34 @@ class OrdersTable
                 }
 
                 Notification::make()->title('Orders updated')->success()->send();
+            });
+    }
+
+    /**
+     * A modal (not a full edit-page navigation) so updating an order's
+     * status stays a quick in-place action from the table.
+     */
+    private static function updateStatusAction(): Action
+    {
+        return Action::make('updateStatus')
+            ->label('Update status')
+            ->schema([
+                Select::make('status')
+                    ->options(OrderStatus::class)
+                    ->required(),
+                Textarea::make('status_change_note')
+                    ->label('Note')
+                    ->placeholder('Optional note for the order history.')
+                    ->helperText('This note is recorded alongside the status change.')
+                    ->columnSpanFull(),
+            ])
+            ->fillForm(fn (Order $record): array => ['status' => $record->status])
+            ->action(function (Order $record, array $data): void {
+                $status = $data['status'] instanceof OrderStatus ? $data['status'] : OrderStatus::from($data['status']);
+
+                UpdateOrderStatus::run($record, $status, Auth::user(), $data['status_change_note'] ?? null);
+
+                Notification::make()->title('Order status updated')->success()->send();
             });
     }
 

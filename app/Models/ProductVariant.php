@@ -15,6 +15,7 @@ use App\Enums\VariantStatus;
 use Database\Factories\ProductVariantFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -130,5 +131,28 @@ class ProductVariant extends Model
     public function isLowStock(): bool
     {
         return $this->stock <= $this->effectiveLowStockThreshold();
+    }
+
+    /**
+     * Query-level equivalent of isLowStock(), so low-stock variants can be
+     * filtered/counted directly in SQL instead of loading every row into
+     * PHP just to check each one.
+     *
+     * @param  Builder<ProductVariant>  $query
+     * @return Builder<ProductVariant>
+     */
+    public function scopeLowStock(Builder $query): Builder
+    {
+        $storeDefault = StoreSetting::current()->low_stock_threshold;
+
+        return $query->where(function (Builder $query) use ($storeDefault): void {
+            $query->where(function (Builder $query): void {
+                $query->whereNotNull('low_stock_threshold')
+                    ->whereColumn('stock', '<=', 'low_stock_threshold');
+            })->orWhere(function (Builder $query) use ($storeDefault): void {
+                $query->whereNull('low_stock_threshold')
+                    ->where('stock', '<=', $storeDefault);
+            });
+        });
     }
 }

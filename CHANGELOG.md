@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Added — Low-stock visibility
+- The dashboard's "Low Stock Items" stat was just a bare count with no way to see which products it referred to. Added `LowStockVariantsWidget` (Store Keeper/Admin/Super Admin) listing each affected variant's product, SKU, stock, and effective threshold, with a "View product" link straight to it. Added a "Low Stock" tab to the Products list (badge count included) that filters to products with at least one active low-stock variant. `ProductVariant::scopeLowStock()` added — the query-level equivalent of the existing `isLowStock()` check, so low-stock variants can be filtered/counted directly in SQL; `DashboardMetricsQuery::lowStockCount()` refactored to use it instead of loading every active variant into PHP just to check each one. The Variants tab's stock column is now bold/amber when a variant is at or below its threshold.
+- 2 new feature tests covering the widget's contents and the Products low-stock tab's filtering.
+
 ### Added — Filter tabs
 - Filter tabs (`getTabs()`) added to every List page with a natural status/type dimension: Orders (`OrderStatus`), Payments (`PaymentStatus`), Products (`ProductStatus`), Reviews (`ReviewStatus`, so the moderation queue is a click away), Stock Reservations (`StockReservationStatus`), Stock Movements (`StockMovementType`), and Activity Log (created/updated/deleted). Each tab shows a live count badge. Coupons gets bespoke Active/Inactive/Expired tabs derived from `active` + `expires_at` (the same "is this coupon actually usable" logic `ApplyCouponToOrder` enforces), rather than a single enum column. Resources with no status/type column (Brands, Categories, Shipping Methods) were left without tabs — not applicable there.
 

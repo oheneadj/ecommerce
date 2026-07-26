@@ -59,8 +59,7 @@ class DashboardMetricsQuery
     {
         return ProductVariant::query()
             ->where('status', VariantStatus::Active)
-            ->get()
-            ->filter(fn (ProductVariant $variant) => $variant->isLowStock())
+            ->lowStock()
             ->count();
     }
 

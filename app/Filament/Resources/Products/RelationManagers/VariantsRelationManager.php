@@ -101,7 +101,9 @@ class VariantsRelationManager extends RelationManager
                 TextColumn::make('price_formatted')
                     ->label('Price'),
                 TextColumn::make('stock')
-                    ->sortable(),
+                    ->sortable()
+                    ->color(fn (ProductVariant $record): ?string => $record->isLowStock() ? 'warning' : null)
+                    ->weight(fn (ProductVariant $record): ?string => $record->isLowStock() ? 'bold' : null),
                 TextColumn::make('status')
                     ->badge(),
                 TextColumn::make('attributeValues')

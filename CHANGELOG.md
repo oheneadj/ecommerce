@@ -9,7 +9,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Added — Product/variant image uploads
+- `ImagesRelationManager` on `ProductResource`'s edit page: upload an image scoped to the whole product (leave "Scope" blank) or to one specific variant (e.g. one photo per shirt color), with display order and a primary-image toggle. `ProductImagePolicy` (viewAny/view/create/update mirror `ProductPolicy`; delete restricted to Admin/Super Admin, auto-discovered by Laravel's model↔policy convention) and `ProductImageFactory` added; deleting an image also removes its stored file so nothing is orphaned in storage.
+- 4 new feature tests covering general vs. variant-scoped uploads, file cleanup on delete, and the Store Keeper delete-authorization gate.
+
+### Fixed
+- `FileUpload` fields (`ProductImage`'s `path`, `Brand`'s `logo_path`) were saving to the app's default `local` disk (private, `FILESYSTEM_DISK=local`) instead of `public`, since neither explicitly declared a disk. Both now explicitly use `->disk('public')` — these are genuinely public catalog assets, so no signed-URL handling is needed, but leaving the disk to an ambiguous default meant uploaded images were silently unreachable via their public URL.
+
 ### Changed
+- Improved Filament order row actions by grouping multiple record actions into a labeled button group for clearer UX.
 - Switched the storefront font from Instrument Sans to Lexend (`vite.config.js` fonts entry, `--font-sans` in `resources/css/app.css`).
 - Removed Flux UI (`livewire/flux`, `livewire/blaze`) per project standard (plain Blade + Tailwind only). Rebuilt every layout, auth view, and settings view (login, register, password reset/confirm, email verification, two-factor challenge, profile, security incl. 2FA setup + passkeys, appearance, account deletion) on a new set of reusable Blade + Alpine.js primitives: `x-button`, `x-input`, `x-checkbox`, `x-modal`/`x-modal-trigger`/`x-modal-close`, `x-dropdown`, `x-menu-item`, `x-otp-input`, `x-badge`, `x-callout`, `x-icon`, `x-toast-container`. Replaced `Flux::toast()` calls in `Profile`/`Security` Livewire components with a `dispatch('toast', ...)` browser event consumed by the new toast container.
 

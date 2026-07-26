@@ -29,6 +29,7 @@ class BrandForm
                 FileUpload::make('logo_path')
                     ->label('Logo')
                     ->image()
+                    ->disk('public')
                     ->directory('brands'),
 
                 Textarea::make('description')

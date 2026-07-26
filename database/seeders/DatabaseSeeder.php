@@ -2,24 +2,30 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
+/**
+ * Deliberately does NOT use WithoutModelEvents — this app relies on model
+ * events for the HasUlid trait (ulid generation on creating) and
+ * App\Observers\OrderObserver (order_number generation on creating).
+ * Disabling model events during seeding would leave those NOT NULL unique
+ * columns empty and fail every insert.
+ */
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
      * Seed the application's database.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->call([
+            RoleSeeder::class,
+            UserSeeder::class,
+            StoreSettingSeeder::class,
+            ShippingMethodSeeder::class,
+            CatalogSeeder::class,
+            CouponSeeder::class,
+            OrderSeeder::class,
         ]);
     }
 }

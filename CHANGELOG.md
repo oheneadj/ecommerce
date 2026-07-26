@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Changed — Order modals
+- "Update status" and "Assign shipment" modals are now `Width::Small` — both are short forms (a couple of fields) that didn't need the default modal width.
+
 ### Fixed — Order status updates
 - Orders' "Update status" row action was a Filament `EditAction`, which navigates to a full edit page instead of opening a modal. Replaced with a custom `Action` (same status + note fields) that opens as a modal directly from the table, matching every other row action on this table (Assign shipment, Download invoice). Removed the now-redundant `OrderResource` edit page/route and `OrderForm` schema — their only purpose was this exact status-update form. 3 new tests covering the modal update, that it's not a URL-based navigation, and that the old edit route is gone.
 

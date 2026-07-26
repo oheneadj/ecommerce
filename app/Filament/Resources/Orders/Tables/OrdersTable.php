@@ -17,6 +17,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -124,6 +125,7 @@ class OrdersTable
     {
         return Action::make('updateStatus')
             ->label('Update status')
+            ->modalWidth(Width::Small)
             ->schema([
                 Select::make('status')
                     ->options(OrderStatus::class)
@@ -148,6 +150,7 @@ class OrdersTable
     {
         return Action::make('assignShipment')
             ->label('Assign shipment')
+            ->modalWidth(Width::Small)
             ->schema([
                 Select::make('shipping_method_id')
                     ->label('Shipping method')

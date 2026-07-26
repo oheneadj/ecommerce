@@ -101,7 +101,8 @@ class ImagesRelationManager extends RelationManager
                 CreateAction::make(),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->button(),
                 $this->deleteAction(),
             ])
             ->toolbarActions([
@@ -122,6 +123,7 @@ class ImagesRelationManager extends RelationManager
     private function deleteAction(): DeleteAction
     {
         return DeleteAction::make()
+            ->button()
             ->before(function (ProductImage $record): void {
                 Storage::disk('public')->delete($record->path);
             });

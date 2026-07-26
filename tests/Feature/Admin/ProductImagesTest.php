@@ -12,6 +12,7 @@ namespace Tests\Feature\Admin;
 use App\Enums\UserRole;
 use App\Filament\Resources\Products\Pages\EditProduct;
 use App\Filament\Resources\Products\RelationManagers\ImagesRelationManager;
+use App\Filament\Resources\Products\RelationManagers\VariantsRelationManager;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
@@ -115,5 +116,46 @@ class ProductImagesTest extends TestCase
 
         Livewire::test(ImagesRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
             ->assertTableActionHidden('delete', $image);
+    }
+
+    public function test_adding_an_image_from_a_variant_row_scopes_it_to_that_variant(): void
+    {
+        Storage::fake('public');
+        $this->actingAs($this->admin());
+
+        $product = Product::factory()->create();
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        Livewire::test(VariantsRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
+            ->callTableAction('addImage', $variant, data: [
+                'path' => UploadedFile::fake()->image('variant.jpg'),
+                'sort_order' => 0,
+                'is_primary' => true,
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $image = $product->images()->sole();
+        $this->assertSame($variant->id, $image->product_variant_id);
+        $this->assertTrue($image->is_primary);
+        Storage::disk('public')->assertExists($image->path);
+    }
+
+    public function test_store_keeper_can_also_add_an_image_from_a_variant_row(): void
+    {
+        Storage::fake('public');
+        $this->actingAs($this->storeKeeper());
+
+        $product = Product::factory()->create();
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        Livewire::test(VariantsRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
+            ->callTableAction('addImage', $variant, data: [
+                'path' => UploadedFile::fake()->image('variant.jpg'),
+                'sort_order' => 0,
+                'is_primary' => false,
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $this->assertSame($variant->id, $product->images()->sole()->product_variant_id);
     }
 }

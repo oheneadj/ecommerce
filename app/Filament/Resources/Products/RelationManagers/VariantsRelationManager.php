@@ -4,17 +4,23 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Products\RelationManagers;
 
+use App\Actions\Catalog\AttachProductImage;
 use App\Actions\Inventory\AdjustStockWithReservationCheck;
 use App\Enums\VariantStatus;
+use App\Models\Product;
+use App\Models\ProductImage;
 use App\Models\ProductVariant;
+use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
@@ -74,6 +80,11 @@ class VariantsRelationManager extends RelationManager
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge(),
+                TextColumn::make('images_count')
+                    ->label('Images')
+                    ->counts('images')
+                    ->badge()
+                    ->color(fn (int $state): string => $state > 0 ? 'success' : 'gray'),
             ])
             ->filters([
                 //
@@ -82,8 +93,11 @@ class VariantsRelationManager extends RelationManager
                 CreateAction::make(),
             ])
             ->recordActions([
-                EditAction::make(),
-                DeleteAction::make(),
+                EditAction::make()
+                    ->button(),
+                self::addImageAction(),
+                DeleteAction::make()
+                    ->button(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -98,6 +112,50 @@ class VariantsRelationManager extends RelationManager
             ->emptyStateActions([
                 CreateAction::make(),
             ]);
+    }
+
+    /**
+     * Attaches an image directly to the variant its row belongs to — no
+     * "which variant?" selector needed, since the row itself is the context.
+     */
+    private static function addImageAction(): Action
+    {
+        return Action::make('addImage')
+            ->label('Add image')
+            ->icon(Heroicon::OutlinedPhoto)
+            ->button()
+            ->authorize(fn (): bool => Auth::user()?->can('create', ProductImage::class) ?? false)
+            ->schema([
+                FileUpload::make('path')
+                    ->label('Image')
+                    ->image()
+                    ->disk('public')
+                    ->directory('product-images')
+                    ->required(),
+
+                TextInput::make('sort_order')
+                    ->label('Display order')
+                    ->numeric()
+                    ->default(0)
+                    ->required(),
+
+                Toggle::make('is_primary')
+                    ->label('Primary image'),
+            ])
+            ->action(function (ProductVariant $record, array $data): void {
+                /** @var Product $product */
+                $product = $record->product;
+
+                AttachProductImage::run(
+                    $product,
+                    $data['path'],
+                    $record,
+                    (int) ($data['sort_order'] ?? 0),
+                    (bool) ($data['is_primary'] ?? false),
+                );
+
+                Notification::make()->title('Image added')->success()->send();
+            });
     }
 
     private static function bulkAdjustStockAction(): BulkAction

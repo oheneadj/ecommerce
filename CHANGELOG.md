@@ -11,7 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added — Product/variant image uploads
 - `ImagesRelationManager` on `ProductResource`'s edit page: upload an image scoped to the whole product (leave "Scope" blank) or to one specific variant (e.g. one photo per shirt color), with display order and a primary-image toggle. `ProductImagePolicy` (viewAny/view/create/update mirror `ProductPolicy`; delete restricted to Admin/Super Admin, auto-discovered by Laravel's model↔policy convention) and `ProductImageFactory` added; deleting an image also removes its stored file so nothing is orphaned in storage.
-- 4 new feature tests covering general vs. variant-scoped uploads, file cleanup on delete, and the Store Keeper delete-authorization gate.
+- An "Add image" row action directly on `VariantsRelationManager`'s table: attaches an image straight to that row's variant (no variant picker needed — the row itself is the context), plus an `images_count` badge on each variant row so it's obvious at a glance which variants already have photos. The top-level Images tab remains the place for general (non-variant) product images and for reordering/re-flagging primary/deleting across everything.
+- 6 new feature tests covering general vs. variant-scoped uploads, file cleanup on delete, the Store Keeper delete-authorization gate, and adding an image from a variant row.
 
 ### Fixed
 - `FileUpload` fields (`ProductImage`'s `path`, `Brand`'s `logo_path`) were saving to the app's default `local` disk (private, `FILESYSTEM_DISK=local`) instead of `public`, since neither explicitly declared a disk. Both now explicitly use `->disk('public')` — these are genuinely public catalog assets, so no signed-URL handling is needed, but leaving the disk to an ambiguous default meant uploaded images were silently unreachable via their public URL.

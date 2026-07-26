@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Payments\RelationManagers;
 
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -38,6 +39,9 @@ class RefundsRelationManager extends RelationManager
             ])
             ->toolbarActions([
                 //
-            ]);
+            ])
+            ->emptyStateHeading('No refunds')
+            ->emptyStateDescription('Refunds issued against this payment will appear here.')
+            ->emptyStateIcon(Heroicon::OutlinedBanknotes);
     }
 }

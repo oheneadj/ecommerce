@@ -7,6 +7,7 @@ namespace App\Filament\Resources\ActivityLogs\Tables;
 use Filament\Actions\Action;
 use Filament\Infolists\Components\KeyValueEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -48,7 +49,10 @@ class ActivityLogsTable
             ])
             ->toolbarActions([
                 //
-            ]);
+            ])
+            ->emptyStateHeading('No activity recorded yet')
+            ->emptyStateDescription('Admin actions on key records will appear here as they happen.')
+            ->emptyStateIcon(Heroicon::OutlinedClipboardDocumentList);
     }
 
     private static function viewChangesAction(): Action

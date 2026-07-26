@@ -9,6 +9,7 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 /**
  * Read-only: reservations are created only by ReserveStockForOrder and
@@ -20,6 +21,8 @@ class StockReservationResource extends Resource
     protected static ?string $model = StockReservation::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClock;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Inventory';
 
     public static function table(Table $table): Table
     {

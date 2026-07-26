@@ -13,6 +13,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use Spatie\Activitylog\Models\Activity;
+use UnitEnum;
 
 /**
  * Read-only audit trail of admin actions on "key records" (FR-10.2),
@@ -26,6 +27,8 @@ class ActivityLogResource extends Resource
     protected static ?string $model = Activity::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Reports';
 
     protected static ?string $navigationLabel = 'Activity Log';
 

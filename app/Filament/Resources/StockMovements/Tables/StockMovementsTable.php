@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Resources\StockMovements\Tables;
 
 use App\Enums\StockMovementType;
+use Filament\Actions\CreateAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -43,6 +45,12 @@ class StockMovementsTable
             ])
             ->toolbarActions([
                 //
+            ])
+            ->emptyStateHeading('No stock movements yet')
+            ->emptyStateDescription('Record a manual restock or adjustment to get started.')
+            ->emptyStateIcon(Heroicon::OutlinedArrowsRightLeft)
+            ->emptyStateActions([
+                CreateAction::make(),
             ]);
     }
 }

@@ -4,10 +4,12 @@ namespace App\Filament\Resources\Products\Tables;
 
 use App\Enums\ProductStatus;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
@@ -61,6 +63,12 @@ class ProductsTable
                                 ->withColumns(['name', 'category.name', 'brand.name', 'status', 'created_at']),
                         ]),
                 ]),
+            ])
+            ->emptyStateHeading('No products yet')
+            ->emptyStateDescription('Create your first product to start building your catalog.')
+            ->emptyStateIcon(Heroicon::OutlinedCube)
+            ->emptyStateActions([
+                CreateAction::make(),
             ]);
     }
 }

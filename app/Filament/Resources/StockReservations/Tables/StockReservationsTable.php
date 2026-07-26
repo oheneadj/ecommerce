@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\StockReservations\Tables;
 
 use App\Enums\StockReservationStatus;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -43,6 +44,9 @@ class StockReservationsTable
             ])
             ->toolbarActions([
                 //
-            ]);
+            ])
+            ->emptyStateHeading('No stock reservations')
+            ->emptyStateDescription('Reservations are created automatically when a customer checks out.')
+            ->emptyStateIcon(Heroicon::OutlinedClock);
     }
 }

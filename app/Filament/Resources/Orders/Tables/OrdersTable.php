@@ -16,6 +16,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -80,7 +81,10 @@ class OrdersTable
                                 ]),
                         ]),
                 ]),
-            ]);
+            ])
+            ->emptyStateHeading('No orders yet')
+            ->emptyStateDescription('Orders will appear here once customers start checking out.')
+            ->emptyStateIcon(Heroicon::OutlinedShoppingBag);
     }
 
     private static function bulkUpdateStatusAction(): BulkAction

@@ -6,8 +6,10 @@ namespace App\Filament\Resources\Coupons\Tables;
 
 use App\Enums\CouponType;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -49,6 +51,12 @@ class CouponsTable
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
+            ])
+            ->emptyStateHeading('No coupons yet')
+            ->emptyStateDescription('Create a coupon to offer discounts at checkout.')
+            ->emptyStateIcon(Heroicon::OutlinedTicket)
+            ->emptyStateActions([
+                CreateAction::make(),
             ]);
     }
 }

@@ -11,6 +11,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use UnitEnum;
 
 /**
  * Moderation only — reviews are never created or content-edited via the
@@ -23,6 +24,8 @@ class ReviewResource extends Resource
     protected static ?string $model = Review::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedStar;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Reviews';
 
     public static function table(Table $table): Table
     {

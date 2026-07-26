@@ -13,6 +13,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Notifications\Notification;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
@@ -59,7 +60,10 @@ class ReviewsTable
                     ForceDeleteBulkAction::make(),
                     RestoreBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->emptyStateHeading('No reviews yet')
+            ->emptyStateDescription('Reviews will appear here once customers start reviewing their purchases.')
+            ->emptyStateIcon(Heroicon::OutlinedStar);
     }
 
     private static function moderateAction(string $name, ReviewStatus $status): Action

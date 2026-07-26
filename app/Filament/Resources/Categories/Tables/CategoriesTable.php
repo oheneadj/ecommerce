@@ -3,8 +3,10 @@
 namespace App\Filament\Resources\Categories\Tables;
 
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -41,6 +43,12 @@ class CategoriesTable
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
+            ])
+            ->emptyStateHeading('No categories yet')
+            ->emptyStateDescription('Create a category to start organizing your products.')
+            ->emptyStateIcon(Heroicon::OutlinedSquares2x2)
+            ->emptyStateActions([
+                CreateAction::make(),
             ]);
     }
 }

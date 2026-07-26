@@ -19,6 +19,7 @@ use Filament\Pages\Page;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
+use UnitEnum;
 
 /**
  * Currently exposes `stock_reservation_minutes` (BRD E3.2 — the checkout
@@ -34,6 +35,8 @@ class ManageStoreSettings extends Page implements HasForms
     protected string $view = 'filament.pages.manage-store-settings';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Settings';
 
     /**
      * @var array<string, mixed>

@@ -11,6 +11,7 @@ use App\Models\Payment;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -47,7 +48,10 @@ class PaymentsTable
             ])
             ->toolbarActions([
                 //
-            ]);
+            ])
+            ->emptyStateHeading('No payments yet')
+            ->emptyStateDescription('Payments will appear here once customers start checking out.')
+            ->emptyStateIcon(Heroicon::OutlinedBanknotes);
     }
 
     private static function refundAction(): Action

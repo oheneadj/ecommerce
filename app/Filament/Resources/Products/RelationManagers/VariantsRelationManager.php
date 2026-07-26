@@ -18,6 +18,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
@@ -90,6 +91,12 @@ class VariantsRelationManager extends RelationManager
                     self::bulkAdjustStockAction(),
                     self::bulkAdjustPriceAction(),
                 ]),
+            ])
+            ->emptyStateHeading('No variants yet')
+            ->emptyStateDescription('A product can\'t be sold without at least one variant.')
+            ->emptyStateIcon(Heroicon::OutlinedCube)
+            ->emptyStateActions([
+                CreateAction::make(),
             ]);
     }
 

@@ -20,6 +20,7 @@ class BrandsTable
                 ImageColumn::make('logo_path')
                     ->label('Logo')
                     ->disk('public')
+                    ->imageSize(40)
                     ->circular(),
                 TextColumn::make('name')
                     ->searchable()

@@ -84,7 +84,7 @@ class ImagesRelationManager extends RelationManager
                 ImageColumn::make('path')
                     ->label('Image')
                     ->disk('public')
-                    ->imageHeight('60'),
+                    ->imageHeight(60),
                 TextColumn::make('productVariant.sku')
                     ->label('Scope')
                     ->badge()

@@ -28,9 +28,16 @@ class ActivityLogsTable
                     ->placeholder('System'),
                 TextColumn::make('log_name')
                     ->label('Record type')
-                    ->badge(),
+                    ->badge()
+                    ->color('gray'),
                 TextColumn::make('event')
-                    ->badge(),
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'created' => 'success',
+                        'updated' => 'warning',
+                        'deleted' => 'danger',
+                        default => 'gray',
+                    }),
                 TextColumn::make('description'),
             ])
             ->defaultSort('created_at', 'desc')

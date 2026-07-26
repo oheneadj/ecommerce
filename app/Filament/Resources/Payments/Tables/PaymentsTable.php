@@ -27,7 +27,12 @@ class PaymentsTable
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('provider')
-                    ->badge(),
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'paystack' => 'info',
+                        'moolre' => 'success',
+                        default => 'gray',
+                    }),
                 TextColumn::make('channel')
                     ->placeholder('—'),
                 TextColumn::make('amount_formatted')

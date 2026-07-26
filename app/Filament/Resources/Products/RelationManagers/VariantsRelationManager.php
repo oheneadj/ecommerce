@@ -7,6 +7,7 @@ namespace App\Filament\Resources\Products\RelationManagers;
 use App\Actions\Catalog\AttachProductImage;
 use App\Actions\Inventory\AdjustStockWithReservationCheck;
 use App\Enums\VariantStatus;
+use App\Models\AttributeValue;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
@@ -18,6 +19,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -64,6 +66,26 @@ class VariantsRelationManager extends RelationManager
                     ->options(VariantStatus::class)
                     ->required()
                     ->default(VariantStatus::Active),
+
+                Repeater::make('attributeValues')
+                    ->label('Attributes')
+                    ->relationship()
+                    ->schema([
+                        TextInput::make('attribute_name')
+                            ->label('Name')
+                            ->placeholder('e.g. Size, Color')
+                            ->required()
+                            ->maxLength(255),
+
+                        TextInput::make('value')
+                            ->placeholder('e.g. Large, Red')
+                            ->required()
+                            ->maxLength(255),
+                    ])
+                    ->columns(2)
+                    ->addActionLabel('Add attribute')
+                    ->helperText('Free-form — a product can mix any attributes it needs (e.g. a shirt with both Size and Color).')
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -80,6 +102,12 @@ class VariantsRelationManager extends RelationManager
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge(),
+                TextColumn::make('attributeValues')
+                    ->label('Attributes')
+                    ->state(fn (ProductVariant $record): string => $record->attributeValues
+                        ->map(fn (AttributeValue $attributeValue): string => "{$attributeValue->attribute_name}: {$attributeValue->value}")
+                        ->implode(', '))
+                    ->placeholder('—'),
                 TextColumn::make('images_count')
                     ->label('Images')
                     ->counts('images')

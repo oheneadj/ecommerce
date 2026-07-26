@@ -8,7 +8,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Database\Factories\AttributeValueFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -21,6 +23,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['product_variant_id', 'attribute_name', 'value'])]
 class AttributeValue extends Model
 {
+    /** @use HasFactory<AttributeValueFactory> */
+    use HasFactory;
+
     public $timestamps = false;
 
     /**

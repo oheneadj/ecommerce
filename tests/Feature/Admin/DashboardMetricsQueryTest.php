@@ -6,12 +6,16 @@ namespace Tests\Feature\Admin;
 
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Enums\RefundStatus;
+use App\Enums\StockMovementType;
 use App\Enums\UserRole;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Refund;
+use App\Models\StockMovement;
 use App\Models\User;
 use App\Queries\DashboardMetricsQuery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -46,6 +50,24 @@ class DashboardMetricsQueryTest extends TestCase
         Payment::factory()->create(['status' => PaymentStatus::Success, 'amount' => 5000, 'created_at' => now()->subMonths(2)]);
 
         $this->assertSame(2000, $this->metrics->monthlyRevenue());
+    }
+
+    public function test_todays_sales_subtracts_successful_refunds_issued_today(): void
+    {
+        $payment = Payment::factory()->create(['status' => PaymentStatus::Success, 'amount' => 5000, 'created_at' => now()]);
+        Refund::factory()->create(['payment_id' => $payment->id, 'status' => RefundStatus::Success, 'amount' => 2000, 'created_at' => now()]);
+        // A pending refund (not yet actually issued) shouldn't reduce revenue.
+        Refund::factory()->create(['payment_id' => $payment->id, 'status' => RefundStatus::Pending, 'amount' => 1000, 'created_at' => now()]);
+
+        $this->assertSame(3000, $this->metrics->todaysSales());
+    }
+
+    public function test_monthly_revenue_subtracts_successful_refunds_issued_this_month_even_for_an_older_payment(): void
+    {
+        $payment = Payment::factory()->create(['status' => PaymentStatus::Success, 'amount' => 5000, 'created_at' => now()->subMonths(2)]);
+        Refund::factory()->create(['payment_id' => $payment->id, 'status' => RefundStatus::Success, 'amount' => 1500, 'created_at' => now()]);
+
+        $this->assertSame(-1500, $this->metrics->monthlyRevenue());
     }
 
     public function test_pending_orders_count_only_counts_pending_status(): void
@@ -95,5 +117,28 @@ class DashboardMetricsQueryTest extends TestCase
         $this->assertCount(1, $results);
         $this->assertSame($productA->id, $results->first()['product_id']);
         $this->assertSame(10, $results->first()['quantity_sold']);
+    }
+
+    public function test_top_products_subtracts_quantity_returned_via_a_refund_this_month(): void
+    {
+        $product = Product::factory()->create();
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        $order = Order::factory()->create(['status' => OrderStatus::Delivered]);
+        OrderItem::factory()->create(['order_id' => $order->id, 'product_variant_id' => $variant->id, 'quantity' => 10]);
+
+        $payment = Payment::factory()->create(['order_id' => $order->id, 'status' => PaymentStatus::Success]);
+        $refund = Refund::factory()->create(['payment_id' => $payment->id, 'status' => RefundStatus::Success]);
+        StockMovement::factory()->create([
+            'product_variant_id' => $variant->id,
+            'type' => StockMovementType::Return,
+            'quantity' => 4,
+            'reference_type' => Refund::class,
+            'reference_id' => $refund->id,
+        ]);
+
+        $results = $this->metrics->topProducts();
+
+        $this->assertSame(6, $results->first()['quantity_sold']);
     }
 }

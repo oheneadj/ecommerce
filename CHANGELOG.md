@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
+
+### Added — Customer messaging
+- Customers list search now covers name, email, and phone (all three columns are `->searchable()`, which Filament merges into the one global search box). "Send email" and "Send SMS" row actions added — grouped into the "Actions" dropdown alongside View, matching the more-than-two-actions grouping convention — plus the same two actions on the customer's own view page, and bulk "Send email"/"Send SMS" toolbar actions. A customer missing the relevant contact method has that action hidden (row/view page) or silently skipped with a reported count (bulk).
+- `SendEmailToCustomer`/`SendSmsToCustomer` Actions (staff-composed subject/body or message — not a Notification, since this isn't a reaction to a business event). `CustomerMessage` Mailable added (a plain Notification-style class didn't fit; `Mail::raw()` was tried first but is a no-op under `Mail::fake()`, making it untestable, so a real Mailable is used instead). `CustomerMissingContactMethodException` added for the Action-level guard.
+- 8 new tests covering the multi-field search, hidden-when-missing-contact-method, single-record send (row + view page), and bulk send with skip-and-report.
 - `intervention/image` (^4.0) — required for Laravel's first-party `Image` facade (`illuminate/image`, bundled with the framework since 13.20) to actually process images; it was previously only a suggested, not installed, dependency.
 
 ### Added — Automatic WebP conversion

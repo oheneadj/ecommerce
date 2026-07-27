@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Customers\Pages;
 
+use App\Filament\Resources\Customers\CustomerRecordActions;
 use App\Filament\Resources\Customers\CustomerResource;
 use App\Filament\Resources\Customers\Schemas\CustomerInfolist;
 use Filament\Resources\Pages\ViewRecord;
@@ -20,6 +21,9 @@ class ViewCustomer extends ViewRecord
 
     protected function getHeaderActions(): array
     {
-        return [];
+        return [
+            CustomerRecordActions::sendEmail(),
+            CustomerRecordActions::sendSms(),
+        ];
     }
 }

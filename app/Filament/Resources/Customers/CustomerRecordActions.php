@@ -13,9 +13,11 @@ use App\Actions\Customer\SendEmailToCustomer;
 use App\Actions\Customer\SendSmsToCustomer;
 use App\Models\User;
 use Filament\Actions\Action;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 
 class CustomerRecordActions
@@ -29,15 +31,20 @@ class CustomerRecordActions
         return Action::make('sendEmail')
             ->label('Send email')
             ->icon(Heroicon::OutlinedEnvelope)
+            ->modalWidth(Width::Large)
             ->visible(fn (User $record): bool => $record->email !== null)
             ->schema([
+                TextInput::make('to')
+                    ->label('To')
+                    ->default(fn (User $record): ?string => $record->email)
+                    ->disabled()
+                    ->dehydrated(false),
                 TextInput::make('subject')
                     ->required()
                     ->maxLength(255),
-                Textarea::make('body')
-                    ->label('Message')
-                    ->required()
-                    ->rows(5),
+                RichEditor::make('body')
+                    ->label('Body')
+                    ->required(),
             ])
             ->action(function (User $record, array $data): void {
                 SendEmailToCustomer::run($record, $data['subject'], $data['body']);

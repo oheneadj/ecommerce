@@ -107,6 +107,25 @@ class CustomerMessagingTest extends TestCase
         Mail::assertSent(fn (CustomerMessage $mailable): bool => $mailable->hasTo($customer->email));
     }
 
+    public function test_the_to_field_cannot_be_used_to_redirect_the_email_elsewhere(): void
+    {
+        Mail::fake();
+        $this->actingAs($this->admin());
+
+        $customer = User::factory()->create(['email' => 'customer@example.com']);
+
+        Livewire::test(ListCustomers::class)
+            ->callTableAction('sendEmail', $customer, data: [
+                'to' => 'attacker@example.com',
+                'subject' => 'A note from us',
+                'body' => 'Thanks for shopping with us!',
+            ])
+            ->assertHasNoTableActionErrors();
+
+        Mail::assertSent(fn (CustomerMessage $mailable): bool => $mailable->hasTo($customer->email));
+        Mail::assertNotSent(fn (CustomerMessage $mailable): bool => $mailable->hasTo('attacker@example.com'));
+    }
+
     public function test_sending_an_sms_from_the_customer_row_sends_it(): void
     {
         $this->fakeSmsGateway();

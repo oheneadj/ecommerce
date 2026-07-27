@@ -14,6 +14,11 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * `$body` is already HTML — composed via Filament's RichEditor in the admin
+ * panel (staff-authored, not user-submitted), not plain text — so it's
+ * passed straight through rather than escaped/nl2br'd.
+ */
 class CustomerMessage extends Mailable
 {
     use Queueable, SerializesModels;
@@ -30,6 +35,6 @@ class CustomerMessage extends Mailable
 
     public function content(): Content
     {
-        return new Content(htmlString: nl2br(e($this->body)));
+        return new Content(htmlString: $this->body);
     }
 }

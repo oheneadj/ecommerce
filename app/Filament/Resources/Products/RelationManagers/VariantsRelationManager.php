@@ -165,7 +165,7 @@ class VariantsRelationManager extends RelationManager
         return Action::make('generateVariants')
             ->label('Generate variants')
             ->icon(Heroicon::OutlinedSquares2x2)
-            ->modalWidth(Width::Large)
+            ->modalWidth(Width::ExtraLarge)
             ->schema([
                 Repeater::make('attributeGroups')
                     ->label('Attributes')

@@ -8,12 +8,15 @@ use App\Enums\UserRole;
 use App\Models\Order;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 class RecentOrdersWidget extends TableWidget
 {
+    use InteractsWithPageFilters;
+
     protected static ?string $heading = 'Recent Orders';
 
     public static function canView(): bool
@@ -23,8 +26,23 @@ class RecentOrdersWidget extends TableWidget
 
     public function table(Table $table): Table
     {
+        $startDate = $this->filters['startDate'] ?? null;
+        $endDate = $this->filters['endDate'] ?? null;
+
         return $table
-            ->query(fn (): Builder => Order::query()->latest()->limit(10))
+            ->query(function () use ($startDate, $endDate): Builder {
+                $query = Order::query()->latest();
+
+                if ($startDate) {
+                    $query->whereDate('created_at', '>=', $startDate);
+                }
+
+                if ($endDate) {
+                    $query->whereDate('created_at', '<=', $endDate);
+                }
+
+                return $query->limit(10);
+            })
             ->paginated(false)
             ->columns([
                 TextColumn::make('order_number'),

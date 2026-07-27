@@ -179,4 +179,69 @@ class DashboardMetricsQueryTest extends TestCase
         $this->assertCount(7, $trend);
         $this->assertSame(1, $trend[6]);
     }
+
+    public function test_revenue_in_range_only_sums_payments_within_the_given_dates(): void
+    {
+        Payment::factory()->create(['status' => PaymentStatus::Success, 'amount' => 1000, 'created_at' => now()->subDays(10)]);
+        Payment::factory()->create(['status' => PaymentStatus::Success, 'amount' => 2000, 'created_at' => now()->subDays(3)]);
+        Payment::factory()->create(['status' => PaymentStatus::Success, 'amount' => 4000, 'created_at' => now()]);
+
+        $result = $this->metrics->revenueInRange(now()->subDays(5)->toDateString(), now()->subDay()->toDateString());
+
+        $this->assertSame(2000, $result);
+    }
+
+    public function test_revenue_in_range_with_only_a_start_date_is_open_ended(): void
+    {
+        Payment::factory()->create(['status' => PaymentStatus::Success, 'amount' => 1000, 'created_at' => now()->subDays(10)]);
+        Payment::factory()->create(['status' => PaymentStatus::Success, 'amount' => 3000, 'created_at' => now()]);
+
+        $result = $this->metrics->revenueInRange(now()->subDays(2)->toDateString(), null);
+
+        $this->assertSame(3000, $result);
+    }
+
+    public function test_orders_count_in_range_scopes_to_the_given_dates(): void
+    {
+        Order::factory()->create(['created_at' => now()->subDays(10)]);
+        Order::factory()->count(2)->create(['created_at' => now()]);
+
+        $result = $this->metrics->ordersCountInRange(now()->subDays(2)->toDateString(), now()->toDateString());
+
+        $this->assertSame(2, $result);
+    }
+
+    public function test_new_customers_count_in_range_excludes_staff_and_out_of_range_accounts(): void
+    {
+        Role::findOrCreate(UserRole::Admin->value, 'web');
+
+        User::factory()->create(['created_at' => now()]);
+        $staff = User::factory()->create(['created_at' => now()]);
+        $staff->assignRole(UserRole::Admin->value);
+        User::factory()->create(['created_at' => now()->subDays(30)]);
+
+        $result = $this->metrics->newCustomersCountInRange(now()->subDays(2)->toDateString(), now()->toDateString());
+
+        $this->assertSame(1, $result);
+    }
+
+    public function test_top_products_in_range_ranks_by_quantity_sold_within_the_dates(): void
+    {
+        $productA = Product::factory()->create();
+        $variantA = ProductVariant::factory()->create(['product_id' => $productA->id]);
+        $productB = Product::factory()->create();
+        $variantB = ProductVariant::factory()->create(['product_id' => $productB->id]);
+
+        $inRange = Order::factory()->create(['status' => OrderStatus::Paid, 'created_at' => now()]);
+        OrderItem::factory()->create(['order_id' => $inRange->id, 'product_variant_id' => $variantA->id, 'quantity' => 10]);
+
+        $outOfRange = Order::factory()->create(['status' => OrderStatus::Paid, 'created_at' => now()->subDays(30)]);
+        OrderItem::factory()->create(['order_id' => $outOfRange->id, 'product_variant_id' => $variantB->id, 'quantity' => 999]);
+
+        $results = $this->metrics->topProductsInRange(now()->subDays(2)->toDateString(), now()->toDateString());
+
+        $this->assertCount(1, $results);
+        $this->assertSame($productA->id, $results->first()['product_id']);
+        $this->assertSame(10, $results->first()['quantity_sold']);
+    }
 }

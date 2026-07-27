@@ -6,11 +6,19 @@ namespace App\Filament\Widgets;
 
 use App\Enums\UserRole;
 use App\Queries\DashboardMetricsQuery;
+use Carbon\CarbonImmutable;
 use Filament\Widgets\ChartWidget;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Shows daily revenue across the dashboard's applied date-range filter when
+ * one is set; otherwise falls back to the last 6 calendar months.
+ */
 class MonthlyRevenueChart extends ChartWidget
 {
+    use InteractsWithPageFilters;
+
     protected ?string $heading = 'Revenue (last 6 months)';
 
     public static function canView(): bool
@@ -18,9 +26,34 @@ class MonthlyRevenueChart extends ChartWidget
         return Auth::user()?->hasAnyRole([UserRole::SuperAdmin->value, UserRole::Admin->value]) ?? false;
     }
 
+    public function getHeading(): ?string
+    {
+        return $this->hasRange() ? 'Revenue (selected period)' : 'Revenue (last 6 months)';
+    }
+
     protected function getData(): array
     {
         $metrics = app(DashboardMetricsQuery::class);
+
+        if ($this->hasRange()) {
+            $start = CarbonImmutable::parse($this->filters['startDate'] ?? now()->subDays(6)->toDateString());
+            $end = CarbonImmutable::parse($this->filters['endDate'] ?? now()->toDateString());
+            $days = $start->diffInDays($end) + 1;
+
+            $dates = collect(range(0, (int) max(0, $days - 1)))->map(fn (int|float $offset) => $start->addDays((int) $offset));
+            $revenue = $dates->map(fn (CarbonImmutable $date) => $metrics->revenueInRange($date->toDateString(), $date->toDateString()) / 100);
+
+            return [
+                'datasets' => [
+                    [
+                        'label' => 'Revenue (GH₵)',
+                        'data' => $revenue->values()->all(),
+                    ],
+                ],
+                'labels' => $dates->map(fn (CarbonImmutable $date) => $date->format('d M'))->all(),
+            ];
+        }
+
         $months = collect(range(5, 0))->map(fn (int $offset) => now()->subMonths($offset));
 
         $revenue = $months->map(fn ($month) => $metrics->revenueForMonth($month) / 100);
@@ -34,6 +67,11 @@ class MonthlyRevenueChart extends ChartWidget
             ],
             'labels' => $months->map(fn ($month) => $month->format('M Y'))->all(),
         ];
+    }
+
+    private function hasRange(): bool
+    {
+        return ! empty($this->filters['startDate'] ?? null) || ! empty($this->filters['endDate'] ?? null);
     }
 
     protected function getType(): string

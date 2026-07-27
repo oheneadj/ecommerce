@@ -7,6 +7,7 @@ namespace App\Filament\Widgets;
 use App\Enums\UserRole;
 use App\Queries\DashboardMetricsQuery;
 use Filament\Support\Icons\Heroicon;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\Auth;
@@ -18,15 +19,24 @@ use Illuminate\Support\Facades\Auth;
  *
  * Each card carries a colored description with an icon and a 7-day
  * sparkline, matching the stat-card style requested for the dashboard.
+ *
+ * "Today's Sales" and "New Customers" respect the dashboard's date-range
+ * FilterAction when one has been applied, falling back to their normal
+ * today/this-month windows otherwise.
  */
 class DashboardStatsOverview extends StatsOverviewWidget
 {
+    use InteractsWithPageFilters;
+
     protected function getStats(): array
     {
         $metrics = app(DashboardMetricsQuery::class);
         $isStoreKeeperOnly = ! Auth::user()?->hasAnyRole([UserRole::SuperAdmin->value, UserRole::Admin->value]);
 
         $lowStockCount = $metrics->lowStockCount();
+        $startDate = $this->filters['startDate'] ?? null;
+        $endDate = $this->filters['endDate'] ?? null;
+        $hasRange = $startDate || $endDate;
 
         // No historical snapshot of this count exists — it's a live figure,
         // not a per-day series — so the sparkline is a flat line at the
@@ -42,9 +52,12 @@ class DashboardStatsOverview extends StatsOverviewWidget
             return [$lowStock];
         }
 
+        $sales = $hasRange ? $metrics->revenueInRange($startDate, $endDate) : $metrics->todaysSales();
+        $newCustomers = $hasRange ? $metrics->newCustomersCountInRange($startDate, $endDate) : $metrics->newCustomersCount();
+
         return [
-            Stat::make("Today's Sales", $this->formatMoney($metrics->todaysSales()))
-                ->description('Net of refunds')
+            Stat::make('Sales', $this->formatMoney($sales))
+                ->description($hasRange ? 'Selected period, net of refunds' : "Today's sales, net of refunds")
                 ->descriptionIcon(Heroicon::OutlinedArrowTrendingUp)
                 ->color('success')
                 ->chart($metrics->dailySalesTrend())
@@ -56,8 +69,8 @@ class DashboardStatsOverview extends StatsOverviewWidget
                 ->chart($metrics->dailyOrdersTrend())
                 ->chartColor('info'),
             $lowStock,
-            Stat::make('New Customers', (string) $metrics->newCustomersCount())
-                ->description('This month')
+            Stat::make('New Customers', (string) $newCustomers)
+                ->description($hasRange ? 'Selected period' : 'This month')
                 ->descriptionIcon(Heroicon::OutlinedUserPlus)
                 ->color('primary')
                 ->chart($metrics->dailyNewCustomersTrend())

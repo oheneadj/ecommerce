@@ -6,6 +6,7 @@ namespace App\Filament\Widgets;
 
 use App\Enums\UserRole;
 use App\Queries\DashboardMetricsQuery;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Facades\Auth;
 
@@ -16,6 +17,8 @@ use Illuminate\Support\Facades\Auth;
  */
 class TopProductsWidget extends Widget
 {
+    use InteractsWithPageFilters;
+
     protected string $view = 'filament.widgets.top-products-widget';
 
     public static function canView(): bool
@@ -28,8 +31,14 @@ class TopProductsWidget extends Widget
      */
     protected function getViewData(): array
     {
+        $startDate = $this->filters['startDate'] ?? null;
+        $endDate = $this->filters['endDate'] ?? null;
+        $metrics = app(DashboardMetricsQuery::class);
+
         return [
-            'products' => app(DashboardMetricsQuery::class)->topProducts(),
+            'products' => ($startDate || $endDate)
+                ? $metrics->topProductsInRange($startDate, $endDate)
+                : $metrics->topProducts(),
         ];
     }
 }

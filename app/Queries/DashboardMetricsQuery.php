@@ -83,6 +83,61 @@ class DashboardMetricsQuery
     }
 
     /**
+     * Net revenue between two optional dates (inclusive) — feeds the
+     * dashboard's "Today's Sales" stat when a date-range filter has been
+     * applied via the header FilterAction. Either bound may be null.
+     */
+    public function revenueInRange(?string $start, ?string $end): int
+    {
+        return $this->netRevenue(function (Builder $query) use ($start, $end): Builder {
+            if ($start) {
+                $query->whereDate('created_at', '>=', $start);
+            }
+
+            if ($end) {
+                $query->whereDate('created_at', '<=', $end);
+            }
+
+            return $query;
+        });
+    }
+
+    /**
+     * Orders placed between two optional dates (inclusive).
+     */
+    public function ordersCountInRange(?string $start, ?string $end): int
+    {
+        return $this->scopeToRange(Order::query(), $start, $end)->count();
+    }
+
+    /**
+     * New customer signups between two optional dates (inclusive).
+     */
+    public function newCustomersCountInRange(?string $start, ?string $end): int
+    {
+        return $this->scopeToRange(User::query()->whereDoesntHave('roles'), $start, $end)->count();
+    }
+
+    /**
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
+    private function scopeToRange(Builder $query, ?string $start, ?string $end): Builder
+    {
+        if ($start) {
+            $query->whereDate('created_at', '>=', $start);
+        }
+
+        if ($end) {
+            $query->whereDate('created_at', '<=', $end);
+        }
+
+        return $query;
+    }
+
+    /**
      * Net revenue per day for the last $days days (oldest first) — feeds
      * the dashboard stat card's sparkline.
      *
@@ -153,25 +208,54 @@ class DashboardMetricsQuery
      */
     public function topProducts(int $limit = 5): Collection
     {
+        return $this->topProductsInRange(null, null, $limit);
+    }
+
+    /**
+     * Same ranking as topProducts(), scoped to an optional date range
+     * instead of the current calendar month — used when the dashboard's
+     * FilterAction has a range applied.
+     *
+     * @return Collection<int, array{product_id: int, product_name: string, quantity_sold: int}>
+     */
+    public function topProductsInRange(?string $start, ?string $end, int $limit = 5): Collection
+    {
         $statuses = array_map(fn (OrderStatus $status) => $status->value, self::VERIFIED_ORDER_STATUSES);
 
-        $sold = DB::table('order_items')
+        $soldQuery = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->join('product_variants', 'product_variants.id', '=', 'order_items.product_variant_id')
             ->join('products', 'products.id', '=', 'product_variants.product_id')
-            ->whereIn('orders.status', $statuses)
-            ->whereYear('orders.created_at', now()->year)
-            ->whereMonth('orders.created_at', now()->month)
+            ->whereIn('orders.status', $statuses);
+
+        $returnedQuery = DB::table('stock_movements')
+            ->join('product_variants', 'product_variants.id', '=', 'stock_movements.product_variant_id')
+            ->where('stock_movements.type', StockMovementType::Return->value)
+            ->where('stock_movements.reference_type', Refund::class);
+
+        if ($start || $end) {
+            if ($start) {
+                $soldQuery->whereDate('orders.created_at', '>=', $start);
+                $returnedQuery->whereDate('stock_movements.created_at', '>=', $start);
+            }
+
+            if ($end) {
+                $soldQuery->whereDate('orders.created_at', '<=', $end);
+                $returnedQuery->whereDate('stock_movements.created_at', '<=', $end);
+            }
+        } else {
+            $soldQuery->whereYear('orders.created_at', now()->year)
+                ->whereMonth('orders.created_at', now()->month);
+            $returnedQuery->whereYear('stock_movements.created_at', now()->year)
+                ->whereMonth('stock_movements.created_at', now()->month);
+        }
+
+        $sold = $soldQuery
             ->groupBy('products.id', 'products.name')
             ->select(['products.id as product_id', 'products.name as product_name', DB::raw('SUM(order_items.quantity) as quantity_sold')])
             ->get();
 
-        $returned = DB::table('stock_movements')
-            ->join('product_variants', 'product_variants.id', '=', 'stock_movements.product_variant_id')
-            ->where('stock_movements.type', StockMovementType::Return->value)
-            ->where('stock_movements.reference_type', Refund::class)
-            ->whereYear('stock_movements.created_at', now()->year)
-            ->whereMonth('stock_movements.created_at', now()->month)
+        $returned = $returnedQuery
             ->groupBy('product_variants.product_id')
             ->select(['product_variants.product_id', DB::raw('SUM(stock_movements.quantity) as quantity_returned')])
             ->pluck('quantity_returned', 'product_id');

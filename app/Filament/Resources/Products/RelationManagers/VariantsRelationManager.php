@@ -91,6 +91,7 @@ class VariantsRelationManager extends RelationManager
                             ->maxLength(255),
                     ])
                     ->columns(2)
+                    ->defaultItems(0)
                     ->addActionLabel('Add attribute')
                     ->addAction(fn (Action $action) => $action->color('primary'))
                     ->helperText('Free-form — a product can mix any attributes it needs (e.g. a shirt with both Size and Color).')

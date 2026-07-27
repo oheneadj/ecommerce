@@ -125,12 +125,14 @@ class ProductForm
                                             ->maxLength(255),
                                     ])
                                     ->columns(2)
+                                    ->defaultItems(0)
                                     ->addActionLabel('Add attribute')
                                     ->addAction(fn (Action $action) => $action->color('primary'))
                                     ->helperText('Free-form — a variant can mix any attributes it needs (e.g. both Size and Color).')
                                     ->columnSpanFull(),
                             ])
                             ->columns(4)
+                            ->defaultItems(0)
                             ->hiddenOn('edit')
                             ->columnSpanFull()
                             ->addActionLabel('Add variant')

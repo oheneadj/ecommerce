@@ -96,6 +96,40 @@ class ProductCreateFormVariantsTest extends TestCase
         $this->assertCount(0, $product->variants);
     }
 
+    /**
+     * Regression test: Filament's Repeater defaults to pre-populating one
+     * empty item unless told otherwise (`defaultItems(0)`), which — combined
+     * with sku/price being required() inside it — silently forced every
+     * fresh create form to already contain one unfillable blank variant row,
+     * blocking submission even for a Draft product that shouldn't need one.
+     */
+    public function test_the_create_form_does_not_start_with_a_pre_filled_blank_variant_row(): void
+    {
+        $this->actingAs($this->admin());
+
+        $this->assertSame([], Livewire::test(CreateProduct::class)->get('data.variants'));
+    }
+
+    public function test_submitting_the_create_form_untouched_succeeds_as_a_draft_with_no_variants(): void
+    {
+        $this->actingAs($this->admin());
+
+        $category = Category::factory()->create();
+
+        Livewire::test(CreateProduct::class)
+            ->fillForm([
+                'name' => 'Untouched Repeater',
+                'slug' => 'untouched-repeater',
+                'category_id' => $category->id,
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $product = Product::query()->where('slug', 'untouched-repeater')->sole();
+        $this->assertSame(ProductStatus::Draft, $product->status);
+        $this->assertCount(0, $product->variants);
+    }
+
     public function test_creating_an_active_product_with_no_variants_is_rejected(): void
     {
         $this->actingAs($this->admin());

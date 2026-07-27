@@ -27,19 +27,32 @@ class AssignShipment
 {
     use AsAction;
 
+    /**
+     * Only the *first* dispatch stamps dispatched_at and notifies the
+     * customer — re-running this to fix a shipping method or tracking
+     * number typo shouldn't reset the dispatch time or re-send "your order
+     * has shipped" every time.
+     */
     public function handle(Order $order, ShippingMethod $shippingMethod, ?string $trackingNumber = null): Shipment
     {
-        $shipment = Shipment::query()->updateOrCreate(
-            ['order_id' => $order->id],
-            [
-                'shipping_method_id' => $shippingMethod->id,
-                'tracking_number' => $trackingNumber,
-                'status' => ShipmentStatus::Dispatched,
-                'dispatched_at' => now(),
-            ],
-        );
+        $existing = Shipment::query()->where('order_id', $order->id)->first();
+        $isFirstDispatch = $existing === null || $existing->status === ShipmentStatus::Pending;
 
-        SafeNotifier::send(OrderRecipient::for($order), new OrderShipped($order, $shipment));
+        $attributes = [
+            'shipping_method_id' => $shippingMethod->id,
+            'tracking_number' => $trackingNumber,
+        ];
+
+        if ($isFirstDispatch) {
+            $attributes['status'] = ShipmentStatus::Dispatched;
+            $attributes['dispatched_at'] = now();
+        }
+
+        $shipment = Shipment::query()->updateOrCreate(['order_id' => $order->id], $attributes);
+
+        if ($isFirstDispatch) {
+            SafeNotifier::send(OrderRecipient::for($order), new OrderShipped($order, $shipment));
+        }
 
         return $shipment;
     }

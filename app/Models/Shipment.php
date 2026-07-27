@@ -27,12 +27,13 @@ use Illuminate\Support\Carbon;
  * @property int $order_id
  * @property int $shipping_method_id
  * @property string|null $tracking_number
- * @property string $status
+ * @property ShipmentStatus $status
  * @property Carbon|null $dispatched_at
+ * @property Carbon|null $delivered_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['order_id', 'shipping_method_id', 'tracking_number', 'status', 'dispatched_at'])]
+#[Fillable(['order_id', 'shipping_method_id', 'tracking_number', 'status', 'dispatched_at', 'delivered_at'])]
 class Shipment extends Model
 {
     /** @use HasFactory<ShipmentFactory> */
@@ -46,6 +47,7 @@ class Shipment extends Model
         return [
             'status' => ShipmentStatus::class,
             'dispatched_at' => 'datetime',
+            'delivered_at' => 'datetime',
         ];
     }
 

@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace App\Actions\Order;
 
 use App\Enums\OrderStatus;
+use App\Enums\ShipmentStatus;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -34,7 +35,32 @@ class UpdateOrderStatus
                 'changed_by' => $changedBy?->id,
             ]);
 
+            $this->syncShipmentDelivery($order, $status);
+
             return $order;
         });
+    }
+
+    /**
+     * Marking an order Delivered also marks its shipment Delivered, since
+     * there's no separate admin action for that — the order's own status is
+     * the one thing staff actually update, and the shipment should follow it.
+     */
+    private function syncShipmentDelivery(Order $order, OrderStatus $status): void
+    {
+        if ($status !== OrderStatus::Delivered) {
+            return;
+        }
+
+        $shipment = $order->shipment;
+
+        if ($shipment === null || $shipment->status === ShipmentStatus::Delivered) {
+            return;
+        }
+
+        $shipment->update([
+            'status' => ShipmentStatus::Delivered,
+            'delivered_at' => now(),
+        ]);
     }
 }

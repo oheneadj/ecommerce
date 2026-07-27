@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Added — Shipment delivery
+- `shipments.delivered_at` (nullable timestamp). Marking an order **Delivered** (via the existing "Update status" modal) now also marks its shipment `Delivered` and stamps `delivered_at` — there was previously no way to ever reach that status; `ShipmentStatus::Delivered` was unreachable dead code. No separate admin action needed since the order's own status is the one thing staff actually update.
+
+### Fixed — Shipment re-assignment
+- `AssignShipment` reset `dispatched_at` and re-sent the `OrderShipped` "your order has shipped" notification to the customer on **every** call — including reassigning a shipping method or fixing a typo'd tracking number on an already-dispatched shipment. Now only the first dispatch (creating a new shipment, or transitioning one still `Pending`) stamps `dispatched_at`/notifies; later calls just update the shipping method/tracking number in place.
+- 4 new tests: reassignment doesn't reset `dispatched_at`/resend the notification, marking an order Delivered marks its shipment Delivered, and that doing so with no shipment at all doesn't error.
+
 ### Changed — Order modals
 - "Update status" and "Assign shipment" modals are now `Width::Small` — both are short forms (a couple of fields) that didn't need the default modal width.
 

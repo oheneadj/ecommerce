@@ -7,6 +7,8 @@ namespace Tests\Feature\Order;
 use App\Actions\Order\AssignShipment;
 use App\Actions\Order\ClaimGuestOrder;
 use App\Actions\Order\GenerateOrderInvoice;
+use App\Actions\Order\UpdateOrderStatus;
+use App\Enums\OrderStatus;
 use App\Enums\ShipmentStatus;
 use App\Exceptions\GuestOrderClaimException;
 use App\Models\Order;
@@ -14,7 +16,9 @@ use App\Models\OrderItem;
 use App\Models\ProductVariant;
 use App\Models\ShippingMethod;
 use App\Models\User;
+use App\Notifications\OrderShipped;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -117,5 +121,44 @@ class OrderFulfillmentTest extends TestCase
         $this->assertSame(1, $order->fresh()->shipment()->count());
         $this->assertSame('SECOND', $second->tracking_number);
         $this->assertSame($methodB->id, $second->shipping_method_id);
+    }
+
+    public function test_reassigning_an_already_dispatched_shipment_does_not_reset_dispatched_at_or_resend_the_notification(): void
+    {
+        Notification::fake();
+
+        $order = Order::factory()->create(['user_id' => User::factory()->create()->id]);
+        $methodA = ShippingMethod::factory()->create();
+        $methodB = ShippingMethod::factory()->create();
+
+        $first = AssignShipment::run($order, $methodA, 'FIRST');
+        $originalDispatchedAt = $first->dispatched_at;
+
+        $second = AssignShipment::run($order, $methodB, 'SECOND');
+
+        $this->assertSame($originalDispatchedAt->timestamp, $second->dispatched_at->timestamp);
+        Notification::assertSentToTimes($order->user, OrderShipped::class, 1);
+    }
+
+    public function test_marking_an_order_delivered_also_marks_its_shipment_delivered(): void
+    {
+        $order = Order::factory()->create();
+        $method = ShippingMethod::factory()->create();
+        AssignShipment::run($order, $method);
+
+        UpdateOrderStatus::run($order->fresh(), OrderStatus::Delivered);
+
+        $shipment = $order->shipment()->sole();
+        $this->assertSame(ShipmentStatus::Delivered, $shipment->status);
+        $this->assertNotNull($shipment->delivered_at);
+    }
+
+    public function test_marking_an_order_delivered_with_no_shipment_does_not_error(): void
+    {
+        $order = Order::factory()->create();
+
+        UpdateOrderStatus::run($order, OrderStatus::Delivered);
+
+        $this->assertSame(OrderStatus::Delivered, $order->fresh()->status);
     }
 }

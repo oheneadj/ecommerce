@@ -3,11 +3,14 @@
 namespace App\Filament\Resources\Orders;
 
 use App\Filament\Resources\Orders\Pages\ListOrders;
+use App\Filament\Resources\Orders\Pages\ViewOrder;
 use App\Filament\Resources\Orders\RelationManagers\ItemsRelationManager;
+use App\Filament\Resources\Orders\Schemas\OrderInfolist;
 use App\Filament\Resources\Orders\Tables\OrdersTable;
 use App\Models\Order;
 use BackedEnum;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
@@ -15,7 +18,7 @@ use UnitEnum;
 /**
  * Orders are never created via the admin panel — only CreateOrderFromCart
  * creates one, at checkout. Status updates happen via the "Update status"
- * modal action on the table, not a dedicated edit page.
+ * modal action on the table/view page, not a dedicated edit page.
  */
 class OrderResource extends Resource
 {
@@ -30,6 +33,11 @@ class OrderResource extends Resource
         return OrdersTable::configure($table);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return OrderInfolist::configure($schema);
+    }
+
     public static function getRelations(): array
     {
         return [
@@ -41,6 +49,7 @@ class OrderResource extends Resource
     {
         return [
             'index' => ListOrders::route('/'),
+            'view' => ViewOrder::route('/{record}'),
         ];
     }
 

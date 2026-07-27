@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Added — Bulk variant generation
+- `GenerateProductVariants` Action + a "Generate variants" header action on the Variants tab: define attribute groups (e.g. `Size: L, M, XL` and `Color: White, Blue, Black`) and it creates every combination as a separate variant (9 here) in one submission, each carrying the matching `AttributeValue` rows, instead of adding them one at a time by hand. SKUs are built from a prefix (defaults to the product's slug) plus the slugged combination (e.g. `SHIRT-WHITE-XL`). A combination that already exists on the product (same attribute name/value pairs) is skipped rather than duplicated — the notification reports how many were created vs. skipped. 5 new tests covering combination generation, attribute values on the created variants, duplicate-skipping, SKU formatting, and the admin panel wiring.
+
 ### Added — Shipment delivery
 - `shipments.delivered_at` (nullable timestamp). Marking an order **Delivered** (via the existing "Update status" modal) now also marks its shipment `Delivered` and stamps `delivered_at` — there was previously no way to ever reach that status; `ShipmentStatus::Delivered` was unreachable dead code. No separate admin action needed since the order's own status is the one thing staff actually update.
 

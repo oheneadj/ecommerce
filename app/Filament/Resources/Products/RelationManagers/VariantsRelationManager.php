@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Products\RelationManagers;
 
 use App\Actions\Catalog\AttachProductImage;
+use App\Actions\Catalog\GenerateProductVariants;
 use App\Actions\Inventory\AdjustStockWithReservationCheck;
 use App\Enums\VariantStatus;
 use App\Models\AttributeValue;
@@ -22,12 +23,14 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Size;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -123,6 +126,7 @@ class VariantsRelationManager extends RelationManager
             ])
             ->headerActions([
                 CreateAction::make(),
+                $this->generateVariantsAction(),
             ])
             ->recordActions([
                 ActionGroup::make([
@@ -149,6 +153,91 @@ class VariantsRelationManager extends RelationManager
             ->emptyStateActions([
                 CreateAction::make(),
             ]);
+    }
+
+    /**
+     * Bulk-creates every combination across a set of attributes (e.g. Size ×
+     * Color) instead of adding each variant by hand — a shirt in 3 sizes and
+     * 3 colors becomes one form submission instead of 9.
+     */
+    private function generateVariantsAction(): Action
+    {
+        return Action::make('generateVariants')
+            ->label('Generate variants')
+            ->icon(Heroicon::OutlinedSquares2x2)
+            ->modalWidth(Width::Medium)
+            ->schema([
+                Repeater::make('attributeGroups')
+                    ->label('Attributes')
+                    ->schema([
+                        TextInput::make('name')
+                            ->label('Attribute')
+                            ->placeholder('e.g. Size')
+                            ->required()
+                            ->maxLength(255),
+
+                        TagsInput::make('values')
+                            ->label('Values')
+                            ->placeholder('Type a value and press Enter')
+                            ->required(),
+                    ])
+                    ->columns(2)
+                    ->minItems(1)
+                    ->required()
+                    ->addActionLabel('Add attribute')
+                    ->helperText('e.g. Size: L, M, XL and Color: White, Blue, Black generates every combination (9 variants).')
+                    ->columnSpanFull(),
+
+                TextInput::make('sku_prefix')
+                    ->label('SKU prefix')
+                    ->required()
+                    ->maxLength(255),
+
+                TextInput::make('price')
+                    ->label('Price (pesewas)')
+                    ->numeric()
+                    ->required()
+                    ->minValue(0),
+
+                TextInput::make('stock')
+                    ->numeric()
+                    ->required()
+                    ->minValue(0)
+                    ->default(0),
+            ])
+            ->fillForm(function (): array {
+                /** @var Product $product */
+                $product = $this->getOwnerRecord();
+
+                return ['sku_prefix' => str($product->slug)->slug()->upper()->toString()];
+            })
+            ->action(function (array $data): void {
+                /** @var Product $product */
+                $product = $this->getOwnerRecord();
+
+                /** @var array<int, array{name: string, values: array<int, string>}> $attributeGroupInputs */
+                $attributeGroupInputs = $data['attributeGroups'];
+
+                $attributeGroups = collect($attributeGroupInputs)
+                    ->mapWithKeys(fn (array $group): array => [$group['name'] => $group['values']])
+                    ->all();
+
+                $created = GenerateProductVariants::run(
+                    $product,
+                    $attributeGroups,
+                    (int) $data['price'],
+                    (int) $data['stock'],
+                    $data['sku_prefix'],
+                );
+
+                $combinationCount = collect($attributeGroups)->map(fn (array $values): int => count($values))->reduce(fn (int $carry, int $count): int => $carry * $count, 1);
+                $skipped = $combinationCount - $created->count();
+
+                Notification::make()
+                    ->title("{$created->count()} variant(s) created".($skipped > 0 ? ", {$skipped} skipped (already existed)" : ''))
+                    ->success()
+                    ->send();
+            });
     }
 
     /**

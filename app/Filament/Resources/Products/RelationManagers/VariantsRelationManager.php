@@ -6,6 +6,7 @@ namespace App\Filament\Resources\Products\RelationManagers;
 
 use App\Actions\Catalog\AttachProductImage;
 use App\Actions\Catalog\ConvertImageToWebp;
+use App\Actions\Catalog\DeleteProductVariant;
 use App\Actions\Catalog\GenerateProductVariants;
 use App\Actions\Inventory\AdjustStockWithReservationCheck;
 use App\Enums\VariantStatus;
@@ -135,7 +136,7 @@ class VariantsRelationManager extends RelationManager
                 ActionGroup::make([
                     EditAction::make(),
                     self::addImageAction(),
-                    DeleteAction::make(),
+                    self::deleteAction(),
                 ])
                     ->label('More actions')
                     ->icon('heroicon-m-ellipsis-vertical')
@@ -145,7 +146,7 @@ class VariantsRelationManager extends RelationManager
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    self::deleteBulkAction(),
                     self::bulkAdjustStockAction(),
                     self::bulkAdjustPriceAction(),
                 ]),
@@ -244,6 +245,54 @@ class VariantsRelationManager extends RelationManager
                     ->title("{$created->count()} variant(s) created".($skipped > 0 ? ", {$skipped} skipped (already existed)" : ''))
                     ->success()
                     ->send();
+            });
+    }
+
+    /**
+     * Routes through DeleteProductVariant (SKU mutation for reuse safety)
+     * instead of Filament's plain delete, and surfaces an extra notification
+     * when this was the product's last variant and it got auto-downgraded
+     * to Draft as a result.
+     */
+    private static function deleteAction(): DeleteAction
+    {
+        return DeleteAction::make()
+            ->action(function (ProductVariant $record): void {
+                $wasDowngraded = DeleteProductVariant::run($record);
+
+                Notification::make()->title('Variant deleted')->success()->send();
+
+                if ($wasDowngraded) {
+                    Notification::make()
+                        ->title('Product set to Draft')
+                        ->body('This was the last variant, so the product has no variants left to sell.')
+                        ->warning()
+                        ->send();
+                }
+            });
+    }
+
+    private static function deleteBulkAction(): BulkAction
+    {
+        return DeleteBulkAction::make()
+            ->action(function (Collection $records): void {
+                $downgradedAny = false;
+
+                foreach ($records as $record) {
+                    if ($record instanceof ProductVariant) {
+                        $downgradedAny = DeleteProductVariant::run($record) || $downgradedAny;
+                    }
+                }
+
+                Notification::make()->title('Variants deleted')->success()->send();
+
+                if ($downgradedAny) {
+                    Notification::make()
+                        ->title('Product set to Draft')
+                        ->body('This left the product with no variants left to sell.')
+                        ->warning()
+                        ->send();
+                }
             });
     }
 

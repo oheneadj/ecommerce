@@ -8,14 +8,16 @@ declare(strict_types=1);
 
 namespace App\Actions\Catalog;
 
+use App\Enums\ProductStatus;
 use App\Exceptions\ProductRequiresVariantException;
 use App\Models\Product;
 use Illuminate\Support\Facades\DB;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
- * A product can never be saved without at least one variant, since orders
- * always reference a variant, never a bare product (BRD FR-2.3/E2.3).
+ * A Draft product can be created with zero variants (a work in progress,
+ * never customer-facing) — an Active one can't, since orders always
+ * reference a variant, never a bare product.
  */
 class CreateProduct
 {
@@ -26,11 +28,14 @@ class CreateProduct
      * @param  array<int, array<string, mixed>>  $variants  each entry: sku, price, stock, status?, low_stock_threshold?,
      *                                                      attributeValues?: array<int, array{attribute_name: string, value: string}>
      *
-     * @throws ProductRequiresVariantException when no variants are given
+     * @throws ProductRequiresVariantException when creating with status Active and no variants
      */
     public function handle(array $productData, array $variants): Product
     {
-        if ($variants === []) {
+        $status = $productData['status'] ?? ProductStatus::Draft;
+        $status = $status instanceof ProductStatus ? $status : ProductStatus::from($status);
+
+        if ($status === ProductStatus::Active && $variants === []) {
             throw new ProductRequiresVariantException;
         }
 

@@ -8,6 +8,7 @@ use App\Actions\Catalog\ArchiveProduct;
 use App\Actions\Catalog\CreateProduct;
 use App\Actions\Catalog\DeleteProduct;
 use App\Actions\Catalog\DeleteProductVariant;
+use App\Actions\Catalog\UpdateProduct;
 use App\Enums\ProductStatus;
 use App\Exceptions\ProductRequiresVariantException;
 use App\Models\Category;
@@ -95,6 +96,84 @@ class ProductManagementTest extends TestCase
             ['Size' => 'M', 'Color' => 'Red'],
             $variant->attributeValues->pluck('value', 'attribute_name')->all(),
         );
+    }
+
+    public function test_creating_a_draft_product_with_no_variants_succeeds(): void
+    {
+        $category = Category::factory()->create();
+
+        $product = CreateProduct::run([
+            'category_id' => $category->id,
+            'name' => 'Work In Progress',
+            'slug' => 'work-in-progress',
+            'status' => ProductStatus::Draft,
+        ], []);
+
+        $this->assertSame(ProductStatus::Draft, $product->status);
+        $this->assertCount(0, $product->variants);
+    }
+
+    public function test_updating_a_product_to_active_with_no_variants_throws(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Draft]);
+
+        $this->expectException(ProductRequiresVariantException::class);
+
+        UpdateProduct::run($product, ['status' => ProductStatus::Active]);
+    }
+
+    public function test_updating_a_product_to_active_with_a_variant_succeeds(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Draft]);
+        ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        UpdateProduct::run($product, ['status' => ProductStatus::Active]);
+
+        $this->assertSame(ProductStatus::Active, $product->fresh()->status);
+    }
+
+    public function test_updating_a_draft_products_other_fields_does_not_require_a_variant(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Draft, 'name' => 'Old Name']);
+
+        UpdateProduct::run($product, ['name' => 'New Name']);
+
+        $this->assertSame('New Name', $product->fresh()->name);
+    }
+
+    public function test_deleting_the_last_variant_of_an_active_product_downgrades_it_to_draft(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        $wasDowngraded = DeleteProductVariant::run($variant);
+
+        $this->assertTrue($wasDowngraded);
+        $this->assertSame(ProductStatus::Draft, $product->fresh()->status);
+    }
+
+    public function test_deleting_one_of_several_variants_does_not_downgrade_the_product(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        $keep = ProductVariant::factory()->create(['product_id' => $product->id]);
+        $delete = ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        $wasDowngraded = DeleteProductVariant::run($delete);
+
+        $this->assertFalse($wasDowngraded);
+        $this->assertSame(ProductStatus::Active, $product->fresh()->status);
+        $this->assertNotNull($keep->fresh());
+    }
+
+    public function test_deleting_the_last_variant_of_an_already_draft_product_does_not_error(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Draft]);
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        $wasDowngraded = DeleteProductVariant::run($variant);
+
+        $this->assertFalse($wasDowngraded);
+        $this->assertSame(ProductStatus::Draft, $product->fresh()->status);
     }
 
     public function test_creating_a_product_with_a_blank_attribute_row_ignores_it(): void

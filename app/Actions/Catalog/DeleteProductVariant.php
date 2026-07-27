@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Catalog;
 
+use App\Enums\ProductStatus;
 use App\Models\ProductVariant;
 use Illuminate\Support\Facades\DB;
 use Lorisleiva\Actions\Concerns\AsAction;
@@ -23,12 +24,25 @@ class DeleteProductVariant
 {
     use AsAction;
 
-    public function handle(ProductVariant $variant): void
+    /**
+     * @return bool whether the parent product was auto-downgraded to Draft
+     *              (it had no variants left and was Active)
+     */
+    public function handle(ProductVariant $variant): bool
     {
-        DB::transaction(function () use ($variant): void {
-            $variant->update(['sku' => "{$variant->sku}-deleted-{$variant->id}"]);
+        return DB::transaction(function () use ($variant): bool {
+            $product = $variant->product;
 
+            $variant->update(['sku' => "{$variant->sku}-deleted-{$variant->id}"]);
             $variant->delete();
+
+            if ($product->status === ProductStatus::Active && $product->variants()->doesntExist()) {
+                $product->update(['status' => ProductStatus::Draft]);
+
+                return true;
+            }
+
+            return false;
         });
     }
 }

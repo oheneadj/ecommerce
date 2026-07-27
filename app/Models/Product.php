@@ -33,7 +33,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $description
  * @property string|null $meta_title
  * @property string|null $meta_description
- * @property string $status
+ * @property ProductStatus $status
  * @property Carbon|null $deleted_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at

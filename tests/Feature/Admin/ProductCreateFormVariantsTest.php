@@ -73,4 +73,45 @@ class ProductCreateFormVariantsTest extends TestCase
             $variant->attributeValues->pluck('value', 'attribute_name')->all(),
         );
     }
+
+    public function test_creating_a_draft_product_with_no_variants_succeeds(): void
+    {
+        $this->actingAs($this->admin());
+
+        $category = Category::factory()->create();
+
+        Livewire::test(CreateProduct::class)
+            ->fillForm([
+                'name' => 'Work In Progress',
+                'slug' => 'work-in-progress',
+                'category_id' => $category->id,
+                'status' => ProductStatus::Draft->value,
+                'variants' => [],
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $product = Product::query()->where('slug', 'work-in-progress')->sole();
+        $this->assertSame(ProductStatus::Draft, $product->status);
+        $this->assertCount(0, $product->variants);
+    }
+
+    public function test_creating_an_active_product_with_no_variants_is_rejected(): void
+    {
+        $this->actingAs($this->admin());
+
+        $category = Category::factory()->create();
+
+        Livewire::test(CreateProduct::class)
+            ->fillForm([
+                'name' => 'No Variants',
+                'slug' => 'no-variants',
+                'category_id' => $category->id,
+                'status' => ProductStatus::Active->value,
+                'variants' => [],
+            ])
+            ->call('create');
+
+        $this->assertSame(0, Product::query()->where('slug', 'no-variants')->count());
+    }
 }

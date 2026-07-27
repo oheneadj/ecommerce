@@ -65,36 +65,16 @@ class ProductForm
                                     ->options(ProductStatus::class)
                                     ->required()
                                     ->default(ProductStatus::Draft),
-                            ]),
-                    ]),
-
-                Section::make('Description')
-                    ->schema([
-                        Textarea::make('description')
-                            ->columnSpanFull()
-                            ->placeholder('Describe the product — features, materials, sizing, and care instructions.')
-                            ->helperText('Write a concise, scannable product description; used for product pages and can seed the meta description.')
-                            ->afterStateUpdated(function (?string $state, callable $set, callable $get): void {
-                                $current = $get('meta_description');
-                                if (empty($current) && ! empty($state)) {
-                                    $set('meta_description', str($state)->limit(160));
-                                }
-                            }),
-                    ]),
-
-                Section::make('SEO')
-                    ->schema([
-                        Grid::make(2)
-                            ->schema([
-                                TextInput::make('meta_title')
-                                    ->maxLength(255)
-                                    ->placeholder('Optional: SEO title (auto-filled from name)')
-                                    ->helperText('Auto-filled from the product name when left blank.'),
-
-                                TextInput::make('meta_description')
-                                    ->maxLength(255)
-                                    ->placeholder('Optional: SEO description (auto-filled from description)')
-                                    ->helperText('Auto-filled from the product description when left blank.'),
+                                Textarea::make('description')
+                                    ->columnSpanFull()
+                                    ->placeholder('Describe the product — features, materials, sizing, and care instructions.')
+                                    ->helperText('Write a concise, scannable product description; used for product pages and can seed the meta description.')
+                                    ->afterStateUpdated(function (?string $state, callable $set, callable $get): void {
+                                        $current = $get('meta_description');
+                                        if (empty($current) && ! empty($state)) {
+                                            $set('meta_description', str($state)->limit(160));
+                                        }
+                                    }),
                             ]),
                     ]),
 
@@ -151,12 +131,28 @@ class ProductForm
                                     ->columnSpanFull(),
                             ])
                             ->columns(4)
-                            ->required()
-                            ->minItems(1)
                             ->hiddenOn('edit')
                             ->columnSpanFull()
-                            ->addActionLabel('Add variant'),
+                            ->addActionLabel('Add variant')
+                            ->helperText('Optional for a Draft product — add variants later via the Variants tab. Required before the product can be set to Active.'),
                     ]),
+
+                Section::make('SEO')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('meta_title')
+                                    ->maxLength(255)
+                                    ->placeholder('Optional: SEO title (auto-filled from name)')
+                                    ->helperText('Auto-filled from the product name when left blank.'),
+
+                                TextInput::make('meta_description')
+                                    ->maxLength(255)
+                                    ->placeholder('Optional: SEO description (auto-filled from description)')
+                                    ->helperText('Auto-filled from the product description when left blank.'),
+                            ]),
+                    ]),
+
             ]);
     }
 }

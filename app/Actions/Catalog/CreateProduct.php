@@ -23,7 +23,8 @@ class CreateProduct
 
     /**
      * @param  array<string, mixed>  $productData
-     * @param  array<int, array<string, mixed>>  $variants  each entry: sku, price, stock, status?
+     * @param  array<int, array<string, mixed>>  $variants  each entry: sku, price, stock, status?, low_stock_threshold?,
+     *                                                      attributeValues?: array<int, array{attribute_name: string, value: string}>
      *
      * @throws ProductRequiresVariantException when no variants are given
      */
@@ -36,11 +37,25 @@ class CreateProduct
         return DB::transaction(function () use ($productData, $variants): Product {
             $product = Product::query()->create($productData);
 
-            foreach ($variants as $variant) {
-                $product->variants()->create($variant);
+            foreach ($variants as $variantData) {
+                $attributeValues = $variantData['attributeValues'] ?? [];
+                unset($variantData['attributeValues']);
+
+                $variant = $product->variants()->create($variantData);
+
+                foreach ($attributeValues as $attributeValue) {
+                    if (blank($attributeValue['attribute_name'] ?? null) || blank($attributeValue['value'] ?? null)) {
+                        continue;
+                    }
+
+                    $variant->attributeValues()->create([
+                        'attribute_name' => $attributeValue['attribute_name'],
+                        'value' => $attributeValue['value'],
+                    ]);
+                }
             }
 
-            return $product->load('variants');
+            return $product->load('variants.attributeValues');
         });
     }
 }

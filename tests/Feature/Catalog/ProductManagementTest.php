@@ -52,6 +52,74 @@ class ProductManagementTest extends TestCase
         $this->assertCount(2, $product->variants);
     }
 
+    public function test_creating_a_product_with_a_variant_low_stock_threshold_saves_it(): void
+    {
+        $category = Category::factory()->create();
+
+        $product = CreateProduct::run([
+            'category_id' => $category->id,
+            'name' => 'Test Product',
+            'slug' => 'test-product',
+            'status' => ProductStatus::Active,
+        ], [
+            ['sku' => 'SKU-1', 'price' => 1500, 'stock' => 10, 'low_stock_threshold' => 3],
+        ]);
+
+        $this->assertSame(3, $product->variants->first()->low_stock_threshold);
+    }
+
+    public function test_creating_a_product_with_variant_attribute_values_saves_them(): void
+    {
+        $category = Category::factory()->create();
+
+        $product = CreateProduct::run([
+            'category_id' => $category->id,
+            'name' => 'Kente Shirt',
+            'slug' => 'kente-shirt',
+            'status' => ProductStatus::Active,
+        ], [
+            [
+                'sku' => 'SHIRT-M-RED',
+                'price' => 3000,
+                'stock' => 10,
+                'attributeValues' => [
+                    ['attribute_name' => 'Size', 'value' => 'M'],
+                    ['attribute_name' => 'Color', 'value' => 'Red'],
+                ],
+            ],
+        ]);
+
+        $variant = $product->variants->first();
+        $this->assertSame(2, $variant->attributeValues->count());
+        $this->assertSame(
+            ['Size' => 'M', 'Color' => 'Red'],
+            $variant->attributeValues->pluck('value', 'attribute_name')->all(),
+        );
+    }
+
+    public function test_creating_a_product_with_a_blank_attribute_row_ignores_it(): void
+    {
+        $category = Category::factory()->create();
+
+        $product = CreateProduct::run([
+            'category_id' => $category->id,
+            'name' => 'Test Product',
+            'slug' => 'test-product',
+            'status' => ProductStatus::Active,
+        ], [
+            [
+                'sku' => 'SKU-1',
+                'price' => 1500,
+                'stock' => 10,
+                'attributeValues' => [
+                    ['attribute_name' => '', 'value' => ''],
+                ],
+            ],
+        ]);
+
+        $this->assertSame(0, $product->variants->first()->attributeValues->count());
+    }
+
     public function test_archiving_a_product_stops_selling_without_deleting_or_changing_slug(): void
     {
         $product = Product::factory()->create(['slug' => 'my-product', 'status' => ProductStatus::Active]);

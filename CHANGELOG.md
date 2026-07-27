@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
+
+### Added — Product create form parity with the Variants tab
+- The create-product form's variant repeater was missing two things the Variants tab already supported: `low_stock_threshold` and attribute values (Size, Color, etc.). Both added — a multi-variant product with known attributes can now be fully set up in one pass instead of requiring a second trip to the edit page right after creating it. `CreateProduct` now creates each variant's `AttributeValue` rows too (a blank attribute row, e.g. from an accidentally-added-then-emptied repeater item, is silently skipped rather than saved). Bulk generation (Generate Variants) remains post-creation-only by necessity — it needs a real product ID to attach variants to.
+- 4 new tests covering the Action-level threshold/attribute saving, blank-row skipping, and the actual Filament create form submitting them end-to-end.
 - `phiki/phiki` — required for Filament's `CodeEntry` infolist component (used to display JSON payloads) to actually render; it's a hard dependency of that component, not previously installed.
 
 ### Fixed — Activity log before/after values were never actually shown

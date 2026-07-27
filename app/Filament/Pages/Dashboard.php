@@ -26,11 +26,15 @@ class Dashboard extends BaseDashboard
                 ->schema([
                     DatePicker::make('startDate')
                         ->label('From')
-                        ->native(false),
+                        ->native(false)
+                        ->placeholder('Today')
+                        ->default(now()->toDateString()),
 
                     DatePicker::make('endDate')
                         ->label('To')
                         ->native(false)
+                        ->placeholder('Today')
+                        ->default(now()->toDateString())
                         ->afterOrEqual('startDate'),
                 ]),
         ];

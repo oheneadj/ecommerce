@@ -141,4 +141,42 @@ class DashboardMetricsQueryTest extends TestCase
 
         $this->assertSame(6, $results->first()['quantity_sold']);
     }
+
+    public function test_daily_sales_trend_returns_one_entry_per_day_oldest_first(): void
+    {
+        Payment::factory()->create(['status' => PaymentStatus::Success, 'amount' => 1000, 'created_at' => now()->subDays(6)]);
+        Payment::factory()->create(['status' => PaymentStatus::Success, 'amount' => 2500, 'created_at' => now()]);
+
+        $trend = $this->metrics->dailySalesTrend();
+
+        $this->assertCount(7, $trend);
+        $this->assertSame(10.0, $trend[0]);
+        $this->assertSame(25.0, $trend[6]);
+    }
+
+    public function test_daily_orders_trend_counts_orders_placed_each_day(): void
+    {
+        Order::factory()->count(2)->create(['created_at' => now()]);
+        Order::factory()->create(['created_at' => now()->subDays(3)]);
+
+        $trend = $this->metrics->dailyOrdersTrend();
+
+        $this->assertCount(7, $trend);
+        $this->assertSame(2, $trend[6]);
+        $this->assertSame(1, $trend[3]);
+    }
+
+    public function test_daily_new_customers_trend_excludes_staff(): void
+    {
+        Role::findOrCreate(UserRole::Admin->value, 'web');
+
+        User::factory()->create(['created_at' => now()]);
+        $staff = User::factory()->create(['created_at' => now()]);
+        $staff->assignRole(UserRole::Admin->value);
+
+        $trend = $this->metrics->dailyNewCustomersTrend();
+
+        $this->assertCount(7, $trend);
+        $this->assertSame(1, $trend[6]);
+    }
 }

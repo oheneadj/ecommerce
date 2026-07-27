@@ -82,6 +82,50 @@ class DashboardMetricsQuery
         return Order::query()->where('status', OrderStatus::Pending)->count();
     }
 
+    /**
+     * Net revenue per day for the last $days days (oldest first) — feeds
+     * the dashboard stat card's sparkline.
+     *
+     * @return array<int, float>
+     */
+    public function dailySalesTrend(int $days = 7): array
+    {
+        return collect(range($days - 1, 0))
+            ->map(fn (int $offset): float => $this->netRevenue(
+                fn (Builder $query): Builder => $query->whereDate('created_at', now()->subDays($offset)->toDateString()),
+            ) / 100)
+            ->all();
+    }
+
+    /**
+     * Orders placed per day for the last $days days (oldest first).
+     *
+     * @return array<int, int>
+     */
+    public function dailyOrdersTrend(int $days = 7): array
+    {
+        return collect(range($days - 1, 0))
+            ->map(fn (int $offset): int => Order::query()
+                ->whereDate('created_at', now()->subDays($offset)->toDateString())
+                ->count())
+            ->all();
+    }
+
+    /**
+     * New customer signups per day for the last $days days (oldest first).
+     *
+     * @return array<int, int>
+     */
+    public function dailyNewCustomersTrend(int $days = 7): array
+    {
+        return collect(range($days - 1, 0))
+            ->map(fn (int $offset): int => User::query()
+                ->whereDoesntHave('roles')
+                ->whereDate('created_at', now()->subDays($offset)->toDateString())
+                ->count())
+            ->all();
+    }
+
     public function lowStockCount(): int
     {
         return ProductVariant::query()

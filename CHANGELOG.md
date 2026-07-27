@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Changed — Dashboard stat cards
+- The four dashboard stat cards (Today's Sales, Pending Orders, Low Stock Items, New Customers) now each carry a colored description with an icon and a 7-day sparkline, matching the requested card style — same metrics, same cards, restyled. `DashboardMetricsQuery::dailySalesTrend()`/`dailyOrdersTrend()`/`dailyNewCustomersTrend()` added to feed the sparklines. Low Stock Items' sparkline is a flat line at the current count, not a fabricated trend — there's no historical snapshot of that figure to chart, it's a live count. 3 new tests covering the trend methods.
+
 ### Added — Customer addresses
 - `User::addresses()` relationship (was missing entirely — `Address` already had `user_id`, but nothing on `User` pointed back). Added an "Addresses" tab to the Customer view page (`AddressesRelationManager`, read-only) showing every address a customer has saved, not just ones attached to a past order. Seeded two addresses (Home/Office) for Yaw Boateng and one for Abena Owusu so the tab has real data to inspect. 1 new test covering that a customer's addresses list is properly scoped to them.
 

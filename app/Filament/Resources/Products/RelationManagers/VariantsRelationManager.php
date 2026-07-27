@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Products\RelationManagers;
 
 use App\Actions\Catalog\AttachProductImage;
+use App\Actions\Catalog\ConvertImageToWebp;
 use App\Actions\Catalog\GenerateProductVariants;
 use App\Actions\Inventory\AdjustStockWithReservationCheck;
 use App\Enums\VariantStatus;
@@ -262,6 +263,7 @@ class VariantsRelationManager extends RelationManager
                     ->image()
                     ->disk('public')
                     ->directory('product-images')
+                    ->saveUploadedFileUsing(ConvertImageToWebp::forFileUpload())
                     ->required(),
 
                 TextInput::make('sort_order')

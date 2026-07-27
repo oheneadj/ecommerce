@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
+- `intervention/image` (^4.0) — required for Laravel's first-party `Image` facade (`illuminate/image`, bundled with the framework since 13.20) to actually process images; it was previously only a suggested, not installed, dependency.
+
+### Added — Automatic WebP conversion
+- `ConvertImageToWebp` Action: converts an uploaded image to WebP on the way to disk if it isn't already (a file already saved as `.webp` is left untouched), wired into every image `FileUpload` field in the catalog — product/general images, per-variant "Add image", and the Brand logo — via `->saveUploadedFileUsing(ConvertImageToWebp::forFileUpload())`. An unsupported/undecodable file falls back to keeping the original rather than losing the upload. 5 new tests covering conversion, the already-webp short-circuit, and that it's actually wired into all three upload points.
 
 ### Changed — Dashboard stat cards
 - The four dashboard stat cards (Today's Sales, Pending Orders, Low Stock Items, New Customers) now each carry a colored description with an icon and a 7-day sparkline, matching the requested card style — same metrics, same cards, restyled. `DashboardMetricsQuery::dailySalesTrend()`/`dailyOrdersTrend()`/`dailyNewCustomersTrend()` added to feed the sparklines. Low Stock Items' sparkline is a flat line at the current count, not a fabricated trend — there's no historical snapshot of that figure to chart, it's a live count. 3 new tests covering the trend methods.

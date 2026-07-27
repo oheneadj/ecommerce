@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Products\RelationManagers;
 
+use App\Actions\Catalog\ConvertImageToWebp;
 use App\Models\Product;
 use App\Models\ProductImage;
 use Filament\Actions\CreateAction;
@@ -52,6 +53,7 @@ class ImagesRelationManager extends RelationManager
                     ->image()
                     ->disk('public')
                     ->directory('product-images')
+                    ->saveUploadedFileUsing(ConvertImageToWebp::forFileUpload())
                     ->required(),
 
                 Select::make('product_variant_id')

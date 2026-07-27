@@ -32,6 +32,7 @@ class CustomerRecordActions
             ->label('Send email')
             ->icon(Heroicon::OutlinedEnvelope)
             ->modalWidth(Width::Large)
+            ->modalSubmitActionLabel('Send email')
             ->visible(fn (User $record): bool => $record->email !== null)
             ->schema([
                 TextInput::make('to')
@@ -61,8 +62,15 @@ class CustomerRecordActions
         return Action::make('sendSms')
             ->label('Send SMS')
             ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+            ->modalWidth(Width::Large)
+            ->modalSubmitActionLabel('Send SMS')
             ->visible(fn (User $record): bool => $record->phone !== null)
             ->schema([
+                TextInput::make('to')
+                    ->label('To')
+                    ->default(fn (User $record): ?string => $record->phone)
+                    ->disabled()
+                    ->dehydrated(false),
                 Textarea::make('message')
                     ->required()
                     ->rows(4),

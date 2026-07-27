@@ -138,6 +138,36 @@ class CustomerMessagingTest extends TestCase
             ->assertHasNoTableActionErrors();
     }
 
+    public function test_the_sms_to_field_cannot_be_used_to_redirect_the_sms_elsewhere(): void
+    {
+        $sentTo = null;
+        $this->app->bind(SmsGateway::class, function () use (&$sentTo) {
+            return new class($sentTo) implements SmsGateway
+            {
+                public function __construct(private mixed &$sentTo) {}
+
+                public function send(string $to, string $message): SmsSendResult
+                {
+                    $this->sentTo = $to;
+
+                    return new SmsSendResult(success: true, providerReference: 'fake-ref');
+                }
+            };
+        });
+        $this->actingAs($this->admin());
+
+        $customer = User::factory()->create(['phone' => '0551234567']);
+
+        Livewire::test(ListCustomers::class)
+            ->callTableAction('sendSms', $customer, data: [
+                'to' => '0559999999',
+                'message' => 'Your order has shipped!',
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $this->assertSame('0551234567', $sentTo);
+    }
+
     public function test_send_email_and_sms_actions_work_from_the_customer_view_page(): void
     {
         Mail::fake();

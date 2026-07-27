@@ -16,6 +16,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\Size;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -83,6 +84,8 @@ class CustomersTable
         return BulkAction::make('bulkSendEmail')
             ->label('Send email')
             ->icon(Heroicon::OutlinedEnvelope)
+            ->modalWidth(Width::Large)
+            ->modalSubmitActionLabel('Send email')
             ->schema([
                 TextInput::make('subject')
                     ->required()
@@ -116,6 +119,8 @@ class CustomersTable
         return BulkAction::make('bulkSendSms')
             ->label('Send SMS')
             ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+            ->modalWidth(Width::Large)
+            ->modalSubmitActionLabel('Send SMS')
             ->schema([
                 Textarea::make('message')
                     ->required()

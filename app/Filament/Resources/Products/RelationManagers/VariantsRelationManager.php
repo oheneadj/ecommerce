@@ -28,6 +28,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Size;
 use Filament\Support\Enums\Width;
@@ -89,6 +90,7 @@ class VariantsRelationManager extends RelationManager
                     ])
                     ->columns(2)
                     ->addActionLabel('Add attribute')
+                    ->addAction(fn (Action $action) => $action->color('primary'))
                     ->helperText('Free-form — a product can mix any attributes it needs (e.g. a shirt with both Size and Color).')
                     ->columnSpanFull(),
             ]);
@@ -185,6 +187,7 @@ class VariantsRelationManager extends RelationManager
                     ->minItems(1)
                     ->required()
                     ->addActionLabel('Add attribute')
+                    ->addAction(fn (Action $action) => $action->color('primary'))
                     ->helperText('e.g. Size: L, M, XL and Color: White, Blue, Black generates every combination (9 variants).')
                     ->columnSpanFull(),
 
@@ -193,17 +196,20 @@ class VariantsRelationManager extends RelationManager
                     ->required()
                     ->maxLength(255),
 
-                TextInput::make('price')
-                    ->label('Price (pesewas)')
-                    ->numeric()
-                    ->required()
-                    ->minValue(0),
+                Grid::make(2)
+                    ->schema([
+                        TextInput::make('price')
+                            ->label('Price (pesewas)')
+                            ->numeric()
+                            ->required()
+                            ->minValue(0),
 
-                TextInput::make('stock')
-                    ->numeric()
-                    ->required()
-                    ->minValue(0)
-                    ->default(0),
+                        TextInput::make('stock')
+                            ->numeric()
+                            ->required()
+                            ->minValue(0)
+                            ->default(0),
+                    ]),
             ])
             ->fillForm(function (): array {
                 /** @var Product $product */

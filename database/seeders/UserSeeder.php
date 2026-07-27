@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Enums\UserRole;
+use App\Models\Address;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -38,20 +39,46 @@ class UserSeeder extends Seeder
         $storeKeeper->assignRole(UserRole::StoreKeeper->value);
 
         // A phone+email customer (both notification channels available).
-        User::factory()->create([
+        $yaw = User::factory()->create([
             'name' => 'Yaw Boateng',
             'email' => 'yaw@example.com',
             'phone' => '0551000010',
+        ]);
+        Address::factory()->create([
+            'user_id' => $yaw->id,
+            'label' => 'Home',
+            'recipient_name' => $yaw->name,
+            'phone' => $yaw->phone,
+            'city' => 'Accra',
+            'region' => 'Greater Accra',
+            'is_default' => true,
+        ]);
+        Address::factory()->create([
+            'user_id' => $yaw->id,
+            'label' => 'Office',
+            'recipient_name' => $yaw->name,
+            'phone' => $yaw->phone,
+            'city' => 'Tema',
+            'region' => 'Greater Accra',
+            'is_default' => false,
         ]);
 
         // A Google-only customer with no phone — exercises the
         // email-only notification fallback (no other seeder data depends
         // on this, it's here purely so the account exists to inspect).
-        User::factory()->create([
+        $abena = User::factory()->create([
             'name' => 'Abena Owusu',
             'email' => 'abena@example.com',
             'phone' => null,
             'google_id' => 'seed-google-id-abena',
+        ]);
+        Address::factory()->create([
+            'user_id' => $abena->id,
+            'label' => 'Home',
+            'recipient_name' => $abena->name,
+            'city' => 'Kumasi',
+            'region' => 'Ashanti',
+            'is_default' => true,
         ]);
 
         User::factory()->count(5)->create();

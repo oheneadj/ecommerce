@@ -124,6 +124,16 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
     }
 
     /**
+     * Addresses saved to this account (not just ones used on past orders).
+     *
+     * @return HasMany<Address, $this>
+     */
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(Address::class);
+    }
+
+    /**
      * Variants this account has wishlisted.
      *
      * @return HasMany<WishlistItem, $this>

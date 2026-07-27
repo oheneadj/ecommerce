@@ -13,7 +13,9 @@ use App\Enums\UserRole;
 use App\Filament\Resources\Customers\CustomerResource;
 use App\Filament\Resources\Customers\Pages\ListCustomers;
 use App\Filament\Resources\Customers\Pages\ViewCustomer;
+use App\Filament\Resources\Customers\RelationManagers\AddressesRelationManager;
 use App\Filament\Resources\Customers\RelationManagers\OrdersRelationManager;
+use App\Models\Address;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -76,5 +78,19 @@ class CustomerResourceTest extends TestCase
 
         Livewire::test(OrdersRelationManager::class, ['ownerRecord' => $customer, 'pageClass' => ViewCustomer::class])
             ->assertCanSeeTableRecords([$order]);
+    }
+
+    public function test_viewing_a_customer_shows_every_address_theyve_saved(): void
+    {
+        $this->actingAs($this->admin());
+
+        $customer = User::factory()->create();
+        $home = Address::factory()->create(['user_id' => $customer->id, 'label' => 'Home']);
+        $work = Address::factory()->create(['user_id' => $customer->id, 'label' => 'Work']);
+        $someoneElses = Address::factory()->create();
+
+        Livewire::test(AddressesRelationManager::class, ['ownerRecord' => $customer, 'pageClass' => ViewCustomer::class])
+            ->assertCanSeeTableRecords([$home, $work])
+            ->assertCanNotSeeTableRecords([$someoneElses]);
     }
 }

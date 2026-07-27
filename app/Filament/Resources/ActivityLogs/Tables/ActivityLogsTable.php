@@ -66,6 +66,7 @@ class ActivityLogsTable
     {
         return Action::make('viewChanges')
             ->label('View changes')
+            ->button()
             ->modalHeading('Changed attributes')
             ->schema([
                 TextEntry::make('description'),
@@ -76,12 +77,17 @@ class ActivityLogsTable
     }
 
     /**
+     * The before/after diff lives in `attribute_changes` (`old`/`attributes`
+     * keys), not `properties` — this package version split the two: `properties`
+     * is reserved for extra custom context added via `tapActivity()`/
+     * `withProperties()`, and never holds the automatic attribute diff.
+     *
      * @return array<string, string>
      */
     private static function formatChanges(Activity $record): array
     {
-        $old = (array) ($record->properties['old'] ?? []);
-        $attributes = (array) ($record->properties['attributes'] ?? []);
+        $old = (array) ($record->attribute_changes['old'] ?? []);
+        $attributes = (array) ($record->attribute_changes['attributes'] ?? []);
 
         $formatted = [];
 

@@ -6,15 +6,18 @@ namespace App\Filament\Resources\Payments\Tables;
 
 use App\Actions\Payment\ProcessRefund;
 use App\Enums\PaymentStatus;
+use App\Enums\UserRole;
 use App\Exceptions\RefundExceedsPaymentException;
 use App\Models\Payment;
 use Filament\Actions\Action;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class PaymentsTable
 {
@@ -49,6 +52,9 @@ class PaymentsTable
                     ->options(PaymentStatus::class),
             ])
             ->recordActions([
+                ViewAction::make()
+                    ->button()
+                    ->visible(fn (): bool => Auth::user()?->hasRole(UserRole::SuperAdmin->value) ?? false),
                 self::refundAction(),
             ])
             ->toolbarActions([
@@ -63,6 +69,7 @@ class PaymentsTable
     {
         return Action::make('refund')
             ->label('Issue refund')
+            ->button()
             ->visible(fn (Payment $record) => $record->status === PaymentStatus::Success)
             ->schema([
                 TextInput::make('amount')

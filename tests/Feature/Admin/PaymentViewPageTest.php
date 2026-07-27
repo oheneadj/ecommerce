@@ -1,0 +1,114 @@
+<?php
+
+/**
+ * Covers the Payment view page — Super-Admin-only, shows metadata and
+ * every related API call's payload.
+ */
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Admin;
+
+use App\Enums\UserRole;
+use App\Filament\Resources\Payments\Pages\ListPayments;
+use App\Filament\Resources\Payments\Pages\ViewPayment;
+use App\Filament\Resources\Payments\PaymentResource;
+use App\Filament\Resources\Payments\RelationManagers\ApiLogsRelationManager;
+use App\Models\Payment;
+use App\Models\PaymentApiLog;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
+
+class PaymentViewPageTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function staff(UserRole $role): User
+    {
+        Role::findOrCreate($role->value, 'web');
+        $user = User::factory()->create();
+        $user->assignRole($role->value);
+
+        return $user;
+    }
+
+    public function test_only_super_admin_can_view_a_payments_detail_page(): void
+    {
+        $payment = Payment::factory()->create();
+
+        $this->actingAs($this->staff(UserRole::SuperAdmin))
+            ->get(PaymentResource::getUrl('view', ['record' => $payment]))
+            ->assertOk();
+
+        $this->actingAs($this->staff(UserRole::Admin))
+            ->get(PaymentResource::getUrl('view', ['record' => $payment]))
+            ->assertForbidden();
+
+        $this->actingAs($this->staff(UserRole::StoreKeeper))
+            ->get(PaymentResource::getUrl('view', ['record' => $payment]))
+            ->assertForbidden();
+    }
+
+    public function test_the_view_action_on_the_payments_table_is_hidden_for_admin_and_visible_for_super_admin(): void
+    {
+        $payment = Payment::factory()->create();
+
+        $this->actingAs($this->staff(UserRole::Admin));
+        Livewire::test(ListPayments::class)
+            ->assertTableActionHidden('view', $payment);
+
+        $this->actingAs($this->staff(UserRole::SuperAdmin));
+        Livewire::test(ListPayments::class)
+            ->assertTableActionVisible('view', $payment);
+    }
+
+    public function test_the_view_page_shows_the_payment_details_and_metadata(): void
+    {
+        $this->actingAs($this->staff(UserRole::SuperAdmin));
+
+        $payment = Payment::factory()->create([
+            'provider' => 'paystack',
+            'provider_reference' => 'REF-12345',
+            'metadata' => ['gateway_response' => 'Approved'],
+        ]);
+
+        $this->get(PaymentResource::getUrl('view', ['record' => $payment]))
+            ->assertOk()
+            ->assertSee('paystack')
+            ->assertSee('REF-12345')
+            ->assertSee('Approved');
+    }
+
+    public function test_the_api_logs_tab_lists_calls_for_this_payment_only(): void
+    {
+        $this->actingAs($this->staff(UserRole::SuperAdmin));
+
+        $payment = Payment::factory()->create();
+        $ownLog = PaymentApiLog::factory()->create(['payment_id' => $payment->id, 'order_id' => $payment->order_id]);
+        $otherLog = PaymentApiLog::factory()->create();
+
+        Livewire::test(ApiLogsRelationManager::class, ['ownerRecord' => $payment, 'pageClass' => ViewPayment::class])
+            ->assertCanSeeTableRecords([$ownLog])
+            ->assertCanNotSeeTableRecords([$otherLog]);
+    }
+
+    public function test_the_view_payload_action_shows_the_request_and_response_payload(): void
+    {
+        $this->actingAs($this->staff(UserRole::SuperAdmin));
+
+        $payment = Payment::factory()->create();
+        $log = PaymentApiLog::factory()->create([
+            'payment_id' => $payment->id,
+            'order_id' => $payment->order_id,
+            'request_payload' => ['amount' => 5000],
+            'response_payload' => ['reference' => 'xyz'],
+        ]);
+
+        Livewire::test(ApiLogsRelationManager::class, ['ownerRecord' => $payment, 'pageClass' => ViewPayment::class])
+            ->mountTableAction('viewPayload', $log)
+            ->assertSuccessful();
+    }
+}

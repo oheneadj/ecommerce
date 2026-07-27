@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
+- `phiki/phiki` — required for Filament's `CodeEntry` infolist component (used to display JSON payloads) to actually render; it's a hard dependency of that component, not previously installed.
+
+### Fixed — Activity log before/after values were never actually shown
+- The installed `spatie/laravel-activitylog` version records the before/after attribute diff in a dedicated `attribute_changes` column (`old`/`attributes` keys) — a schema change from older versions, where this lived in `properties`. `ActivityLogsTable`'s "View changes" modal was still reading from `properties`, which this version leaves empty for the automatic diff (it's reserved for extra context added via `tapActivity()`/`withProperties()`). Every "View changes" modal was silently showing nothing useful. Fixed to read `attribute_changes`. 4 new tests verifying created/updated/deleted events log the correct before/after values, and that the modal renders them correctly.
+
+### Added — Payment detail page (Super Admin only)
+- `PaymentResource` gained a `view` page — full payment details (order, provider, channel, status, amount, provider reference) plus the raw provider callback `metadata` as formatted JSON, and an "API Logs" tab listing every outbound call made for this payment with a "View payload" action showing the full request/response payload (`PaymentApiLog`, already tracked but not previously surfaced anywhere in the admin panel). Deliberately gated to Super Admin only via the page's own `canAccess()` override — narrower than `PaymentPolicy`'s Admin+Super Admin (which still governs the list), since this page surfaces raw provider payload. The "View" row action on the Payments table is hidden for anyone who isn't Super Admin. `Payment::apiLogs()` relationship added (was missing — `PaymentApiLog` already had `payment_id`, but nothing on `Payment` pointed back). 5 new tests covering the access restriction, the row action's visibility, and the API Logs tab's scoping.
 
 ### Added — Customer messaging
 - Customers list search now covers name, email, and phone (all three columns are `->searchable()`, which Filament merges into the one global search box). "Send email" and "Send SMS" row actions added — grouped into the "Actions" dropdown alongside View, matching the more-than-two-actions grouping convention — plus the same two actions on the customer's own view page, and bulk "Send email"/"Send SMS" toolbar actions. A customer missing the relevant contact method has that action hidden (row/view page) or silently skipped with a reported count (bulk).

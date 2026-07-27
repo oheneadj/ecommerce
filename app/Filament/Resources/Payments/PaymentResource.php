@@ -3,11 +3,15 @@
 namespace App\Filament\Resources\Payments;
 
 use App\Filament\Resources\Payments\Pages\ListPayments;
+use App\Filament\Resources\Payments\Pages\ViewPayment;
+use App\Filament\Resources\Payments\RelationManagers\ApiLogsRelationManager;
 use App\Filament\Resources\Payments\RelationManagers\RefundsRelationManager;
+use App\Filament\Resources\Payments\Schemas\PaymentInfolist;
 use App\Filament\Resources\Payments\Tables\PaymentsTable;
 use App\Models\Payment;
 use BackedEnum;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
@@ -31,10 +35,16 @@ class PaymentResource extends Resource
         return PaymentsTable::configure($table);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return PaymentInfolist::configure($schema);
+    }
+
     public static function getRelations(): array
     {
         return [
             RefundsRelationManager::class,
+            ApiLogsRelationManager::class,
         ];
     }
 
@@ -42,6 +52,7 @@ class PaymentResource extends Resource
     {
         return [
             'index' => ListPayments::route('/'),
+            'view' => ViewPayment::route('/{record}'),
         ];
     }
 

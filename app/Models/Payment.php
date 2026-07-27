@@ -78,6 +78,16 @@ class Payment extends Model
     }
 
     /**
+     * Every outbound API call (request/response payload) made for this payment.
+     *
+     * @return HasMany<PaymentApiLog, $this>
+     */
+    public function apiLogs(): HasMany
+    {
+        return $this->hasMany(PaymentApiLog::class);
+    }
+
+    /**
      * This payment's amount formatted for display (e.g. "GH₵150.00").
      */
     public function getAmountFormattedAttribute(): string

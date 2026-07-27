@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin;
 
 use App\Enums\UserRole;
+use App\Filament\Resources\ActivityLogs\Tables\ActivityLogsTable;
 use App\Models\Category;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use ReflectionMethod;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -59,5 +61,59 @@ class ActivityLogTest extends TestCase
         $this->actingAs($superAdmin)->get('/admin/activity-logs')->assertSuccessful();
         $this->actingAs($admin)->get('/admin/activity-logs')->assertForbidden();
         $this->actingAs($storeKeeper)->get('/admin/activity-logs')->assertForbidden();
+    }
+
+    /**
+     * The package's LogsActivity trait records the before/after diff in
+     * `attribute_changes` (`old`/`attributes` keys) — a different column
+     * from `properties`, which is reserved for extra context added via
+     * tapActivity()/withProperties() and never holds the automatic diff.
+     */
+    public function test_creating_a_record_logs_only_new_attribute_values_with_no_old_values(): void
+    {
+        Category::factory()->create(['name' => 'Brand New']);
+
+        $activity = Activity::query()->where('event', 'created')->latest('id')->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame('Brand New', $activity->attribute_changes['attributes']['name'] ?? null);
+        $this->assertArrayNotHasKey('old', (array) $activity->attribute_changes);
+    }
+
+    public function test_updating_a_record_logs_only_the_dirty_fields_before_and_after(): void
+    {
+        $category = Category::factory()->create(['name' => 'Original', 'slug' => 'original']);
+        $category->update(['name' => 'Renamed']);
+
+        $activity = Activity::query()->where('event', 'updated')->where('subject_id', $category->id)->latest('id')->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame(['name' => 'Original'], $activity->attribute_changes['old']);
+        $this->assertSame(['name' => 'Renamed'], $activity->attribute_changes['attributes']);
+    }
+
+    public function test_deleting_a_record_logs_its_final_attribute_values_as_old(): void
+    {
+        $category = Category::factory()->create(['name' => 'About To Go']);
+        $category->delete();
+
+        $activity = Activity::query()->where('event', 'deleted')->where('subject_id', $category->id)->latest('id')->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame('About To Go', $activity->attribute_changes['old']['name'] ?? null);
+    }
+
+    public function test_the_view_changes_modal_correctly_renders_before_and_after_values(): void
+    {
+        $category = Category::factory()->create(['name' => 'Original']);
+        $category->update(['name' => 'Renamed']);
+
+        $activity = Activity::query()->where('event', 'updated')->where('subject_id', $category->id)->latest('id')->first();
+
+        $method = new ReflectionMethod(ActivityLogsTable::class, 'formatChanges');
+        $method->setAccessible(true);
+        $formatted = $method->invoke(null, $activity);
+
+        $this->assertSame('"Original" → "Renamed"', $formatted['name']);
     }
 }

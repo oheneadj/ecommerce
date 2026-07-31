@@ -19,6 +19,8 @@ use Filament\Tables\Columns\ColorColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Validation\Rules\Unique;
 
 /**
  * Manages a single attribute's values (e.g. Size's S/M/L/XL) — the swatch
@@ -62,13 +64,25 @@ class TermsRelationManager extends RelationManager
                     ->required()
                     ->maxLength(255)
                     ->placeholder('e.g. Large, Red')
+                    ->helperText('Values must be unique within this attribute — the same value is fine under a different attribute.')
                     ->live(onBlur: true)
-                    ->afterStateUpdated(fn (string $state, callable $set) => $set('slug', str($state)->slug())),
+                    ->afterStateUpdated(fn (string $state, callable $set) => $set('slug', str($state)->slug()))
+                    ->unique(
+                        ignoreRecord: true,
+                        modifyRuleUsing: fn (Unique $rule): Unique => $rule->where(
+                            fn (Builder $query) => $query->where('attribute_id', $attribute->id),
+                        ),
+                    ),
 
                 TextInput::make('slug')
                     ->required()
                     ->maxLength(255)
-                    ->unique(ignoreRecord: true),
+                    ->unique(
+                        ignoreRecord: true,
+                        modifyRuleUsing: fn (Unique $rule): Unique => $rule->where(
+                            fn (Builder $query) => $query->where('attribute_id', $attribute->id),
+                        ),
+                    ),
 
                 $swatchField,
             ]));

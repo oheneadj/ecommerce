@@ -71,6 +71,18 @@ class AttributeResourceTest extends TestCase
         $this->assertDatabaseHas('attributes', ['slug' => 'size', 'type' => AttributeType::Text->value]);
     }
 
+    public function test_creating_an_attribute_with_a_name_that_already_exists_is_rejected(): void
+    {
+        $this->actingAs($this->admin());
+
+        Attribute::factory()->create(['name' => 'Size', 'slug' => 'size']);
+
+        Livewire::test(CreateAttribute::class)
+            ->fillForm(['name' => 'Size', 'slug' => 'size-2', 'type' => AttributeType::Text->value])
+            ->call('create')
+            ->assertHasFormErrors(['name' => 'unique']);
+    }
+
     public function test_store_keeper_can_view_but_not_create_attributes(): void
     {
         $this->actingAs($this->storeKeeper());
@@ -115,5 +127,32 @@ class AttributeResourceTest extends TestCase
             ->assertHasNoTableActionErrors();
 
         $this->assertDatabaseHas('attribute_terms', ['attribute_id' => $attribute->id, 'value' => 'Red', 'swatch_value' => '#FF0000']);
+    }
+
+    public function test_a_terms_value_must_be_unique_within_its_own_attribute(): void
+    {
+        $this->actingAs($this->admin());
+
+        $attribute = Attribute::factory()->create(['type' => AttributeType::Text]);
+        $attribute->terms()->create(['value' => 'Large', 'slug' => 'large']);
+
+        Livewire::test(TermsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditAttribute::class])
+            ->callTableAction('create', data: ['value' => 'Large', 'slug' => 'large-2'])
+            ->assertHasTableActionErrors(['value' => 'unique']);
+    }
+
+    public function test_the_same_term_value_is_allowed_under_a_different_attribute(): void
+    {
+        $this->actingAs($this->admin());
+
+        $size = Attribute::factory()->create(['type' => AttributeType::Text]);
+        $size->terms()->create(['value' => 'Large', 'slug' => 'large']);
+        $color = Attribute::factory()->create(['type' => AttributeType::Text]);
+
+        Livewire::test(TermsRelationManager::class, ['ownerRecord' => $color, 'pageClass' => EditAttribute::class])
+            ->callTableAction('create', data: ['value' => 'Large', 'slug' => 'large'])
+            ->assertHasNoTableActionErrors();
+
+        $this->assertDatabaseHas('attribute_terms', ['attribute_id' => $color->id, 'value' => 'Large']);
     }
 }

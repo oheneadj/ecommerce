@@ -27,7 +27,8 @@ class AttributeForm
                                     ->placeholder('e.g. Size, Color')
                                     ->helperText('Slug will be generated automatically.')
                                     ->live(onBlur: true)
-                                    ->afterStateUpdated(fn (string $state, callable $set) => $set('slug', str($state)->slug())),
+                                    ->afterStateUpdated(fn (string $state, callable $set) => $set('slug', str($state)->slug()))
+                                    ->unique(ignoreRecord: true),
 
                                 TextInput::make('slug')
                                     ->required()

@@ -12,6 +12,8 @@ namespace Tests\Feature\Admin;
 use App\Enums\UserRole;
 use App\Filament\Resources\Products\Pages\EditProduct;
 use App\Filament\Resources\Products\RelationManagers\VariantsRelationManager;
+use App\Models\Attribute;
+use App\Models\AttributeTerm;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -37,12 +39,20 @@ class GenerateVariantsActionTest extends TestCase
         $this->actingAs($this->admin());
 
         $product = Product::factory()->create(['slug' => 'classic-tee']);
+        $size = Attribute::factory()->create(['name' => 'Size']);
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $product->attributes()->attach([$size->id, $color->id]);
+
+        $l = AttributeTerm::factory()->create(['attribute_id' => $size->id, 'value' => 'L']);
+        $xl = AttributeTerm::factory()->create(['attribute_id' => $size->id, 'value' => 'XL']);
+        $white = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'White']);
+        $blue = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Blue']);
 
         Livewire::test(VariantsRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
             ->callTableAction('generateVariants', data: [
                 'attributeGroups' => [
-                    ['name' => 'Size', 'values' => ['L', 'XL']],
-                    ['name' => 'Color', 'values' => ['White', 'Blue']],
+                    ['attribute_id' => $size->id, 'term_ids' => [$l->id, $xl->id]],
+                    ['attribute_id' => $color->id, 'term_ids' => [$white->id, $blue->id]],
                 ],
                 'sku_prefix' => 'CLASSIC-TEE',
                 'price' => 2500,

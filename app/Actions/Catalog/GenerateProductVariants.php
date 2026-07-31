@@ -1,9 +1,9 @@
 <?php
 
 /**
- * Bulk-generates every combination across a set of attributes (e.g. Size ×
- * Color) as separate variants on a product, instead of adding them one at a
- * time by hand.
+ * Bulk-generates every combination across a set of global attribute terms
+ * (e.g. Size × Color) as separate variants on a product, instead of adding
+ * them one at a time by hand.
  */
 
 declare(strict_types=1);
@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace App\Actions\Catalog;
 
 use App\Enums\VariantStatus;
+use App\Models\AttributeTerm;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Support\Collection;
@@ -18,52 +19,55 @@ use Illuminate\Support\Facades\DB;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
- * Given e.g. `['Size' => ['L', 'M', 'XL'], 'Color' => ['White', 'Blue', 'Black']]`,
- * creates one variant per combination (9 here), each carrying the matching
- * AttributeValue rows. Any combination that already exists on the product
- * (same attribute name/value pairs, regardless of order) is skipped rather
- * than duplicated — this is the only thing standing between a product and
- * two variants both claiming to be "Size: XL, Color: White".
+ * Given e.g. `[[sizeIdL, sizeIdM], [colorIdWhite, colorIdBlack]]` (one array
+ * of AttributeTerm IDs per attribute), creates one variant per combination
+ * (4 here), each linked to the matching AttributeTerm rows via the
+ * attributeTerms() pivot. Any combination that already exists on the
+ * product (same set of term IDs, regardless of order) is skipped rather
+ * than duplicated.
  */
 class GenerateProductVariants
 {
     use AsAction;
 
     /**
-     * @param  array<string, array<int, string>>  $attributeGroups  e.g. ['Size' => ['L', 'M'], 'Color' => ['Red']]
+     * @param  array<int, array<int, int>>  $termGroups  e.g. [[1, 2], [5]] — each inner array is one attribute's selected term IDs
      * @return Collection<int, ProductVariant>
      */
     public function handle(
         Product $product,
-        array $attributeGroups,
+        array $termGroups,
         int $defaultPrice,
         int $defaultStock,
         string $skuPrefix,
     ): Collection {
-        $combinations = $this->cartesianProduct($attributeGroups);
-        $existingCombinations = $this->existingAttributeCombinations($product);
+        $termGroups = array_values(array_filter($termGroups, fn (array $group): bool => $group !== []));
+        $combinations = $this->cartesianProduct($termGroups);
+        $existingCombinations = $this->existingTermCombinations($product);
 
-        return DB::transaction(function () use ($product, $combinations, $existingCombinations, $defaultPrice, $defaultStock, $skuPrefix): Collection {
+        $termsById = AttributeTerm::query()
+            ->whereIn('id', $termGroups === [] ? [] : array_merge(...$termGroups))
+            ->get()
+            ->keyBy('id');
+
+        return DB::transaction(function () use ($product, $combinations, $existingCombinations, $defaultPrice, $defaultStock, $skuPrefix, $termsById): Collection {
             $created = collect();
 
-            foreach ($combinations as $combination) {
-                if ($existingCombinations->contains($this->combinationKey($combination))) {
+            foreach ($combinations as $termIds) {
+                if ($existingCombinations->contains($this->combinationKey($termIds))) {
                     continue;
                 }
 
+                $terms = collect($termIds)->map(fn (int $id): AttributeTerm => $termsById[$id]);
+
                 $variant = $product->variants()->create([
-                    'sku' => $this->buildSku($skuPrefix, $combination),
+                    'sku' => $this->buildSku($skuPrefix, $terms),
                     'price' => $defaultPrice,
                     'stock' => $defaultStock,
                     'status' => VariantStatus::Active,
                 ]);
 
-                foreach ($combination as $attributeName => $value) {
-                    $variant->attributeValues()->create([
-                        'attribute_name' => $attributeName,
-                        'value' => $value,
-                    ]);
-                }
+                $variant->attributeTerms()->sync($termIds);
 
                 $created->push($variant);
             }
@@ -73,19 +77,19 @@ class GenerateProductVariants
     }
 
     /**
-     * @param  array<string, array<int, string>>  $attributeGroups
-     * @return array<int, array<string, string>>
+     * @param  array<int, array<int, int>>  $termGroups
+     * @return array<int, array<int, int>>
      */
-    private function cartesianProduct(array $attributeGroups): array
+    private function cartesianProduct(array $termGroups): array
     {
         $combinations = [[]];
 
-        foreach ($attributeGroups as $attributeName => $values) {
+        foreach ($termGroups as $termIds) {
             $next = [];
 
             foreach ($combinations as $combination) {
-                foreach ($values as $value) {
-                    $next[] = [...$combination, $attributeName => $value];
+                foreach ($termIds as $termId) {
+                    $next[] = [...$combination, $termId];
                 }
             }
 
@@ -98,32 +102,32 @@ class GenerateProductVariants
     /**
      * @return Collection<int, string>
      */
-    private function existingAttributeCombinations(Product $product): Collection
+    private function existingTermCombinations(Product $product): Collection
     {
         return $product->variants()
-            ->with('attributeValues')
+            ->with('attributeTerms')
             ->get()
             ->map(fn (ProductVariant $variant): string => $this->combinationKey(
-                $variant->attributeValues->pluck('value', 'attribute_name')->all(),
+                $variant->attributeTerms->pluck('id')->all(),
             ));
     }
 
     /**
-     * @param  array<string, string>  $combination
+     * @param  array<int, int>  $termIds
      */
-    private function combinationKey(array $combination): string
+    private function combinationKey(array $termIds): string
     {
-        ksort($combination);
+        sort($termIds);
 
-        return collect($combination)->map(fn (string $value, string $name): string => "{$name}:{$value}")->implode('|');
+        return implode('|', $termIds);
     }
 
     /**
-     * @param  array<string, string>  $combination
+     * @param  Collection<int, AttributeTerm>  $terms
      */
-    private function buildSku(string $skuPrefix, array $combination): string
+    private function buildSku(string $skuPrefix, Collection $terms): string
     {
-        $suffix = collect($combination)->map(fn (string $value): string => str($value)->slug()->upper()->toString())->implode('-');
+        $suffix = $terms->map(fn (AttributeTerm $term): string => str($term->value)->slug()->upper()->toString())->implode('-');
 
         return str($skuPrefix)->slug()->upper()->toString()."-{$suffix}";
     }

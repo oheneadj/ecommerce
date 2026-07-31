@@ -26,7 +26,6 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
@@ -188,9 +187,13 @@ class VariantsRelationManager extends RelationManager
     }
 
     /**
-     * Bulk-creates every combination across a set of attributes (e.g. Size ×
-     * Color) instead of adding each variant by hand — a shirt in 3 sizes and
-     * 3 colors becomes one form submission instead of 9.
+     * Bulk-creates every combination across a set of the product's enabled
+     * global attributes (e.g. Size × Color) instead of adding each variant
+     * by hand — a shirt in 3 sizes and 3 colors becomes one form submission
+     * instead of 9. Only offers attributes/terms from the global catalog
+     * (Product::attributes()) — there's no bulk equivalent for the
+     * free-typed "Custom attributes" path, same as WooCommerce's own
+     * variation generator.
      */
     private function generateVariantsAction(): Action
     {
@@ -202,23 +205,37 @@ class VariantsRelationManager extends RelationManager
                 Repeater::make('attributeGroups')
                     ->label('Attributes')
                     ->schema([
-                        TextInput::make('name')
+                        Select::make('attribute_id')
                             ->label('Attribute')
-                            ->placeholder('e.g. Size')
-                            ->required()
-                            ->maxLength(255),
+                            ->options(function (): array {
+                                /** @var Product $product */
+                                $product = $this->getOwnerRecord();
 
-                        TagsInput::make('values')
-                            ->label('Values')
-                            ->placeholder('Type a value and press Enter')
+                                return $product->attributes()->pluck('attributes.name', 'attributes.id')->all();
+                            })
+                            ->live()
                             ->required(),
+
+                        Select::make('term_ids')
+                            ->label('Values')
+                            ->multiple()
+                            ->required()
+                            ->options(function (callable $get): array {
+                                $attributeId = $get('attribute_id');
+
+                                if (blank($attributeId)) {
+                                    return [];
+                                }
+
+                                return AttributeTerm::query()->where('attribute_id', $attributeId)->pluck('value', 'id')->all();
+                            }),
                     ])
                     ->columns(2)
                     ->minItems(1)
                     ->required()
                     ->addActionLabel('Add attribute')
                     ->addAction(fn (Action $action) => $action->color('primary'))
-                    ->helperText('e.g. Size: L, M, XL and Color: White, Blue, Black generates every combination (9 variants).')
+                    ->helperText('e.g. Size: L, M, XL and Color: White, Blue, Black generates every combination (9 variants). Enable attributes on the product first if none are listed.')
                     ->columnSpanFull(),
 
                 TextInput::make('sku_prefix')
@@ -251,22 +268,23 @@ class VariantsRelationManager extends RelationManager
                 /** @var Product $product */
                 $product = $this->getOwnerRecord();
 
-                /** @var array<int, array{name: string, values: array<int, string>}> $attributeGroupInputs */
+                /** @var array<int, array{attribute_id: int, term_ids: array<int, int>}> $attributeGroupInputs */
                 $attributeGroupInputs = $data['attributeGroups'];
 
-                $attributeGroups = collect($attributeGroupInputs)
-                    ->mapWithKeys(fn (array $group): array => [$group['name'] => $group['values']])
+                $termGroups = collect($attributeGroupInputs)
+                    ->map(fn (array $group): array => array_map('intval', $group['term_ids']))
+                    ->values()
                     ->all();
 
                 $created = GenerateProductVariants::run(
                     $product,
-                    $attributeGroups,
+                    $termGroups,
                     (int) $data['price'],
                     (int) $data['stock'],
                     $data['sku_prefix'],
                 );
 
-                $combinationCount = collect($attributeGroups)->map(fn (array $values): int => count($values))->reduce(fn (int $carry, int $count): int => $carry * $count, 1);
+                $combinationCount = collect($termGroups)->map(fn (array $ids): int => count($ids))->reduce(fn (int $carry, int $count): int => $carry * $count, 1);
                 $skipped = $combinationCount - $created->count();
 
                 Notification::make()

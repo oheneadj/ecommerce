@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
@@ -77,6 +78,18 @@ class ProductVariant extends Model
     public function attributeValues(): HasMany
     {
         return $this->hasMany(AttributeValue::class);
+    }
+
+    /**
+     * This variant's selected terms from the product's global attributes
+     * (e.g. Size: Large, Color: Red) — the reusable-catalog counterpart to
+     * attributeValues()'s free-typed custom values.
+     *
+     * @return BelongsToMany<AttributeTerm, $this>
+     */
+    public function attributeTerms(): BelongsToMany
+    {
+        return $this->belongsToMany(AttributeTerm::class, 'product_variant_attribute_term');
     }
 
     /**

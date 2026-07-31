@@ -6,6 +6,7 @@ namespace App\Filament\Resources\Products\Schemas;
 
 use App\Enums\ProductStatus;
 use App\Enums\VariantStatus;
+use App\Models\AttributeTerm;
 use App\Models\Brand;
 use App\Models\Category;
 use Filament\Actions\Action;
@@ -78,6 +79,18 @@ class ProductForm
                             ]),
                     ]),
 
+                Section::make('Attributes')
+                    ->schema([
+                        Select::make('attributes')
+                            ->label('Attributes')
+                            ->relationship('attributes', 'name')
+                            ->multiple()
+                            ->live()
+                            ->preload()
+                            ->searchable()
+                            ->helperText('Enable the global attributes (e.g. Size, Color) this product uses — variant attribute values below are picked from any existing attribute, and the Variants tab (after creating) scopes the picker to just these.'),
+                    ]),
+
                 Section::make('Variants')
                     ->schema([
                         Repeater::make('variants')
@@ -110,8 +123,21 @@ class ProductForm
                                     ->required()
                                     ->default(VariantStatus::Active),
 
+                                Select::make('attribute_term_ids')
+                                    ->label('Attribute values')
+                                    ->multiple()
+                                    ->preload()
+                                    ->searchable()
+                                    ->options(fn (): array => AttributeTerm::query()
+                                        ->with('attribute')
+                                        ->get()
+                                        ->mapWithKeys(fn (AttributeTerm $term): array => [$term->id => "{$term->attribute->name}: {$term->value}"])
+                                        ->all())
+                                    ->helperText('Pick from an attribute\'s existing values — no retyping needed. Fine-tune which attributes this product actually uses via the Variants tab after creating it.')
+                                    ->columnSpanFull(),
+
                                 Repeater::make('attributeValues')
-                                    ->label('Attributes')
+                                    ->label('Custom attributes')
                                     ->schema([
                                         TextInput::make('attribute_name')
                                             ->label('Name')
@@ -128,7 +154,7 @@ class ProductForm
                                     ->defaultItems(0)
                                     ->addActionLabel('Add attribute')
                                     ->addAction(fn (Action $action) => $action->color('primary'))
-                                    ->helperText('Free-form — a variant can mix any attributes it needs (e.g. both Size and Color).')
+                                    ->helperText('Free-typed, one-off values that aren\'t worth adding to the reusable Attributes catalog.')
                                     ->columnSpanFull(),
                             ])
                             ->columns(4)

@@ -26,7 +26,8 @@ class CreateProduct
     /**
      * @param  array<string, mixed>  $productData
      * @param  array<int, array<string, mixed>>  $variants  each entry: sku, price, stock, status?, low_stock_threshold?,
-     *                                                      attributeValues?: array<int, array{attribute_name: string, value: string}>
+     *                                                      attribute_term_ids?: array<int, int> (global attribute values),
+     *                                                      attributeValues?: array<int, array{attribute_name: string, value: string}> (custom/local values)
      *
      * @throws ProductRequiresVariantException when creating with status Active and no variants
      */
@@ -44,9 +45,14 @@ class CreateProduct
 
             foreach ($variants as $variantData) {
                 $attributeValues = $variantData['attributeValues'] ?? [];
-                unset($variantData['attributeValues']);
+                $attributeTermIds = $variantData['attribute_term_ids'] ?? [];
+                unset($variantData['attributeValues'], $variantData['attribute_term_ids']);
 
                 $variant = $product->variants()->create($variantData);
+
+                if ($attributeTermIds !== []) {
+                    $variant->attributeTerms()->sync($attributeTermIds);
+                }
 
                 foreach ($attributeValues as $attributeValue) {
                     if (blank($attributeValue['attribute_name'] ?? null) || blank($attributeValue['value'] ?? null)) {
@@ -60,7 +66,7 @@ class CreateProduct
                 }
             }
 
-            return $product->load('variants.attributeValues');
+            return $product->load('variants.attributeValues', 'variants.attributeTerms');
         });
     }
 }

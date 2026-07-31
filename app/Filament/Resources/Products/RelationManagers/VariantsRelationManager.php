@@ -10,6 +10,7 @@ use App\Actions\Catalog\DeleteProductVariant;
 use App\Actions\Catalog\GenerateProductVariants;
 use App\Actions\Inventory\AdjustStockWithReservationCheck;
 use App\Enums\VariantStatus;
+use App\Models\AttributeTerm;
 use App\Models\AttributeValue;
 use App\Models\Product;
 use App\Models\ProductImage;
@@ -37,6 +38,7 @@ use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 
@@ -75,8 +77,27 @@ class VariantsRelationManager extends RelationManager
                     ->required()
                     ->default(VariantStatus::Active),
 
+                Select::make('attributeTerms')
+                    ->label('Attribute values')
+                    ->relationship(
+                        'attributeTerms',
+                        'value',
+                        modifyQueryUsing: function (Builder $query): Builder {
+                            /** @var Product $product */
+                            $product = $this->getOwnerRecord();
+
+                            return $query->whereIn('attribute_id', $product->attributes()->pluck('attributes.id'));
+                        },
+                    )
+                    ->getOptionLabelFromRecordUsing(fn (AttributeTerm $term): string => "{$term->attribute->name}: {$term->value}")
+                    ->multiple()
+                    ->preload()
+                    ->searchable()
+                    ->helperText('Pick from the values enabled on this product\'s Attributes — no retyping needed.')
+                    ->columnSpanFull(),
+
                 Repeater::make('attributeValues')
-                    ->label('Attributes')
+                    ->label('Custom attributes')
                     ->relationship()
                     ->schema([
                         TextInput::make('attribute_name')
@@ -114,11 +135,17 @@ class VariantsRelationManager extends RelationManager
                     ->weight(fn (ProductVariant $record): ?string => $record->isLowStock() ? 'bold' : null),
                 TextColumn::make('status')
                     ->badge(),
-                TextColumn::make('attributeValues')
+                TextColumn::make('attributeTerms')
                     ->label('Attributes')
-                    ->state(fn (ProductVariant $record): string => $record->attributeValues
-                        ->map(fn (AttributeValue $attributeValue): string => "{$attributeValue->attribute_name}: {$attributeValue->value}")
-                        ->implode(', '))
+                    ->state(function (ProductVariant $record): string {
+                        $terms = $record->attributeTerms
+                            ->map(fn (AttributeTerm $term): string => "{$term->attribute->name}: {$term->value}");
+
+                        $custom = $record->attributeValues
+                            ->map(fn (AttributeValue $attributeValue): string => "{$attributeValue->attribute_name}: {$attributeValue->value}");
+
+                        return $terms->concat($custom)->implode(', ');
+                    })
                     ->placeholder('—'),
                 TextColumn::make('images_count')
                     ->label('Images')

@@ -234,6 +234,45 @@ class PaymentTest extends TestCase
         ProcessRefund::run($payment, 500);
     }
 
+    public function test_repeated_refunds_cannot_cumulatively_exceed_the_payment_amount(): void
+    {
+        // Same shape as the stock/coupon concurrency tests elsewhere in this
+        // suite — proves the cap is enforced against the running total,
+        // including refunds already claimed by earlier calls, not just the
+        // original request in isolation.
+        $payment = Payment::factory()->create(['provider' => 'fake', 'amount' => 1000, 'status' => PaymentStatus::Success]);
+
+        $succeeded = 0;
+        $rejected = 0;
+
+        for ($i = 0; $i < 5; $i++) {
+            try {
+                ProcessRefund::run($payment, 250);
+                $succeeded++;
+            } catch (RefundExceedsPaymentException) {
+                $rejected++;
+            }
+        }
+
+        $this->assertSame(4, $succeeded);
+        $this->assertSame(1, $rejected);
+        $this->assertSame(1000, $payment->refunds()->where('status', RefundStatus::Success)->sum('amount'));
+    }
+
+    public function test_a_pending_refund_counts_against_the_cap_before_the_gateway_confirms(): void
+    {
+        // The reservation (Pending Refund row) is what closes the race, not
+        // the eventual Success/Failed status — a refund that's merely
+        // in-flight must already block a second refund from over-claiming
+        // the same balance.
+        $payment = Payment::factory()->create(['provider' => 'fake', 'amount' => 1000, 'status' => PaymentStatus::Success]);
+        $payment->refunds()->create(['amount' => 700, 'status' => RefundStatus::Pending]);
+
+        $this->expectException(RefundExceedsPaymentException::class);
+
+        ProcessRefund::run($payment, 400);
+    }
+
     public function test_refund_restores_stock_via_movement(): void
     {
         $order = $this->orderWithReservedItem(stock: 10, quantity: 4);

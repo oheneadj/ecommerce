@@ -72,6 +72,7 @@ class PaymentsTable
             ->label('Issue refund')
             ->button()
             ->visible(fn (Payment $record) => $record->status === PaymentStatus::Success)
+            ->authorize(fn (Payment $record): bool => Auth::user()?->can('update', $record) ?? false)
             ->schema([
                 MoneyInput::make('amount')
                     ->label('Amount')

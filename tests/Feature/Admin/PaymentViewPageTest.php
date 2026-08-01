@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Enums\PaymentStatus;
 use App\Enums\UserRole;
 use App\Filament\Resources\Payments\Pages\ListPayments;
 use App\Filament\Resources\Payments\Pages\ViewPayment;
@@ -17,7 +18,9 @@ use App\Filament\Resources\Payments\RelationManagers\ApiLogsRelationManager;
 use App\Models\Payment;
 use App\Models\PaymentApiLog;
 use App\Models\User;
+use App\Policies\PaymentPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -110,5 +113,39 @@ class PaymentViewPageTest extends TestCase
         Livewire::test(ApiLogsRelationManager::class, ['ownerRecord' => $payment, 'pageClass' => ViewPayment::class])
             ->mountTableAction('viewPayload', $log)
             ->assertSuccessful();
+    }
+
+    /**
+     * The "Issue refund" action must actually consult PaymentPolicy::update()
+     * — not just be reachable by anyone who can view the Payments list.
+     * PaymentPolicy currently defines update() identically to viewAny(), so
+     * there's no real role today that passes one and fails the other; this
+     * swaps in a policy that denies update() specifically to prove the
+     * action's own ->authorize() call is what's actually gating it, not
+     * incidental visibility from ->visible().
+     */
+    public function test_the_refund_action_is_hidden_when_the_policy_denies_update(): void
+    {
+        $this->actingAs($this->staff(UserRole::Admin));
+
+        $payment = Payment::factory()->create(['status' => PaymentStatus::Success]);
+
+        Gate::policy(Payment::class, DenyUpdatePaymentPolicy::class);
+
+        Livewire::test(ListPayments::class)
+            ->assertTableActionHidden('refund', $payment);
+    }
+}
+
+/**
+ * A test-only stand-in for PaymentPolicy that denies `update` specifically,
+ * used to prove the refund action's ->authorize() call actually consults
+ * the policy rather than just relying on ->visible().
+ */
+class DenyUpdatePaymentPolicy extends PaymentPolicy
+{
+    public function update(User $user, Payment $payment): bool
+    {
+        return false;
     }
 }

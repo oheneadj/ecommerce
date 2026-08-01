@@ -23,20 +23,26 @@ use Illuminate\Support\Facades\DB;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
- * A plain `DB::transaction()` — no locking at this Action's own level; the
- * locking happens inside the nested ReserveStockForOrder/ApplyCouponToOrder
- * calls it makes (AGENTS.md Section 4a). Writes: Order + OrderItem rows
- * (with `item_snapshot`) + StockReservation + CouponUsage.
+ * The Cart row is locked for the duration of the transaction — a cart
+ * converts into at most one order (`orders.cart_id` is unique), and the
+ * existing-order check by itself is a check-then-write race: two
+ * simultaneous checkout submissions for the same cart (double-click,
+ * back-button resubmit) could both read no existing order and both try to
+ * create one, with the second hitting a raw unique-constraint violation
+ * instead of gracefully returning the first one's result. Locking the
+ * cart row and re-checking inside the lock serializes the two attempts,
+ * so the second always sees the first's already-created order.
+ *
+ * The rest of the locking happens inside the nested
+ * ReserveStockForOrder/ApplyCouponToOrder calls this Action makes
+ * (AGENTS.md Section 4a). Writes: Order + OrderItem rows (with
+ * `item_snapshot`) + StockReservation + CouponUsage.
  *
  * Price is always read from the variant's *current* state at this moment,
  * never from whatever was true when the item was added to the cart — the
  * cart never locks in a price (BRD Principle 8). `item_snapshot` then
  * permanently freezes that same data on the OrderItem so a later product
  * edit/archive/delete can never change how a past order displays.
- *
- * A cart converts into at most one order — `orders.cart_id` is unique, so a
- * duplicate checkout submission (double-click, back-button resubmit)
- * returns the already-created order instead of creating a second one.
  *
  * A guest order's `user_id` is never set from a matching `guest_email` —
  * that would silently attach someone else's order to an account on a
@@ -60,19 +66,21 @@ class CreateOrderFromCart
         ?string $guestPhone = null,
         ?string $couponCode = null,
     ): Order {
-        $existing = $cart->order;
+        return DB::transaction(function () use ($cart, $address, $guestEmail, $guestPhone, $couponCode): Order {
+            $lockedCart = Cart::query()->whereKey($cart->id)->lockForUpdate()->firstOrFail();
 
-        if ($existing !== null) {
-            return $existing;
-        }
+            $existing = $lockedCart->order;
 
-        $items = $cart->items()->with('productVariant.product.brand', 'productVariant.attributeValues', 'productVariant.images', 'productVariant.product.images')->get();
+            if ($existing !== null) {
+                return $existing;
+            }
 
-        if ($items->isEmpty()) {
-            throw new EmptyCartException;
-        }
+            $items = $cart->items()->with('productVariant.product.brand', 'productVariant.attributeValues', 'productVariant.images', 'productVariant.product.images')->get();
 
-        return DB::transaction(function () use ($cart, $address, $guestEmail, $guestPhone, $couponCode, $items): Order {
+            if ($items->isEmpty()) {
+                throw new EmptyCartException;
+            }
+
             $subtotal = $items->sum(fn ($item) => $item->productVariant->price * $item->quantity);
 
             $order = Order::query()->create([

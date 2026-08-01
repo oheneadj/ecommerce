@@ -18,6 +18,7 @@
         >
             @foreach (['light' => ['sun', __('Light')], 'dark' => ['moon', __('Dark')], 'system' => ['computer-desktop', __('System')]] as $value => [$icon, $label])
                 <button
+                    wire:key="appearance-option-{{ $value }}"
                     type="button"
                     x-on:click="apply('{{ $value }}')"
                     x-bind:class="appearance === '{{ $value }}' ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-600 dark:text-zinc-300'"

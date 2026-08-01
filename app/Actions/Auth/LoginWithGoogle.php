@@ -15,9 +15,13 @@ use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
  * Google always returns a verified email, so it's safe to auto-link to an
- * existing account on email match (unlike an unverified match). If no
- * account matches, a new one is created with `google_id` and
- * `email_verified_at` trusted directly from Google's response.
+ * existing account on email match (unlike an unverified match) — but only
+ * when Google's own `email_verified` claim actually confirms it (virtually
+ * always true for standard OAuth, but checked explicitly rather than
+ * assumed, since trusting an unverified claim here would open the same
+ * account-linking risk this rule exists to prevent). If no account
+ * matches, a new one is created with `google_id`, and `email_verified_at`
+ * is only trusted from Google's response when that claim holds.
  */
 class LoginWithGoogle
 {
@@ -25,9 +29,11 @@ class LoginWithGoogle
 
     public function handle(SocialiteUser $googleUser): User
     {
+        $emailVerifiedByGoogle = ($googleUser->user['email_verified'] ?? true) !== false;
+
         $user = User::query()->where('google_id', $googleUser->getId())->first();
 
-        if (! $user) {
+        if (! $user && $emailVerifiedByGoogle) {
             $user = User::query()->where('email', $googleUser->getEmail())->first();
         }
 
@@ -36,17 +42,26 @@ class LoginWithGoogle
                 $user->forceFill(['google_id' => $googleUser->getId()])->save();
             }
 
-            if ($user->email_verified_at === null) {
+            if ($user->email_verified_at === null && $emailVerifiedByGoogle) {
                 $user->forceFill(['email_verified_at' => now()])->save();
             }
         } else {
+            // An unverified claim can't be trusted to auto-link, but the
+            // email column is still globally unique — if it's already
+            // claimed by another account, this new (unlinked) account is
+            // created without it rather than crashing on the constraint.
+            $emailAlreadyTaken = $googleUser->getEmail() !== null
+                && User::query()->where('email', $googleUser->getEmail())->exists();
+
             $user = User::query()->create([
                 'name' => $googleUser->getName(),
-                'email' => $googleUser->getEmail(),
+                'email' => ($emailVerifiedByGoogle || ! $emailAlreadyTaken) ? $googleUser->getEmail() : null,
                 'google_id' => $googleUser->getId(),
             ]);
 
-            $user->forceFill(['email_verified_at' => now()])->save();
+            if ($emailVerifiedByGoogle) {
+                $user->forceFill(['email_verified_at' => now()])->save();
+            }
         }
 
         Auth::login($user, remember: true);

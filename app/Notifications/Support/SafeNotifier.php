@@ -34,10 +34,21 @@ class SafeNotifier
         try {
             NotificationFacade::send($notifiable, $notification);
         } catch (Throwable $e) {
+            // The exception message itself is never logged here — an
+            // underlying mail/SMS transport SDK could in principle embed a
+            // credential or token in its own exception text, and this
+            // project's own rule against logging sensitive data explicitly
+            // rejects redaction as unreliable, so the safest option is to
+            // simply not put the raw message in a file log at all. The
+            // exception class name is enough to identify the failure mode;
+            // report() still routes full detail to whatever error-tracking
+            // service is configured, which is designed to handle this safely.
             Log::warning('Notification delivery failed', [
                 'notification' => $notification::class,
-                'error' => $e->getMessage(),
+                'exception_class' => $e::class,
             ]);
+
+            report($e);
         }
     }
 }

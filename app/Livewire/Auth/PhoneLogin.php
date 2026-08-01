@@ -13,6 +13,7 @@ use App\Actions\Auth\VerifyOtp;
 use App\Exceptions\InvalidOtpException;
 use App\Exceptions\OtpRateLimitedException;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\View\View;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -38,7 +39,7 @@ class PhoneLogin extends Component
         $this->validate(['phone' => ['required', 'string', 'min:9']]);
 
         try {
-            RequestOtp::run($this->phone);
+            RequestOtp::run($this->phone, request()->ip());
         } catch (OtpRateLimitedException $e) {
             $this->addError('phone', $e->getMessage());
 
@@ -66,7 +67,7 @@ class PhoneLogin extends Component
         $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
     }
 
-    public function render(): \Illuminate\View\View
+    public function render(): View
     {
         return view('livewire.auth.phone-login');
     }

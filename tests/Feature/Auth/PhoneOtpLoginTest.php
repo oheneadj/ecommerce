@@ -54,6 +54,37 @@ class PhoneOtpLoginTest extends TestCase
         RequestOtp::run('+233201234567');
     }
 
+    public function test_rotating_phone_numbers_from_the_same_ip_is_still_rate_limited(): void
+    {
+        // The per-phone limit alone doesn't stop an attacker driving
+        // unlimited paid SMS sends by rotating through different phone
+        // numbers from a single source — each fresh number has its own
+        // clean per-phone counter.
+        $this->fakeSmsGateway();
+
+        for ($i = 0; $i < 30; $i++) {
+            RequestOtp::run('+23320000'.str_pad((string) $i, 4, '0', STR_PAD_LEFT), '10.0.0.1');
+        }
+
+        $this->expectException(OtpRateLimitedException::class);
+
+        RequestOtp::run('+233209999999', '10.0.0.1');
+    }
+
+    public function test_a_different_ip_is_not_affected_by_another_ips_otp_requests(): void
+    {
+        $this->fakeSmsGateway();
+
+        for ($i = 0; $i < 30; $i++) {
+            RequestOtp::run('+23320000'.str_pad((string) $i, 4, '0', STR_PAD_LEFT), '10.0.0.1');
+        }
+
+        // A different IP requesting a brand-new phone number is unaffected.
+        RequestOtp::run('+233208888888', '10.0.0.2');
+
+        $this->assertNotNull(OtpCode::query()->where('identifier', '+233208888888')->first());
+    }
+
     public function test_verifying_a_new_phone_number_creates_and_logs_in_a_new_user(): void
     {
         $otp = OtpCode::query()->create([

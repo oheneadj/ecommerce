@@ -69,6 +69,7 @@
                     >
                         @foreach($recoveryCodes as $code)
                             <div
+                                wire:key="recovery-code-{{ $code }}"
                                 role="listitem"
                                 class="select-text"
                                 wire:loading.class="opacity-50 animate-pulse"

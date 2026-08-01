@@ -13,11 +13,15 @@ namespace Tests\Feature\Payment;
 
 use App\Actions\Payment\HandlePaymentWebhook;
 use App\Actions\Payment\ProcessRefund;
+use App\Actions\Payment\SettlePaymentSuccess;
 use App\Actions\Payment\VerifyPendingPayments;
+use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\RefundStatus;
+use App\Jobs\GenerateOrderInvoicePdf;
 use App\Jobs\IssueProviderRefund;
 use App\Jobs\VerifyPaymentWithGateway;
+use App\Models\Order;
 use App\Models\Payment;
 use App\Models\WebhookEvent;
 use App\Payments\PaymentManager;
@@ -105,5 +109,27 @@ class PaymentJobQueueingTest extends TestCase
         $this->assertSame(30, $job->timeout);
         $this->assertSame([10, 30, 60], $job->backoff);
         $this->assertSame('external-api', $job->queue);
+    }
+
+    public function test_settling_a_successful_payment_dispatches_invoice_generation_instead_of_generating_it_inline(): void
+    {
+        Queue::fake();
+
+        $order = Order::factory()->create(['status' => OrderStatus::Pending]);
+        $payment = Payment::factory()->create(['order_id' => $order->id, 'provider' => 'fake', 'status' => PaymentStatus::Pending]);
+
+        SettlePaymentSuccess::run($payment);
+
+        Queue::assertPushed(GenerateOrderInvoicePdf::class);
+    }
+
+    public function test_generate_order_invoice_pdf_job_declares_retry_and_timeout_hygiene(): void
+    {
+        $job = new GenerateOrderInvoicePdf(1);
+
+        $this->assertSame(3, $job->tries);
+        $this->assertSame(60, $job->timeout);
+        $this->assertSame([10, 30, 60], $job->backoff);
+        $this->assertSame('processing', $job->queue);
     }
 }

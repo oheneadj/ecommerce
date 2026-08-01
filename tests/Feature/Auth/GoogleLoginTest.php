@@ -59,4 +59,21 @@ class GoogleLoginTest extends TestCase
 
         $this->assertSame($existing->id, $user->id);
     }
+
+    public function test_a_google_account_with_an_unverified_email_does_not_auto_link_to_an_existing_account(): void
+    {
+        $existing = User::factory()->create(['email' => 'jane@example.com', 'google_id' => null]);
+
+        $googleUser = $this->fakeGoogleUser('google-123', 'jane@example.com');
+        $googleUser->setRaw(['email_verified' => false]);
+
+        $user = LoginWithGoogle::run($googleUser);
+
+        $this->assertNotSame($existing->id, $user->id);
+        $this->assertNull($user->email_verified_at);
+        // The email column is unique — since it can't be trusted to link,
+        // and it's already claimed by $existing, the new account is
+        // created without it rather than crashing on the constraint.
+        $this->assertNull($user->email);
+    }
 }

@@ -9,12 +9,12 @@ declare(strict_types=1);
 namespace App\Actions\Payment;
 
 use App\Actions\Inventory\RecordStockMovement;
-use App\Actions\Order\GenerateOrderInvoice;
 use App\Actions\Order\UpdateOrderStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\StockMovementType;
 use App\Enums\StockReservationStatus;
+use App\Jobs\GenerateOrderInvoicePdf;
 use App\Models\Payment;
 use App\Models\StockReservation;
 use App\Notifications\PaymentSucceeded;
@@ -29,8 +29,9 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * stock reservation is still active, fulfillment proceeds directly
  * (transaction-only, no lock — AGENTS.md §4a); if any reservation has
  * already expired/released, control passes to HandleLatePaymentConfirmation.
- * The PDF receipt is generated only after the transaction commits (BRD
- * E6.4) — file I/O has no place inside a DB transaction.
+ * The PDF receipt is dispatched to a queued job only after the transaction
+ * commits (BRD E6.4) — file I/O has no place inside a DB transaction, nor
+ * blocking the webhook/console process that confirmed the payment.
  */
 class SettlePaymentSuccess
 {
@@ -78,7 +79,7 @@ class SettlePaymentSuccess
             UpdateOrderStatus::run($order, OrderStatus::Paid, note: 'Payment confirmed.');
 
             DB::afterCommit(function () use ($order): void {
-                GenerateOrderInvoice::run($order);
+                GenerateOrderInvoicePdf::dispatch($order->id);
                 SafeNotifier::send(OrderRecipient::for($order), new PaymentSucceeded($order));
             });
         });

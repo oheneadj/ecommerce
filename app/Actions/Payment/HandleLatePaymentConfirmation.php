@@ -9,12 +9,12 @@ declare(strict_types=1);
 namespace App\Actions\Payment;
 
 use App\Actions\Inventory\RecordStockMovement;
-use App\Actions\Order\GenerateOrderInvoice;
 use App\Actions\Order\UpdateOrderStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\StockMovementType;
 use App\Enums\StockReservationStatus;
+use App\Jobs\GenerateOrderInvoicePdf;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\StockReservation;
@@ -83,7 +83,7 @@ class HandleLatePaymentConfirmation
 
             $updated = UpdateOrderStatus::run($order, OrderStatus::Paid, note: 'Payment confirmed after reservation expired; stock was still available.');
 
-            DB::afterCommit(fn () => GenerateOrderInvoice::run($order));
+            DB::afterCommit(fn () => GenerateOrderInvoicePdf::dispatch($order->id));
 
             return $updated;
         });

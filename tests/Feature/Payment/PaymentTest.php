@@ -283,7 +283,13 @@ class PaymentTest extends TestCase
 
         $refund = ProcessRefund::run($payment, 2000);
 
-        $this->assertSame(RefundStatus::Success, $refund->status);
+        // ProcessRefund only reserves the refund and dispatches the gateway
+        // call (IssueProviderRefund) — under the sync queue driver used in
+        // tests it's already run by this point, but the returned $refund
+        // instance itself is the one ProcessRefund built before dispatch,
+        // so its in-memory status is still Pending; re-fetch for the result.
+        $this->assertSame(RefundStatus::Pending, $refund->status);
+        $this->assertSame(RefundStatus::Success, $refund->fresh()->status);
         $this->assertSame(10, $variant->fresh()->stock);
         $this->assertDatabaseHas('stock_movements', [
             'product_variant_id' => $variant->id,

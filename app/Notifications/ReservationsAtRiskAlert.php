@@ -31,7 +31,9 @@ class ReservationsAtRiskAlert extends Notification implements ShouldQueue
     public function __construct(
         private readonly ProductVariant $variant,
         private readonly array $reservationIds,
-    ) {}
+    ) {
+        $this->onQueue('notifications');
+    }
 
     /**
      * @return array<int, string>

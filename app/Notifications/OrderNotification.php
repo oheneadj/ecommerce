@@ -39,7 +39,9 @@ abstract class OrderNotification extends Notification implements ShouldQueue
 
     public function __construct(
         protected readonly Order $order,
-    ) {}
+    ) {
+        $this->onQueue('notifications');
+    }
 
     /**
      * @return array<int, string>

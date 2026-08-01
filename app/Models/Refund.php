@@ -28,7 +28,7 @@ use Illuminate\Support\Carbon;
  * @property string $ulid
  * @property int $payment_id
  * @property int $amount
- * @property string $status
+ * @property RefundStatus $status
  * @property string|null $provider_refund_reference
  * @property string|null $reason
  * @property Carbon|null $created_at

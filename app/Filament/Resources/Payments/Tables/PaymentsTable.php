@@ -85,7 +85,10 @@ class PaymentsTable
                 try {
                     ProcessRefund::run($record, (int) $data['amount'], $data['reason'] ?? null);
 
-                    Notification::make()->title('Refund processed')->success()->send();
+                    // The gateway call itself is queued (IssueProviderRefund) —
+                    // this only confirms the refund was accepted and reserved
+                    // against the payment's balance, not that it's settled yet.
+                    Notification::make()->title('Refund queued')->body('It will be processed shortly — check the Refunds tab for its final status.')->success()->send();
                 } catch (RefundExceedsPaymentException $e) {
                     Notification::make()->title('Refund failed')->body($e->getMessage())->danger()->send();
                 }

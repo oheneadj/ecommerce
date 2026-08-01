@@ -10,9 +10,8 @@ declare(strict_types=1);
 namespace App\Actions\Payment;
 
 use App\Enums\PaymentStatus;
+use App\Jobs\VerifyPaymentWithGateway;
 use App\Models\Payment;
-use App\Models\PaymentApiLog;
-use App\Payments\PaymentManager;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
@@ -20,10 +19,12 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * beyond a grace period, so a payment that's merely a few seconds old
  * (webhook likely still in flight) isn't polled unnecessarily.
  *
- * Funnels through the exact same status-update logic as
- * HandlePaymentWebhook's success/late-confirmation handling, so whichever
- * of polling or webhook arrives first "wins" and neither double-processes
- * — enforced by the same `payment->status !== Pending` guard.
+ * Each verification is dispatched to VerifyPaymentWithGateway rather than
+ * made inline here — the same job the webhook path uses, so a slow/flaky
+ * provider on one payment never delays checking the rest of the sweep,
+ * and whichever of polling or webhook settles a payment first still wins
+ * (enforced inside the job itself via the same `payment->status !==
+ * Pending` guard).
  */
 class VerifyPendingPayments
 {
@@ -31,55 +32,18 @@ class VerifyPendingPayments
 
     private const GRACE_PERIOD_MINUTES = 2;
 
-    public function __construct(
-        private readonly PaymentManager $payments,
-    ) {}
-
     public function handle(): int
     {
         $pending = Payment::query()
             ->where('status', PaymentStatus::Pending)
+            ->whereNotNull('provider_reference')
             ->where('created_at', '<', now()->subMinutes(self::GRACE_PERIOD_MINUTES))
             ->get();
 
         foreach ($pending as $payment) {
-            $this->verifyOne($payment);
+            VerifyPaymentWithGateway::dispatch($payment->id);
         }
 
         return $pending->count();
-    }
-
-    private function verifyOne(Payment $payment): void
-    {
-        if ($payment->provider_reference === null) {
-            return;
-        }
-
-        $gateway = $this->payments->driver($payment->provider);
-        $result = $gateway->verify($payment->provider_reference);
-
-        PaymentApiLog::query()->create([
-            'order_id' => $payment->order_id,
-            'payment_id' => $payment->id,
-            'provider' => $payment->provider,
-            'action' => 'verify',
-            'request_payload' => ['provider_reference' => $payment->provider_reference],
-            'response_payload' => $result->rawResponse,
-            'status_code' => 200,
-        ]);
-
-        // Re-check status hasn't already been settled by a concurrently
-        // arriving webhook — whichever gets here first wins.
-        $payment->refresh();
-
-        if ($payment->status !== PaymentStatus::Pending) {
-            return;
-        }
-
-        if ($result->status === PaymentStatus::Success) {
-            SettlePaymentSuccess::run($payment);
-        } elseif ($result->status === PaymentStatus::Failed) {
-            MarkPaymentFailed::run($payment);
-        }
     }
 }

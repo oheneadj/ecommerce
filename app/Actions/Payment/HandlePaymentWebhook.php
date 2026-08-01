@@ -8,9 +8,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Payment;
 
-use App\Enums\PaymentStatus;
+use App\Jobs\VerifyPaymentWithGateway;
 use App\Models\Payment;
-use App\Models\PaymentApiLog;
 use App\Models\WebhookEvent;
 use App\Payments\PaymentManager;
 use Illuminate\Http\Request;
@@ -30,9 +29,14 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * bypassed, so a retried delivery never double-fulfills an order.
  *
  * The webhook's own reported status is never trusted directly — the
- * payment is always re-verified server-side via `PaymentGateway::verify()`
- * (critical for Paystack, where a client-side redirect must never be
- * trusted alone).
+ * payment is always re-verified server-side via `PaymentGateway::verify()`.
+ * That verification is dispatched to VerifyPaymentWithGateway rather than
+ * called here — an external gateway call has no place blocking this
+ * synchronous HTTP endpoint (this project's "external API calls must be
+ * queued" convention); marking the event `processed_at` happens right
+ * after dispatch, since receiving-and-queuing this event is itself the
+ * idempotent action, independent of whether the queued verification later
+ * succeeds or fails.
  */
 class HandlePaymentWebhook
 {
@@ -62,34 +66,8 @@ class HandlePaymentWebhook
             ? Payment::query()->where('provider', $provider)->where('provider_reference', $reference)->first()
             : null;
 
-        if ($payment === null) {
-            $event->update(['processed_at' => now()]);
-
-            return;
-        }
-
-        $result = $gateway->verify($reference);
-
-        PaymentApiLog::query()->create([
-            'order_id' => $payment->order_id,
-            'payment_id' => $payment->id,
-            'provider' => $provider,
-            'action' => 'verify',
-            'request_payload' => ['provider_reference' => $reference],
-            'response_payload' => $result->rawResponse,
-            'status_code' => 200,
-        ]);
-
-        if ($payment->status !== PaymentStatus::Pending) {
-            $event->update(['processed_at' => now()]);
-
-            return;
-        }
-
-        if ($result->status === PaymentStatus::Success) {
-            SettlePaymentSuccess::run($payment);
-        } elseif ($result->status === PaymentStatus::Failed) {
-            MarkPaymentFailed::run($payment);
+        if ($payment !== null) {
+            VerifyPaymentWithGateway::dispatch($payment->id);
         }
 
         $event->update(['processed_at' => now()]);

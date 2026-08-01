@@ -73,7 +73,15 @@ Two scheduled jobs are load-bearing. If the scheduler is not actually running, t
 
 Defining a schedule in `routes/console.php` or `Kernel.php` does nothing without this. This is the single most commonly missed step in a new deployment — WooCommerce installations exhibit exactly this failure mode (orders stuck holding stock forever) when cron isn't wired up.
 
-**Queue worker:** must run under a process supervisor (Supervisor or systemd) with automatic restart. A dead queue worker means order confirmations and SMS notifications silently stop sending while the site otherwise appears healthy.
+**Queue worker:** must run under a process supervisor (Supervisor or systemd) with automatic restart. A dead queue worker means order confirmations and SMS notifications silently stop sending, **and payment verification/refunds stop resolving** (they're queued jobs too — `VerifyPaymentWithGateway`, `IssueProviderRefund`), while the site otherwise appears healthy.
+
+Queues are segmented by nature — run a worker covering both, or two separate workers if you want independent scaling/restart:
+
+```
+php artisan queue:work database --queue=external-api,notifications
+```
+
+`external-api` (payment gateway verify/refund calls) and `notifications` (order/payment emails and SMS) are kept separate from Laravel's `default` queue so a slow/flaky provider call never delays a transactional notification, or vice versa.
 
 **Monitoring:** add an uptime/heartbeat check for both the scheduler and the queue worker. Both fail quietly; neither produces a user-visible error until a customer complains.
 

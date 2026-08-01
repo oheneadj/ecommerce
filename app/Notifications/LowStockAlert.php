@@ -26,7 +26,9 @@ class LowStockAlert extends Notification implements ShouldQueue
 
     public function __construct(
         private readonly ProductVariant $variant,
-    ) {}
+    ) {
+        $this->onQueue('notifications');
+    }
 
     /**
      * @return array<int, string>

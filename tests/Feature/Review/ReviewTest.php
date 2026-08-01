@@ -122,6 +122,21 @@ class ReviewTest extends TestCase
         $this->assertSoftDeleted($review);
     }
 
+    public function test_deleting_a_review_frees_its_order_item_for_a_new_review(): void
+    {
+        $user = User::factory()->create();
+        $item = $this->purchasedItem($user);
+        $review = SubmitReview::run($user, $item, 4, 'Body');
+
+        DeleteReview::run($user, $review);
+
+        $this->assertNull($review->fresh()->order_item_id);
+
+        $newReview = SubmitReview::run($user, $item, 5, 'Second attempt');
+
+        $this->assertSame($item->id, $newReview->order_item_id);
+    }
+
     public function test_admin_can_delete_but_not_edit_another_customers_review(): void
     {
         $author = User::factory()->create();

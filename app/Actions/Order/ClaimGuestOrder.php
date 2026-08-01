@@ -34,7 +34,7 @@ class ClaimGuestOrder
             throw new GuestOrderClaimException('This order already belongs to an account.');
         }
 
-        if ($user->email === null || $order->guest_email === null || mb_strtolower($order->guest_email) !== mb_strtolower($user->email)) {
+        if ($user->email === null || $user->email_verified_at === null || $order->guest_email === null || mb_strtolower($order->guest_email) !== mb_strtolower($user->email)) {
             throw new GuestOrderClaimException('This order does not match your account email.');
         }
 

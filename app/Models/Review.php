@@ -20,20 +20,25 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
- * `order_item_id` is proof of purchase — unique, so a customer can only
- * ever have one review per purchased line item. The FK alone doesn't prove
- * the purchase actually completed (a `pending`/`cancelled` order's
- * order_item still exists as a row); `SubmitReview` is what additionally
- * checks the parent order's status, never this model on its own. Only the
- * author may change `rating`/`title`/`body` (via EditReview, which always
- * resets `status` back to `pending`) — `ModerateReview` may only ever
- * change `status`, never the review's content.
+ * `order_item_id` is proof of purchase — unique (among non-deleted rows),
+ * so a customer can only ever have one active review per purchased line
+ * item. The FK alone doesn't prove the purchase actually completed (a
+ * `pending`/`cancelled` order's order_item still exists as a row);
+ * `SubmitReview` is what additionally checks the parent order's status,
+ * never this model on its own. `order_item_id` is nulled out by
+ * `DeleteReview` alongside the soft delete — same "free the unique value
+ * for reuse" rule as `Product`/`ProductVariant`'s slug/SKU mutation, just
+ * applied to a nullable FK instead of a string column; the full attribute
+ * history (including the original `order_item_id`) is still preserved via
+ * activity log. Only the author may change `rating`/`title`/`body` (via
+ * EditReview, which always resets `status` back to `pending`) —
+ * `ModerateReview` may only ever change `status`, never the review's content.
  *
  * @property int $id
  * @property string $ulid
  * @property int $product_id
  * @property int $user_id
- * @property int $order_item_id
+ * @property int|null $order_item_id
  * @property int $rating
  * @property string|null $title
  * @property string $body

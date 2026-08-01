@@ -86,6 +86,20 @@ class OrderFulfillmentTest extends TestCase
         $this->assertSame($user->id, $result->user_id);
     }
 
+    public function test_guest_order_claim_is_rejected_when_the_users_email_is_unverified(): void
+    {
+        // Otherwise a logged-in attacker could change their profile email to
+        // a victim's address (which nulls email_verified_at but doesn't
+        // block using it) and claim the victim's guest order before ever
+        // verifying it.
+        $order = Order::factory()->create(['user_id' => null, 'guest_email' => 'shopper@example.com']);
+        $user = User::factory()->unverified()->create(['email' => 'shopper@example.com']);
+
+        $this->expectException(GuestOrderClaimException::class);
+
+        ClaimGuestOrder::run($order, $user);
+    }
+
     public function test_claiming_an_already_attached_order_is_rejected(): void
     {
         $owner = User::factory()->create();

@@ -31,6 +31,7 @@ class CouponForm
 
                 TextInput::make('value')
                     ->numeric()
+                    ->required(fn (callable $get): bool => $get('type') !== CouponType::FreeShipping)
                     ->prefix(fn (callable $get): ?string => $get('type') === CouponType::Fixed ? 'GH₵' : null)
                     ->helperText('Fixed: entered in Cedis. Percentage: whole number (10 = 10%). Not used for free shipping.')
                     ->hidden(fn (callable $get) => $get('type') === CouponType::FreeShipping)

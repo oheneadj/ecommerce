@@ -4,14 +4,17 @@ namespace App\Providers;
 
 use App\Notifications\Channels\SmsChannel;
 use App\Payments\PaymentManager;
+use App\Policies\ActivityPolicy;
 use App\Sms\Contracts\SmsGateway;
 use App\Sms\SmsManager;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Spatie\Activitylog\Models\Activity;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -35,6 +38,10 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
 
         Notification::extend('sms', fn ($app) => new SmsChannel($app->make(SmsGateway::class)));
+
+        // Laravel's policy auto-discovery can't guess a policy for a
+        // third-party model outside App\Models — registered explicitly.
+        Gate::policy(Activity::class, ActivityPolicy::class);
     }
 
     /**

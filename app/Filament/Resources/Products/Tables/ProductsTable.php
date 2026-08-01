@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\Products\Tables;
 
+use App\Actions\Catalog\DeleteProduct;
 use App\Enums\ProductStatus;
+use App\Models\Product;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
@@ -14,6 +16,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
 use pxlrbt\FilamentExcel\Actions\ExportBulkAction;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
@@ -53,7 +56,14 @@ class ProductsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->using(function (Collection $records): void {
+                            foreach ($records as $record) {
+                                if ($record instanceof Product) {
+                                    DeleteProduct::run($record);
+                                }
+                            }
+                        }),
                     ForceDeleteBulkAction::make(),
                     RestoreBulkAction::make(),
                     ExportBulkAction::make()

@@ -37,6 +37,11 @@ class ProductResource extends Resource
         return ProductsTable::configure($table);
     }
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['category', 'brand']);
+    }
+
     public static function getRelations(): array
     {
         return [

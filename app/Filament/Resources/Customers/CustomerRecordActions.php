@@ -19,6 +19,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
 
 class CustomerRecordActions
 {
@@ -34,6 +35,7 @@ class CustomerRecordActions
             ->modalWidth(Width::Large)
             ->modalSubmitActionLabel('Send email')
             ->visible(fn (User $record): bool => $record->email !== null)
+            ->authorize(fn (User $record): bool => Auth::user()?->can('sendCommunication', $record) ?? false)
             ->schema([
                 TextInput::make('to')
                     ->label('To')
@@ -65,6 +67,7 @@ class CustomerRecordActions
             ->modalWidth(Width::Large)
             ->modalSubmitActionLabel('Send SMS')
             ->visible(fn (User $record): bool => $record->phone !== null)
+            ->authorize(fn (User $record): bool => Auth::user()?->can('sendCommunication', $record) ?? false)
             ->schema([
                 TextInput::make('to')
                     ->label('To')

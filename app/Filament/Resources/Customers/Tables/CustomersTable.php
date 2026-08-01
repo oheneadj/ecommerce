@@ -22,6 +22,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 
 class CustomersTable
 {
@@ -86,6 +87,7 @@ class CustomersTable
             ->icon(Heroicon::OutlinedEnvelope)
             ->modalWidth(Width::Large)
             ->modalSubmitActionLabel('Send email')
+            ->authorize(fn (): bool => Auth::user()?->can('viewAny', User::class) ?? false)
             ->schema([
                 TextInput::make('subject')
                     ->required()
@@ -121,6 +123,7 @@ class CustomersTable
             ->icon(Heroicon::OutlinedChatBubbleLeftRight)
             ->modalWidth(Width::Large)
             ->modalSubmitActionLabel('Send SMS')
+            ->authorize(fn (): bool => Auth::user()?->can('viewAny', User::class) ?? false)
             ->schema([
                 Textarea::make('message')
                     ->required()

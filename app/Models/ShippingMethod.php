@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Concerns\HasFormattedMoney;
+use App\Concerns\HasUlid;
 use App\Concerns\LogsAdminActivity;
 use Database\Factories\ShippingMethodFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -19,6 +20,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
+ * @property string $ulid
  * @property string $name
  * @property int $cost
  * @property bool $active
@@ -29,7 +31,7 @@ use Illuminate\Support\Carbon;
 class ShippingMethod extends Model
 {
     /** @use HasFactory<ShippingMethodFactory> */
-    use HasFactory, HasFormattedMoney, LogsAdminActivity;
+    use HasFactory, HasFormattedMoney, HasUlid, LogsAdminActivity;
 
     /**
      * @return array<string, string>

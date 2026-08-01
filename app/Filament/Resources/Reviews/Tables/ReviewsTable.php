@@ -18,6 +18,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class ReviewsTable
 {
@@ -71,6 +72,7 @@ class ReviewsTable
         return Action::make($name)
             ->label(ucfirst($name))
             ->visible(fn (Review $record) => $record->status !== $status)
+            ->authorize(fn (): bool => Auth::user()?->can('viewAny', Review::class) ?? false)
             ->requiresConfirmation()
             ->action(function (Review $record) use ($status): void {
                 ModerateReview::run($record, $status);

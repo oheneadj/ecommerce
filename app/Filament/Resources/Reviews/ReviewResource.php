@@ -32,6 +32,11 @@ class ReviewResource extends Resource
         return ReviewsTable::configure($table);
     }
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['product', 'user']);
+    }
+
     public static function getRelations(): array
     {
         return [

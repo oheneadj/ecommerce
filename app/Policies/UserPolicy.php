@@ -33,4 +33,15 @@ class UserPolicy
     {
         return $this->viewAny($user);
     }
+
+    /**
+     * Sending an email/SMS to a customer isn't a mutation of their own
+     * record, but it's a real capability that shouldn't be reachable by
+     * anyone outside the same Admin/Super Admin scope as everything else
+     * on this resource.
+     */
+    public function sendCommunication(User $user, User $customer): bool
+    {
+        return $this->viewAny($user);
+    }
 }

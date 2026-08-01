@@ -11,6 +11,7 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Spatie\Activitylog\Models\Activity;
 use UnitEnum;
@@ -35,6 +36,11 @@ class ActivityLogResource extends Resource
     public static function table(Table $table): Table
     {
         return ActivityLogsTable::configure($table);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['causer']);
     }
 
     public static function getPages(): array

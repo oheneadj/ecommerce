@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Products\Pages;
 
+use App\Actions\Catalog\DeleteProduct;
 use App\Actions\Catalog\UpdateProduct;
 use App\Exceptions\ProductRequiresVariantException;
 use App\Filament\Resources\Products\ProductResource;
@@ -21,7 +22,12 @@ class EditProduct extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->using(function (Product $record): bool {
+                    DeleteProduct::run($record);
+
+                    return true;
+                }),
             ForceDeleteAction::make(),
             RestoreAction::make(),
         ];

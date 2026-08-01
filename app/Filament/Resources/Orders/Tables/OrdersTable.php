@@ -96,6 +96,7 @@ class OrdersTable
     {
         return BulkAction::make('bulkUpdateStatus')
             ->label('Update status')
+            ->authorize(fn (): bool => Auth::user()?->can('viewAny', Order::class) ?? false)
             ->schema([
                 Select::make('status')
                     ->options(OrderStatus::class)

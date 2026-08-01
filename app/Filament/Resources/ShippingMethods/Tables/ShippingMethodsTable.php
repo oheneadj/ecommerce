@@ -10,6 +10,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ShippingMethodsTable
 {
@@ -20,8 +21,9 @@ class ShippingMethodsTable
                 TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('cost')
-                    ->sortable(),
+                TextColumn::make('cost_formatted')
+                    ->label('Cost')
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('cost', $direction === 'desc' ? 'desc' : 'asc')),
                 IconColumn::make('active')
                     ->boolean(),
             ])

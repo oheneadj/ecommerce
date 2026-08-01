@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Concerns\HasFormattedMoney;
 use App\Concerns\LogsAdminActivity;
 use Database\Factories\ShippingMethodFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -28,7 +29,7 @@ use Illuminate\Support\Carbon;
 class ShippingMethod extends Model
 {
     /** @use HasFactory<ShippingMethodFactory> */
-    use HasFactory, LogsAdminActivity;
+    use HasFactory, HasFormattedMoney, LogsAdminActivity;
 
     /**
      * @return array<string, string>
@@ -48,5 +49,13 @@ class ShippingMethod extends Model
     public function shipments(): HasMany
     {
         return $this->hasMany(Shipment::class);
+    }
+
+    /**
+     * The shipping cost formatted for display (e.g. "GH₵15.50").
+     */
+    public function getCostFormattedAttribute(): string
+    {
+        return $this->formattedMoney($this->cost);
     }
 }

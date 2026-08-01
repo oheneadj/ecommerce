@@ -10,6 +10,7 @@ use App\Actions\Catalog\DeleteProductVariant;
 use App\Actions\Catalog\GenerateProductVariants;
 use App\Actions\Inventory\AdjustStockWithReservationCheck;
 use App\Enums\VariantStatus;
+use App\Filament\Support\MoneyInput;
 use App\Models\AttributeTerm;
 use App\Models\AttributeValue;
 use App\Models\Product;
@@ -54,9 +55,8 @@ class VariantsRelationManager extends RelationManager
                     ->maxLength(255)
                     ->unique(ignoreRecord: true),
 
-                TextInput::make('price')
-                    ->label('Price (pesewas)')
-                    ->numeric()
+                MoneyInput::make('price')
+                    ->label('Price')
                     ->required()
                     ->minValue(0),
 
@@ -245,9 +245,8 @@ class VariantsRelationManager extends RelationManager
 
                 Grid::make(2)
                     ->schema([
-                        TextInput::make('price')
-                            ->label('Price (pesewas)')
-                            ->numeric()
+                        MoneyInput::make('price')
+                            ->label('Price')
                             ->required()
                             ->minValue(0),
 

@@ -57,7 +57,7 @@ class ProductVariantGlobalAttributesTest extends TestCase
                 'variants' => [
                     [
                         'sku' => 'SHIRT-L',
-                        'price' => 3000,
+                        'price' => 30,
                         'stock' => 10,
                         'status' => VariantStatus::Active->value,
                         'attribute_term_ids' => [$large->id],
@@ -106,7 +106,7 @@ class ProductVariantGlobalAttributesTest extends TestCase
         Livewire::test(VariantsRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
             ->callTableAction('create', data: [
                 'sku' => 'SKU-1',
-                'price' => 1000,
+                'price' => 10,
                 'stock' => 5,
                 'status' => VariantStatus::Active->value,
                 'attributeTerms' => [$large->id],

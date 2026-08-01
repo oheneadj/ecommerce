@@ -6,6 +6,7 @@ namespace App\Filament\Resources\Products\Schemas;
 
 use App\Enums\ProductStatus;
 use App\Enums\VariantStatus;
+use App\Filament\Support\MoneyInput;
 use App\Models\AttributeTerm;
 use App\Models\Brand;
 use App\Models\Category;
@@ -101,9 +102,8 @@ class ProductForm
                                     ->required()
                                     ->maxLength(255),
 
-                                TextInput::make('price')
-                                    ->label('Price (pesewas)')
-                                    ->numeric()
+                                MoneyInput::make('price')
+                                    ->label('Price')
                                     ->required()
                                     ->minValue(0),
 

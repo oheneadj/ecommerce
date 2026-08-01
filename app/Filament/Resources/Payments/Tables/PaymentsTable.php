@@ -8,6 +8,7 @@ use App\Actions\Payment\ProcessRefund;
 use App\Enums\PaymentStatus;
 use App\Enums\UserRole;
 use App\Exceptions\RefundExceedsPaymentException;
+use App\Filament\Support\MoneyInput;
 use App\Models\Payment;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
@@ -72,9 +73,8 @@ class PaymentsTable
             ->button()
             ->visible(fn (Payment $record) => $record->status === PaymentStatus::Success)
             ->schema([
-                TextInput::make('amount')
-                    ->label('Amount (pesewas)')
-                    ->numeric()
+                MoneyInput::make('amount')
+                    ->label('Amount')
                     ->required()
                     ->helperText(fn (Payment $record) => "Payment amount: {$record->amount_formatted}"),
                 TextInput::make('reason')

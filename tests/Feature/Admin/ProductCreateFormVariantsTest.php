@@ -50,7 +50,7 @@ class ProductCreateFormVariantsTest extends TestCase
                 'variants' => [
                     [
                         'sku' => 'SHIRT-M-RED',
-                        'price' => 3000,
+                        'price' => 30,
                         'stock' => 10,
                         'low_stock_threshold' => 4,
                         'status' => VariantStatus::Active->value,

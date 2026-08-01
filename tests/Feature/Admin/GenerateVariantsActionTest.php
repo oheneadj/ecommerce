@@ -55,7 +55,7 @@ class GenerateVariantsActionTest extends TestCase
                     ['attribute_id' => $color->id, 'term_ids' => [$white->id, $blue->id]],
                 ],
                 'sku_prefix' => 'CLASSIC-TEE',
-                'price' => 2500,
+                'price' => 25,
                 'stock' => 5,
             ])
             ->assertHasNoTableActionErrors();

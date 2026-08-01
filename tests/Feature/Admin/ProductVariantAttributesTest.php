@@ -42,7 +42,7 @@ class ProductVariantAttributesTest extends TestCase
         Livewire::test(VariantsRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
             ->mountTableAction('create')
             ->set('mountedActions.0.data.sku', 'SHIRT-M')
-            ->set('mountedActions.0.data.price', 3000)
+            ->set('mountedActions.0.data.price', 30)
             ->set('mountedActions.0.data.stock', 10)
             ->set('mountedActions.0.data.status', 'active')
             ->set('mountedActions.0.data.attributeValues', [
@@ -66,7 +66,7 @@ class ProductVariantAttributesTest extends TestCase
         Livewire::test(VariantsRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
             ->mountTableAction('create')
             ->set('mountedActions.0.data.sku', 'SHIRT-M-RED')
-            ->set('mountedActions.0.data.price', 3000)
+            ->set('mountedActions.0.data.price', 30)
             ->set('mountedActions.0.data.stock', 10)
             ->set('mountedActions.0.data.status', 'active')
             ->set('mountedActions.0.data.attributeValues', [

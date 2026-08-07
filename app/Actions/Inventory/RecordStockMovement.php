@@ -10,6 +10,7 @@ namespace App\Actions\Inventory;
 
 use App\Enums\StockMovementType;
 use App\Enums\UserRole;
+use App\Exceptions\InvalidStockMovementQuantityException;
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
 use App\Models\User;
@@ -30,6 +31,8 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * daily CheckLowStockLevels sweep) — alerts only fire the moment stock
  * crosses from above its threshold to at-or-below it, not on every
  * subsequent sale while already low, to avoid spamming Store Keeper.
+ *
+ * @throws InvalidStockMovementQuantityException when quantity is zero
  */
 class RecordStockMovement
 {
@@ -43,6 +46,10 @@ class RecordStockMovement
         ?string $note = null,
         ?Model $reference = null,
     ): StockMovement {
+        if ($quantity === 0) {
+            throw new InvalidStockMovementQuantityException;
+        }
+
         $stockBefore = $variant->stock;
 
         $movement = StockMovement::query()->create([

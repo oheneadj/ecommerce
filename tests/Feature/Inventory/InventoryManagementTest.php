@@ -11,6 +11,7 @@ use App\Actions\Inventory\ReserveStockForOrder;
 use App\Enums\StockMovementType;
 use App\Enums\StockReservationStatus;
 use App\Exceptions\InsufficientStockException;
+use App\Exceptions\InvalidStockMovementQuantityException;
 use App\Models\Order;
 use App\Models\ProductVariant;
 use App\Models\StockReservation;
@@ -41,6 +42,29 @@ class InventoryManagementTest extends TestCase
 
         $this->assertSame($user->id, $movement->user_id);
         $this->assertSame(8, $variant->fresh()->stock);
+    }
+
+    public function test_recording_a_stock_movement_with_a_zero_quantity_is_rejected(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+
+        $this->expectException(InvalidStockMovementQuantityException::class);
+
+        RecordStockMovement::run($variant, StockMovementType::Adjustment, 0);
+    }
+
+    public function test_a_rejected_zero_quantity_movement_never_touches_stock_or_the_ledger(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+
+        try {
+            RecordStockMovement::run($variant, StockMovementType::Adjustment, 0);
+        } catch (InvalidStockMovementQuantityException) {
+            // expected
+        }
+
+        $this->assertSame(10, $variant->fresh()->stock);
+        $this->assertSame(0, $variant->stockMovements()->count());
     }
 
     public function test_reservation_creation_respects_available_stock(): void

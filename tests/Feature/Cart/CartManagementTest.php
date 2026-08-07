@@ -43,11 +43,38 @@ class CartManagementTest extends TestCase
     {
         $variant = ProductVariant::factory()->create();
         $cart = Cart::factory()->create();
-        $item = AddItemToCart::run($cart, $variant, 1);
+        AddItemToCart::run($cart, $variant, 1);
 
-        RemoveItemFromCart::run($item);
+        RemoveItemFromCart::run($cart, $variant);
 
         $this->assertSame(0, $cart->items()->count());
+    }
+
+    public function test_removing_an_item_from_a_cart_the_variant_is_not_in_does_nothing(): void
+    {
+        $variant = ProductVariant::factory()->create();
+        $otherVariant = ProductVariant::factory()->create();
+        $cart = Cart::factory()->create();
+        AddItemToCart::run($cart, $variant, 1);
+
+        RemoveItemFromCart::run($cart, $otherVariant);
+
+        $this->assertSame(1, $cart->items()->count());
+    }
+
+    public function test_removing_an_item_cannot_reach_another_carts_line(): void
+    {
+        // RemoveItemFromCart takes the owning Cart and scopes the delete
+        // through it — it has no way to be pointed at a CartItem row from
+        // an unrelated cart, unlike a bare-CartItem signature would.
+        $variant = ProductVariant::factory()->create();
+        $ownCart = Cart::factory()->create();
+        $otherCart = Cart::factory()->create();
+        AddItemToCart::run($otherCart, $variant, 1);
+
+        RemoveItemFromCart::run($ownCart, $variant);
+
+        $this->assertSame(1, $otherCart->items()->count());
     }
 
     public function test_merging_a_guest_cart_into_an_existing_user_cart_combines_quantities(): void

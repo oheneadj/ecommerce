@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Fixed — RemoveItemFromCart had no ownership check
+- Took a bare `CartItem` and deleted it unconditionally — unlike `RemoveFromWishlist` (and its own sibling `AddItemToCart`), which take the owning `User`/`Cart` and scope through it. Not yet exploitable (no HTTP layer exists for cart/wishlist), but the wrong contract to build a future endpoint on top of — a route passing a raw `CartItem` from a route-model-bound ULID would have no way to verify it belongs to the acting session. Changed the signature to `handle(Cart $cart, ProductVariant $variant)`, matching `AddItemToCart` exactly, and scoped the delete through the cart relationship so it's structurally impossible to reach another cart's line.
+- 2 new tests: removing a variant the cart doesn't have does nothing, and the action cannot reach another cart's line item.
+
 ### Fixed — Deleting a customer account with order history crashed
 - `addresses.user_id` cascades on delete, but `orders.address_id` had no delete behavior (defaulting to restrict) — a customer using the existing self-service "delete my account" feature (`DeleteUserForm`), if they'd ever placed an order, would cascade-delete their address straight into a raw, unhandled `QueryException` on the order's FK constraint.
 - Fixed with two changes together: `User` is now soft-deletable (a soft delete is an `UPDATE`, never a `DELETE`, so the cascade never fires at all), and `Order` gained an `address_snapshot` column (frozen at checkout by `CreateOrderFromCart`, same rule as `OrderItem.item_snapshot`) with `address_id` changed to nullable + `nullOnDelete()` — so even if an address is ever removed independently in the future, past orders keep displaying correctly from their own frozen snapshot rather than a live relation that might be gone.

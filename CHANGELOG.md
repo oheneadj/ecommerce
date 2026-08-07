@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Fixed — SESSION_SECURE_COOKIE had no default
+- `config/session.php`'s `secure` key was a bare `env('SESSION_SECURE_COOKIE')` with no default — resolves to `null` (cookie sent over both HTTP and HTTPS) unless a deploy explicitly sets the env var, an easy step to forget. Now defaults to `true` in production (`APP_ENV=production`) and `false` otherwise, while still respecting an explicit override.
+- 2 new tests: the default resolves to a non-null value, and the config file's default expression matches (guards the fix itself against a future revert to a bare `env()` call).
+
 ### Fixed — Filesystem disks silently swallowed write failures
 - All three disks (`local`, `public`, `s3`) had the framework's default `'throw' => false`, meaning a failed invoice/image write returns `false` instead of raising — easy to miss in code that doesn't explicitly check every write's return value. Flipped to `'throw' => true` on all three.
 - 1 new test asserting all three disks have `throw` enabled, to catch a future accidental revert.

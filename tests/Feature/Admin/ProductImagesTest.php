@@ -88,6 +88,25 @@ class ProductImagesTest extends TestCase
         $this->assertSame($variant->id, $image->product_variant_id);
     }
 
+    public function test_an_upload_over_the_configured_size_limit_is_rejected(): void
+    {
+        Storage::fake('public');
+        $this->actingAs($this->admin());
+        config(['media.max_upload_size_kb' => 100]);
+
+        $product = Product::factory()->create();
+
+        Livewire::test(ImagesRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
+            ->callTableAction('create', data: [
+                'path' => UploadedFile::fake()->image('too-big.jpg')->size(200),
+                'sort_order' => 0,
+                'is_primary' => true,
+            ])
+            // FileUpload::maxSize() registers a Closure rule rather than a
+            // plain "max" string, so assert on the key alone.
+            ->assertHasTableActionErrors(['path']);
+    }
+
     public function test_deleting_an_image_removes_the_stored_file(): void
     {
         Storage::fake('public');

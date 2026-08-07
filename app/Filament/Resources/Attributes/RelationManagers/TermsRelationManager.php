@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Attributes\RelationManagers;
 
+use App\Actions\Catalog\ConvertImageToWebp;
 use App\Enums\AttributeType;
 use App\Models\Attribute;
 use Filament\Actions\CreateAction;
@@ -54,7 +55,14 @@ class TermsRelationManager extends RelationManager
         // dormant field's empty array/null value overwrites the active one).
         $swatchField = match ($attribute->type) {
             AttributeType::Color => ColorPicker::make('swatch_value')->label('Color')->required(),
-            AttributeType::Image => FileUpload::make('swatch_value')->label('Image')->image()->disk('public')->directory('attribute-swatches')->required(),
+            AttributeType::Image => FileUpload::make('swatch_value')
+                ->label('Image')
+                ->image()
+                ->maxSize(config('media.max_upload_size_kb'))
+                ->disk('public')
+                ->directory('attribute-swatches')
+                ->saveUploadedFileUsing(ConvertImageToWebp::forFileUpload())
+                ->required(),
             AttributeType::Text => null,
         };
 

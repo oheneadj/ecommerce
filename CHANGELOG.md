@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Fixed — Image uploads had no size limit
+- `->image()` already restricts every upload to image MIME types internally (Filament's `FileUpload::image()` calls `acceptedFileTypes(['image/*'])`), but nothing capped upload size across the 4 image fields (Brand logo, Attribute image swatch, Product image, Variant image) — an admin could upload an arbitrarily large file. Added `->maxSize(config('media.max_upload_size_kb'))` to all 4, backed by a new `config/media.php` / `MEDIA_MAX_UPLOAD_SIZE_KB` env var (default `5120`, i.e. 5MB) so the limit can be changed without a code deploy.
+- Also closed a gap found in the same pass: the Attribute Image-type swatch upload (`TermsRelationManager`) was the one image field never routed through `ConvertImageToWebp`, unlike the other 3 — now converts to WebP on save like the rest of the catalog's images.
+- 4 new tests: a maxSize rejection test per field group (Brand, Attribute swatch, Product image), plus a WebP-conversion test for the Attribute swatch upload.
+
 ### Fixed — Coupon numeric fields had no bounds
 - `usage_limit`/`usage_limit_per_user` had no `minValue()` — a `0` would make `usages_count >= usage_limit` true immediately, silently disabling that coupon with no error anywhere. Added `->minValue(1)` (use the existing `active` toggle to disable a coupon, not `0`) and `->minValue(0)` on `min_order_amount`.
 - Also fixed a related gap found while in the same form: `value` had no bounds either — a negative value would increase the order total instead of discounting it, and a Percentage value over 100 would discount more than the order is worth. Added `->minValue(0)` and, for Percentage specifically, `->maxValue(100)`. `ApplyCouponToOrder::calculateDiscount()` now also clamps the computed discount to `[0, subtotal]` for both Fixed and Percentage as the actual server-side enforcement boundary — the form validation is a courtesy, not the guarantee.

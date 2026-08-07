@@ -19,6 +19,8 @@ use App\Filament\Resources\Attributes\RelationManagers\TermsRelationManager;
 use App\Models\Attribute;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -127,6 +129,45 @@ class AttributeResourceTest extends TestCase
             ->assertHasNoTableActionErrors();
 
         $this->assertDatabaseHas('attribute_terms', ['attribute_id' => $attribute->id, 'value' => 'Red', 'swatch_value' => '#FF0000']);
+    }
+
+    public function test_an_image_attributes_term_saves_its_uploaded_swatch_as_webp(): void
+    {
+        Storage::fake('public');
+        $this->actingAs($this->admin());
+
+        $attribute = Attribute::factory()->create(['type' => AttributeType::Image]);
+
+        Livewire::test(TermsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditAttribute::class])
+            ->callTableAction('create', data: [
+                'value' => 'Denim',
+                'slug' => 'denim',
+                'swatch_value' => UploadedFile::fake()->image('denim.jpg'),
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $term = $attribute->terms()->sole();
+        $this->assertStringEndsWith('.webp', $term->swatch_value);
+        Storage::disk('public')->assertExists($term->swatch_value);
+    }
+
+    public function test_an_image_attributes_swatch_upload_over_the_configured_size_limit_is_rejected(): void
+    {
+        Storage::fake('public');
+        $this->actingAs($this->admin());
+        config(['media.max_upload_size_kb' => 100]);
+
+        $attribute = Attribute::factory()->create(['type' => AttributeType::Image]);
+
+        Livewire::test(TermsRelationManager::class, ['ownerRecord' => $attribute, 'pageClass' => EditAttribute::class])
+            ->callTableAction('create', data: [
+                'value' => 'Denim',
+                'slug' => 'denim',
+                'swatch_value' => UploadedFile::fake()->image('denim.jpg')->size(200),
+            ])
+            // FileUpload::maxSize() registers a Closure rule rather than a
+            // plain "max" string, so assert on the key alone.
+            ->assertHasTableActionErrors(['swatch_value']);
     }
 
     public function test_a_terms_value_must_be_unique_within_its_own_attribute(): void

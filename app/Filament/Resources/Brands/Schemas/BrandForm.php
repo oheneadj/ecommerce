@@ -40,6 +40,7 @@ class BrandForm
                         FileUpload::make('logo_path')
                             ->label('Logo')
                             ->image()
+                            ->maxSize(config('media.max_upload_size_kb'))
                             ->disk('public')
                             ->directory('brands')
                             ->saveUploadedFileUsing(ConvertImageToWebp::forFileUpload())

@@ -355,6 +355,7 @@ class VariantsRelationManager extends RelationManager
                 FileUpload::make('path')
                     ->label('Image')
                     ->image()
+                    ->maxSize(config('media.max_upload_size_kb'))
                     ->disk('public')
                     ->directory('product-images')
                     ->saveUploadedFileUsing(ConvertImageToWebp::forFileUpload())

@@ -16,6 +16,7 @@ use App\Models\Category;
 use App\Models\Coupon;
 use App\Models\CouponUsage;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -146,6 +147,19 @@ class ForeignKeyDeleteBehaviorTest extends TestCase
         $variant->forceDelete();
 
         $this->assertNull(WishlistItem::query()->find($wishlistItem->id));
+    }
+
+    public function test_deleting_an_order_item_with_a_review_nulls_the_reviews_reference_instead_of_blocking(): void
+    {
+        // Different from every other relationship in this file — the
+        // column is already nullable (freed on review delete/resubmit),
+        // so nullOnDelete() is the only behavior that makes sense here.
+        $orderItem = OrderItem::factory()->create();
+        $review = Review::factory()->create(['order_item_id' => $orderItem->id]);
+
+        $orderItem->delete();
+
+        $this->assertNull($review->fresh()->order_item_id);
     }
 
     public function test_deleting_a_variant_with_stock_reservation_history_is_restricted(): void

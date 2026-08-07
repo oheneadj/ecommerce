@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Fixed — reviews.order_item_id had no explicit delete behavior
+- The column was already nullable (freed on review delete/resubmit, fixed earlier this session), but its FK still had no `ON DELETE` behavior — deleting an `OrderItem` with a review would have thrown a raw `QueryException` instead of the only behavior that actually makes sense for an already-nullable column: nulling the reference. Added `nullOnDelete()`.
+- 1 new test proving the reference actually nulls out rather than blocking the delete.
+
 ### Fixed — 12 foreign keys had no explicit delete behavior
 - `products.category_id`, `payments.order_id`, `refunds.payment_id`, `shipments.order_id`/`shipping_method_id`, `coupon_usages.coupon_id`/`order_id`, `stock_movements.product_variant_id`, `reviews.product_id`/`user_id`, and `stock_reservations.product_variant_id` had no `ON DELETE` behavior specified — implicitly restrict at the DB level, but as a raw, unhandled `QueryException` the moment it fired rather than a deliberate choice. Made explicit via `restrictOnDelete()`.
 - `product_variants.product_id` and `wishlist_items.product_variant_id` are now explicitly `cascadeOnDelete()` — the former matches `product_images.product_id` on the same parent (already cascading, so deleting a product now consistently takes both its images and variants with it instead of failing partway through); the latter removes a wishlist entry that would otherwise point at nothing once its variant is gone.

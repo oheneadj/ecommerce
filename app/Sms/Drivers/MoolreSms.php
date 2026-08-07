@@ -30,6 +30,7 @@ readonly class MoolreSms implements SmsGateway
     public function send(string $to, string $message): SmsSendResult
     {
         $response = Http::withToken($this->apiKey)
+            ->timeout(10)
             ->post('https://api.moolre.com/open/message/send', [
                 'sender' => $this->senderId,
                 'recipient' => $to,

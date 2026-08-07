@@ -12,11 +12,14 @@ namespace Tests\Feature\Admin;
 use App\Enums\UserRole;
 use App\Filament\Resources\Customers\Pages\ListCustomers;
 use App\Filament\Resources\Customers\Pages\ViewCustomer;
+use App\Jobs\SendCustomerEmail;
+use App\Jobs\SendCustomerSms;
 use App\Mail\CustomerMessage;
 use App\Models\User;
 use App\Sms\Contracts\SmsGateway;
 use App\Sms\SmsSendResult;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -183,6 +186,54 @@ class CustomerMessagingTest extends TestCase
             ->assertHasNoActionErrors();
 
         Mail::assertSent(fn (CustomerMessage $mailable): bool => $mailable->hasTo($customer->email));
+    }
+
+    public function test_sending_an_email_dispatches_a_queued_job_rather_than_sending_inline(): void
+    {
+        Bus::fake();
+        $this->actingAs($this->admin());
+
+        $customer = User::factory()->create(['email' => 'customer@example.com']);
+
+        Livewire::test(ListCustomers::class)
+            ->callTableAction('sendEmail', $customer, data: [
+                'subject' => 'A note from us',
+                'body' => 'Thanks for shopping with us!',
+            ])
+            ->assertHasNoTableActionErrors();
+
+        Bus::assertDispatched(SendCustomerEmail::class);
+    }
+
+    public function test_sending_an_sms_dispatches_a_queued_job_rather_than_sending_inline(): void
+    {
+        Bus::fake();
+        $this->actingAs($this->admin());
+
+        $customer = User::factory()->create(['phone' => '0551234567']);
+
+        Livewire::test(ListCustomers::class)
+            ->callTableAction('sendSms', $customer, data: ['message' => 'Your order has shipped!'])
+            ->assertHasNoTableActionErrors();
+
+        Bus::assertDispatched(SendCustomerSms::class);
+    }
+
+    public function test_a_bulk_send_dispatches_one_queued_job_per_selected_customer(): void
+    {
+        Bus::fake();
+        $this->actingAs($this->admin());
+
+        $customers = User::factory()->count(3)->create();
+
+        Livewire::test(ListCustomers::class)
+            ->callTableBulkAction('bulkSendEmail', $customers, data: [
+                'subject' => 'Sale!',
+                'body' => 'Everything is 20% off.',
+            ])
+            ->assertHasNoTableBulkActionErrors();
+
+        Bus::assertDispatchedTimes(SendCustomerEmail::class, 3);
     }
 
     public function test_bulk_send_email_skips_customers_with_no_email_and_reports_the_count(): void

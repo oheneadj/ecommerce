@@ -9,15 +9,18 @@ declare(strict_types=1);
 namespace App\Actions\Customer;
 
 use App\Exceptions\CustomerMissingContactMethodException;
+use App\Jobs\SendCustomerSms;
 use App\Models\User;
-use App\Sms\Contracts\SmsGateway;
 use Lorisleiva\Actions\Concerns\AsAction;
 
+/**
+ * The has-a-phone check runs synchronously so the admin gets immediate
+ * feedback, but the actual gateway call is dispatched to SendCustomerSms —
+ * per this project's "external API calls must be queued" convention.
+ */
 class SendSmsToCustomer
 {
     use AsAction;
-
-    public function __construct(private readonly SmsGateway $sms) {}
 
     /**
      * @throws CustomerMissingContactMethodException when the customer has no phone on file
@@ -28,6 +31,6 @@ class SendSmsToCustomer
             throw new CustomerMissingContactMethodException("Customer #{$customer->id} has no phone on file.");
         }
 
-        $this->sms->send($customer->phone, $message);
+        SendCustomerSms::dispatch($customer->id, $message);
     }
 }

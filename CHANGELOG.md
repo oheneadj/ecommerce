@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Fixed — Coupon numeric fields had no bounds
+- `usage_limit`/`usage_limit_per_user` had no `minValue()` — a `0` would make `usages_count >= usage_limit` true immediately, silently disabling that coupon with no error anywhere. Added `->minValue(1)` (use the existing `active` toggle to disable a coupon, not `0`) and `->minValue(0)` on `min_order_amount`.
+- Also fixed a related gap found while in the same form: `value` had no bounds either — a negative value would increase the order total instead of discounting it, and a Percentage value over 100 would discount more than the order is worth. Added `->minValue(0)` and, for Percentage specifically, `->maxValue(100)`. `ApplyCouponToOrder::calculateDiscount()` now also clamps the computed discount to `[0, subtotal]` for both Fixed and Percentage as the actual server-side enforcement boundary — the form validation is a courtesy, not the guarantee.
+- 8 new tests: form-level rejection of negative/over-100 values and negative usage limits, and `ApplyCouponToOrder` clamping an over-large Fixed or Percentage discount down to the order's subtotal.
+
 ### Fixed — reviews.order_item_id had no explicit delete behavior
 - The column was already nullable (freed on review delete/resubmit, fixed earlier this session), but its FK still had no `ON DELETE` behavior — deleting an `OrderItem` with a review would have thrown a raw `QueryException` instead of the only behavior that actually makes sense for an already-nullable column: nulling the reference. Added `nullOnDelete()`.
 - 1 new test proving the reference actually nulls out rather than blocking the delete.

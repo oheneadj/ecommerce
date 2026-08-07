@@ -111,12 +111,21 @@ class ApplyCouponToOrder
             : $query->where('guest_email', $order->guest_email)->count();
     }
 
+    /**
+     * Fixed and Percentage are both clamped to [0, subtotal] — the
+     * Filament form already validates value into a sane range (0-100 for
+     * Percentage, non-negative for Fixed), but this is the actual
+     * enforcement boundary; a coupon's discount must never exceed what
+     * the order is worth, or go negative and increase the total instead.
+     */
     private function calculateDiscount(Coupon $coupon, Order $order): int
     {
-        return match ($coupon->type) {
-            CouponType::Fixed => min($coupon->value ?? 0, $order->subtotal),
+        $discount = match ($coupon->type) {
+            CouponType::Fixed => $coupon->value ?? 0,
             CouponType::Percentage => (int) round($order->subtotal * ($coupon->value ?? 0) / 100),
             CouponType::FreeShipping => 0,
         };
+
+        return max(0, min($discount, $order->subtotal));
     }
 }

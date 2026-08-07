@@ -61,4 +61,59 @@ class CouponFormValidationTest extends TestCase
             ->call('create')
             ->assertHasNoFormErrors();
     }
+
+    public function test_a_negative_value_is_rejected_for_either_type(): void
+    {
+        $this->actingAs($this->admin());
+
+        Livewire::test(CreateCoupon::class)
+            ->fillForm(['code' => 'NEGATIVE', 'type' => CouponType::Percentage->value, 'value' => -10])
+            ->call('create')
+            ->assertHasFormErrors(['value' => 'min']);
+    }
+
+    public function test_a_percentage_value_over_100_is_rejected(): void
+    {
+        $this->actingAs($this->admin());
+
+        Livewire::test(CreateCoupon::class)
+            ->fillForm(['code' => 'OVER100', 'type' => CouponType::Percentage->value, 'value' => 150])
+            ->call('create')
+            ->assertHasFormErrors(['value' => 'max']);
+    }
+
+    public function test_a_fixed_value_has_no_upper_bound_in_the_form(): void
+    {
+        $this->actingAs($this->admin());
+
+        Livewire::test(CreateCoupon::class)
+            ->fillForm(['code' => 'BIGFIXED', 'type' => CouponType::Fixed->value, 'value' => 500])
+            ->call('create')
+            ->assertHasNoFormErrors();
+    }
+
+    public function test_negative_usage_limits_are_rejected(): void
+    {
+        $this->actingAs($this->admin());
+
+        Livewire::test(CreateCoupon::class)
+            ->fillForm([
+                'code' => 'BADLIMIT',
+                'type' => CouponType::FreeShipping->value,
+                'usage_limit' => 0,
+                'usage_limit_per_user' => 0,
+            ])
+            ->call('create')
+            ->assertHasFormErrors(['usage_limit' => 'min', 'usage_limit_per_user' => 'min']);
+    }
+
+    public function test_a_negative_minimum_order_amount_is_rejected(): void
+    {
+        $this->actingAs($this->admin());
+
+        Livewire::test(CreateCoupon::class)
+            ->fillForm(['code' => 'BADMIN', 'type' => CouponType::FreeShipping->value, 'min_order_amount' => -5])
+            ->call('create')
+            ->assertHasFormErrors(['min_order_amount' => 'min']);
+    }
 }

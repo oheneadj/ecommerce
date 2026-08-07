@@ -207,6 +207,30 @@ class CheckoutTest extends TestCase
         $this->assertSame(500, $order->fresh()->discount_total);
     }
 
+    public function test_a_fixed_discount_larger_than_the_subtotal_is_capped_at_the_subtotal(): void
+    {
+        $coupon = Coupon::factory()->create(['type' => CouponType::Fixed, 'value' => 5000]);
+        $order = $this->createPendingOrderWithSubtotal(1000);
+
+        ApplyCouponToOrder::run($order, $coupon->code);
+
+        $this->assertSame(1000, $order->fresh()->discount_total);
+    }
+
+    public function test_a_percentage_discount_over_100_percent_is_capped_at_the_subtotal(): void
+    {
+        // The Filament form already rejects a value over 100, but this is
+        // the actual enforcement boundary — a coupon's discount must never
+        // exceed the order's subtotal regardless of what value made it
+        // into the database.
+        $coupon = Coupon::factory()->create(['type' => CouponType::Percentage, 'value' => 150]);
+        $order = $this->createPendingOrderWithSubtotal(1000);
+
+        ApplyCouponToOrder::run($order, $coupon->code);
+
+        $this->assertSame(1000, $order->fresh()->discount_total);
+    }
+
     public function test_coupon_usage_limit_counts_actual_usage_rows(): void
     {
         $coupon = Coupon::factory()->create(['usage_limit' => 1]);

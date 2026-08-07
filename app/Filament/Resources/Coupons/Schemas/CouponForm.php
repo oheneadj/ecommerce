@@ -32,6 +32,13 @@ class CouponForm
                 TextInput::make('value')
                     ->numeric()
                     ->required(fn (callable $get): bool => $get('type') !== CouponType::FreeShipping)
+                    // Negative never makes sense for either type (it would increase
+                    // the order total instead of discounting it); a Percentage above
+                    // 100 would discount more than the order is worth — Fixed has no
+                    // upper bound here since ApplyCouponToOrder already caps it at
+                    // the order's own subtotal.
+                    ->minValue(0)
+                    ->maxValue(fn (callable $get): ?int => $get('type') === CouponType::Percentage ? 100 : null)
                     ->prefix(fn (callable $get): ?string => $get('type') === CouponType::Fixed ? 'GH₵' : null)
                     ->helperText('Fixed: entered in Cedis. Percentage: whole number (10 = 10%). Not used for free shipping.')
                     ->hidden(fn (callable $get) => $get('type') === CouponType::FreeShipping)
@@ -57,15 +64,18 @@ class CouponForm
                     }),
 
                 MoneyInput::make('min_order_amount')
-                    ->label('Minimum order amount'),
+                    ->label('Minimum order amount')
+                    ->minValue(0),
 
                 TextInput::make('usage_limit')
                     ->numeric()
-                    ->helperText('Total number of times this coupon can be used, across all customers.'),
+                    ->minValue(1)
+                    ->helperText('Total number of times this coupon can be used, across all customers. Leave blank for unlimited — use the Active toggle to disable a coupon, not 0.'),
 
                 TextInput::make('usage_limit_per_user')
                     ->numeric()
-                    ->helperText('Number of times a single customer can use this coupon.'),
+                    ->minValue(1)
+                    ->helperText('Number of times a single customer can use this coupon. Leave blank for unlimited.'),
 
                 DateTimePicker::make('expires_at'),
 

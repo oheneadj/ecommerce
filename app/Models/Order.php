@@ -30,6 +30,12 @@ use Illuminate\Support\Carbon;
  * customer to authenticate first (BRD FR-3.2a). Every OrderItem's display
  * must read only from its own `item_snapshot`, never live Product/
  * ProductVariant data, so a past order is unaffected by later catalog edits.
+ * The same rule applies to `address_snapshot` — frozen at checkout by
+ * CreateOrderFromCart, so a past order's shipping details never change
+ * even if the live `Address` is later edited or deleted. `address_id` is
+ * nullable and `nullOnDelete()` for exactly that reason: deleting the
+ * address (e.g. cascading from a customer deleting their account) must
+ * never be blocked by, or corrupt, historical order data.
  *
  * @property int $id
  * @property string $ulid
@@ -38,7 +44,8 @@ use Illuminate\Support\Carbon;
  * @property int|null $user_id
  * @property string|null $guest_email
  * @property string|null $guest_phone
- * @property int $address_id
+ * @property int|null $address_id
+ * @property array<string, string|null>|null $address_snapshot
  * @property int|null $coupon_id
  * @property OrderStatus $status
  * @property int $subtotal
@@ -51,7 +58,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  */
 #[Fillable([
-    'cart_id', 'user_id', 'guest_email', 'guest_phone', 'address_id', 'coupon_id', 'status',
+    'cart_id', 'user_id', 'guest_email', 'guest_phone', 'address_id', 'address_snapshot', 'coupon_id', 'status',
     'subtotal', 'discount_total', 'tax_total', 'shipping_total', 'grand_total', 'invoice_path',
 ])]
 #[ObservedBy(OrderObserver::class)]
@@ -67,6 +74,7 @@ class Order extends Model
     {
         return [
             'status' => OrderStatus::class,
+            'address_snapshot' => 'array',
         ];
     }
 
@@ -91,7 +99,9 @@ class Order extends Model
     }
 
     /**
-     * The shipping address used for this order.
+     * The live Address record this order's shipping was captured from —
+     * may be null (the address was later deleted, e.g. via account
+     * deletion). Never used for display; use `address_snapshot` instead.
      *
      * @return BelongsTo<Address, $this>
      */

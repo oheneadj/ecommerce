@@ -85,4 +85,26 @@ class OrderViewPageTest extends TestCase
 
         $this->assertSame('TRACK1', $order->fresh()->shipment->tracking_number);
     }
+
+    public function test_the_view_page_renders_shipping_details_from_the_address_snapshot(): void
+    {
+        $this->actingAs($this->admin());
+
+        $order = Order::factory()->create([
+            'address_id' => null,
+            'address_snapshot' => [
+                'recipient_name' => 'Snapshot Jane',
+                'phone' => '+233209999999',
+                'line1' => '12 Snapshot Street',
+                'line2' => null,
+                'city' => 'Accra',
+                'region' => 'Greater Accra',
+            ],
+        ]);
+
+        $this->get(OrderResource::getUrl('view', ['record' => $order]))
+            ->assertOk()
+            ->assertSee('Snapshot Jane')
+            ->assertSee('12 Snapshot Street');
+    }
 }

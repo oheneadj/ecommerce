@@ -63,17 +63,21 @@ class OrderInfolist
                     ->schema([
                         Grid::make(2)
                             ->schema([
-                                TextEntry::make('address.recipient_name')
+                                TextEntry::make('address_snapshot.recipient_name')
                                     ->label('Recipient'),
-                                TextEntry::make('address.phone')
+                                TextEntry::make('address_snapshot.phone')
                                     ->label('Phone'),
-                                TextEntry::make('address.line1')
+                                TextEntry::make('address_snapshot.line1')
                                     ->label('Address')
+                                    // Always the order's own frozen snapshot,
+                                    // never the live Address — that record
+                                    // may since have been edited or deleted
+                                    // (e.g. the customer deleted their account).
                                     ->formatStateUsing(fn (Order $record): string => collect([
-                                        $record->address->line1,
-                                        $record->address->line2,
-                                        $record->address->city,
-                                        $record->address->region,
+                                        $record->address_snapshot['line1'] ?? null,
+                                        $record->address_snapshot['line2'] ?? null,
+                                        $record->address_snapshot['city'] ?? null,
+                                        $record->address_snapshot['region'] ?? null,
                                     ])->filter()->implode(', '))
                                     ->columnSpanFull(),
                                 TextEntry::make('shipment.status')

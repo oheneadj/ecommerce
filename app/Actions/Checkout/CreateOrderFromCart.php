@@ -35,8 +35,8 @@ use Lorisleiva\Actions\Concerns\AsAction;
  *
  * The rest of the locking happens inside the nested
  * ReserveStockForOrder/ApplyCouponToOrder calls this Action makes
- * (AGENTS.md Section 4a). Writes: Order + OrderItem rows (with
- * `item_snapshot`) + StockReservation + CouponUsage.
+ * (AGENTS.md Section 4a). Writes: Order (with `address_snapshot`) +
+ * OrderItem rows (with `item_snapshot`) + StockReservation + CouponUsage.
  *
  * Price is always read from the variant's *current* state at this moment,
  * never from whatever was true when the item was added to the cart — the
@@ -89,6 +89,14 @@ class CreateOrderFromCart
                 'guest_email' => $cart->user_id === null ? $guestEmail : null,
                 'guest_phone' => $cart->user_id === null ? $guestPhone : null,
                 'address_id' => $address->id,
+                'address_snapshot' => [
+                    'recipient_name' => $address->recipient_name,
+                    'phone' => $address->phone,
+                    'line1' => $address->line1,
+                    'line2' => $address->line2,
+                    'city' => $address->city,
+                    'region' => $address->region,
+                ],
                 'status' => OrderStatus::Pending,
                 'subtotal' => $subtotal,
                 'discount_total' => 0,

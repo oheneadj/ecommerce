@@ -57,7 +57,11 @@ class ProfileUpdateTest extends TestCase
 
     public function test_user_can_delete_their_account(): void
     {
-        $user = User::factory()->create();
+        // Soft-deleted, not hard-deleted (so past orders/reviews still
+        // resolve a name) — but email/phone/google_id are freed so the
+        // customer can register a new account with the same one later.
+        $user = User::factory()->create(['email' => 'shopper@example.com', 'phone' => '+233201234567']);
+        $id = $user->id;
 
         $this->actingAs($user);
 
@@ -69,8 +73,29 @@ class ProfileUpdateTest extends TestCase
             ->assertHasNoErrors()
             ->assertRedirect('/');
 
-        $this->assertNull($user->fresh());
         $this->assertFalse(auth()->check());
+        $this->assertNull(User::query()->find($id));
+
+        $trashed = User::withTrashed()->find($id);
+        $this->assertNotNull($trashed);
+        $this->assertTrue($trashed->trashed());
+        $this->assertSame("shopper@example.com-deleted-{$id}", $trashed->email);
+        $this->assertSame("+233201234567-deleted-{$id}", $trashed->phone);
+    }
+
+    public function test_a_new_account_can_reuse_the_email_and_phone_of_a_deleted_account(): void
+    {
+        $user = User::factory()->create(['email' => 'shopper@example.com', 'phone' => '+233201234567']);
+
+        $this->actingAs($user);
+        Livewire::test('settings.delete-user-form')
+            ->set('password', 'password')
+            ->call('deleteUser');
+
+        $newUser = User::factory()->create(['email' => 'shopper@example.com', 'phone' => '+233201234567']);
+
+        $this->assertSame('shopper@example.com', $newUser->email);
+        $this->assertNotSame($user->id, $newUser->id);
     }
 
     public function test_correct_password_must_be_provided_to_delete_account(): void

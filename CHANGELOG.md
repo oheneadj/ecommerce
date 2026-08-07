@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Added — Missing Policy test coverage
+- 8 policies had no direct test coverage at all: `ActivityPolicy`, `AttributePolicy`, `StoreSettingPolicy`, `ShippingMethodPolicy`, `StockReservationPolicy`, `StockMovementPolicy`, `ProductImagePolicy`, and `UserPolicy` (including `sendCommunication`) — only incidentally exercised (if at all) through Livewire-level admin tests. Added `tests/Feature/Policies/` with one test class per policy, asserting every ability against every relevant role directly via `$user->can(...)`.
+
 ### Fixed — AddItemToCart/MergeGuestCartIntoUser had a check-then-write race
 - Both read whether a `cart_items` row already existed for a `(cart_id, product_variant_id)` pair, then decided whether to increment or insert — two concurrent requests (e.g. a double-click "add to cart") could both read no existing row and both try to insert, with the second hitting the table's unique constraint as a raw, unhandled `QueryException` instead of correctly incrementing the first's row. Fixed the same way `CreateOrderFromCart` already locks its cart row: both Actions now lock the relevant cart row(s) with `lockForUpdate()` inside a transaction before the check, serializing concurrent attempts against the same cart.
 - No new tests added — the existing "adding the same variant twice" / merge tests already prove the sequential-correctness behavior, and this is a single in-memory SQLite connection in tests, so true concurrent-transaction races aren't independently reproducible here (same limitation as the existing cart-lock in `CreateOrderFromCart`).

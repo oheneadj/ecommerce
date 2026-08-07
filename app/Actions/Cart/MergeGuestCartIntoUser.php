@@ -20,6 +20,12 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * the user (no copy, same row). Not a documented BRD requirement — added
  * because it's the expected real-world behaviour when a shopper adds items
  * before logging in.
+ *
+ * Both cart rows are locked for the duration of the transaction, same
+ * reason and pattern as AddItemToCart/CreateOrderFromCart's cart locks —
+ * without it, a merge running concurrently with an "add to cart" request
+ * on either cart is a check-then-write race on `cart_items`' unique
+ * `(cart_id, product_variant_id)` constraint.
  */
 class MergeGuestCartIntoUser
 {
@@ -28,7 +34,9 @@ class MergeGuestCartIntoUser
     public function handle(Cart $guestCart, User $user): Cart
     {
         return DB::transaction(function () use ($guestCart, $user): Cart {
-            $userCart = Cart::query()->where('user_id', $user->id)->first();
+            Cart::query()->whereKey($guestCart->id)->lockForUpdate()->first();
+
+            $userCart = Cart::query()->where('user_id', $user->id)->lockForUpdate()->first();
 
             if ($userCart === null) {
                 $guestCart->update(['user_id' => $user->id, 'session_id' => null]);

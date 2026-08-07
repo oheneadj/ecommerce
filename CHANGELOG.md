@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Fixed — AddItemToCart/MergeGuestCartIntoUser had a check-then-write race
+- Both read whether a `cart_items` row already existed for a `(cart_id, product_variant_id)` pair, then decided whether to increment or insert — two concurrent requests (e.g. a double-click "add to cart") could both read no existing row and both try to insert, with the second hitting the table's unique constraint as a raw, unhandled `QueryException` instead of correctly incrementing the first's row. Fixed the same way `CreateOrderFromCart` already locks its cart row: both Actions now lock the relevant cart row(s) with `lockForUpdate()` inside a transaction before the check, serializing concurrent attempts against the same cart.
+- No new tests added — the existing "adding the same variant twice" / merge tests already prove the sequential-correctness behavior, and this is a single in-memory SQLite connection in tests, so true concurrent-transaction races aren't independently reproducible here (same limitation as the existing cart-lock in `CreateOrderFromCart`).
+
 ### Fixed — Bulk price adjustment bypassed the Action layer and had no transaction
 - `VariantsRelationManager`'s `bulkAdjustPrice` computed the new price and called `$record->update()` directly inside the bulk action's closure, unlike its `bulkAdjustStock` sibling (and every other mutation in this codebase) which goes through an Action — and looped over the selected records with no transaction, so a failure partway through a multi-select batch would leave some variants updated and others not. Extracted `App\Actions\Catalog\AdjustVariantPrice` (single-variant percentage adjustment) and wrapped the bulk loop in `DB::transaction()`, matching `AdjustStockWithReservationCheck`'s pattern.
 - 4 new tests: the Action's increase/decrease/floor-at-zero behavior, and that an exception partway through a batch rolls back every record in it.

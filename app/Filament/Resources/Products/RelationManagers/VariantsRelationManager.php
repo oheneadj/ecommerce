@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Products\RelationManagers;
 
+use App\Actions\Catalog\AdjustVariantPrice;
 use App\Actions\Catalog\AttachProductImage;
 use App\Actions\Catalog\ConvertImageToWebp;
 use App\Actions\Catalog\DeleteProductVariant;
@@ -41,6 +42,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class VariantsRelationManager extends RelationManager
 {
@@ -424,12 +426,13 @@ class VariantsRelationManager extends RelationManager
             ->action(function (Collection $records, array $data): void {
                 $percentage = (float) $data['percentage'];
 
-                foreach ($records as $record) {
-                    if ($record instanceof ProductVariant) {
-                        $newPrice = (int) round($record->price * (1 + $percentage / 100));
-                        $record->update(['price' => max(0, $newPrice)]);
+                DB::transaction(function () use ($records, $percentage): void {
+                    foreach ($records as $record) {
+                        if ($record instanceof ProductVariant) {
+                            AdjustVariantPrice::run($record, $percentage);
+                        }
                     }
-                }
+                });
 
                 Notification::make()->title('Prices updated')->success()->send();
             });

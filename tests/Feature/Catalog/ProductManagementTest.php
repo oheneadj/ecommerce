@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Catalog;
 
+use App\Actions\Catalog\AdjustVariantPrice;
 use App\Actions\Catalog\ArchiveProduct;
 use App\Actions\Catalog\CreateProduct;
 use App\Actions\Catalog\DeleteProduct;
@@ -336,5 +337,32 @@ class ProductManagementTest extends TestCase
         }
 
         $this->assertSame(0, Product::query()->where('slug', 'rollback-product')->count());
+    }
+
+    public function test_adjust_variant_price_increases_by_the_given_percentage(): void
+    {
+        $variant = ProductVariant::factory()->create(['price' => 1000]);
+
+        AdjustVariantPrice::run($variant, 10);
+
+        $this->assertSame(1100, $variant->fresh()->price);
+    }
+
+    public function test_adjust_variant_price_decreases_by_the_given_negative_percentage(): void
+    {
+        $variant = ProductVariant::factory()->create(['price' => 1000]);
+
+        AdjustVariantPrice::run($variant, -10);
+
+        $this->assertSame(900, $variant->fresh()->price);
+    }
+
+    public function test_adjust_variant_price_never_goes_below_zero(): void
+    {
+        $variant = ProductVariant::factory()->create(['price' => 100]);
+
+        AdjustVariantPrice::run($variant, -500);
+
+        $this->assertSame(0, $variant->fresh()->price);
     }
 }

@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Fixed — Bulk price adjustment bypassed the Action layer and had no transaction
+- `VariantsRelationManager`'s `bulkAdjustPrice` computed the new price and called `$record->update()` directly inside the bulk action's closure, unlike its `bulkAdjustStock` sibling (and every other mutation in this codebase) which goes through an Action — and looped over the selected records with no transaction, so a failure partway through a multi-select batch would leave some variants updated and others not. Extracted `App\Actions\Catalog\AdjustVariantPrice` (single-variant percentage adjustment) and wrapped the bulk loop in `DB::transaction()`, matching `AdjustStockWithReservationCheck`'s pattern.
+- 4 new tests: the Action's increase/decrease/floor-at-zero behavior, and that an exception partway through a batch rolls back every record in it.
+
 ### Fixed — Image uploads had no size limit
 - `->image()` already restricts every upload to image MIME types internally (Filament's `FileUpload::image()` calls `acceptedFileTypes(['image/*'])`), but nothing capped upload size across the 4 image fields (Brand logo, Attribute image swatch, Product image, Variant image) — an admin could upload an arbitrarily large file. Added `->maxSize(config('media.max_upload_size_kb'))` to all 4, backed by a new `config/media.php` / `MEDIA_MAX_UPLOAD_SIZE_KB` env var (default `5120`, i.e. 5MB) so the limit can be changed without a code deploy.
 - Also closed a gap found in the same pass: the Attribute Image-type swatch upload (`TermsRelationManager`) was the one image field never routed through `ConvertImageToWebp`, unlike the other 3 — now converts to WebP on save like the rest of the catalog's images.

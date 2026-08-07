@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Actions\Catalog\AdjustVariantPrice;
 use App\Enums\OrderStatus;
 use App\Enums\UserRole;
 use App\Filament\Resources\Orders\Pages\ListOrders;
@@ -14,7 +15,9 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use RuntimeException;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -76,5 +79,28 @@ class BulkActionsTest extends TestCase
         foreach ($variants as $variant) {
             $this->assertSame(1100, $variant->fresh()->price);
         }
+    }
+
+    public function test_a_failure_partway_through_a_bulk_price_adjustment_rolls_back_the_whole_batch(): void
+    {
+        $this->actingAs($this->admin());
+
+        $product = Product::factory()->create();
+        $variants = ProductVariant::factory()->count(2)->create(['product_id' => $product->id, 'price' => 1000]);
+
+        $exceptionThrown = false;
+
+        try {
+            DB::transaction(function () use ($variants): void {
+                AdjustVariantPrice::run($variants[0], 10);
+
+                throw new RuntimeException('simulated failure partway through the batch');
+            });
+        } catch (RuntimeException) {
+            $exceptionThrown = true;
+        }
+
+        $this->assertTrue($exceptionThrown);
+        $this->assertSame(1000, $variants[0]->fresh()->price);
     }
 }

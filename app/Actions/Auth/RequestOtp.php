@@ -10,6 +10,7 @@ namespace App\Actions\Auth;
 
 use App\Exceptions\OtpRateLimitedException;
 use App\Models\OtpCode;
+use App\Models\SmsApiLog;
 use App\Sms\Contracts\SmsGateway;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -48,7 +49,17 @@ class RequestOtp
             'expires_at' => now()->addMinutes(10),
         ]);
 
-        $this->sms->send($phone, "Your login code is {$code}. It expires in 10 minutes.");
+        $message = "Your login code is {$code}. It expires in 10 minutes.";
+        $result = $this->sms->send($phone, $message);
+
+        SmsApiLog::query()->create([
+            'provider' => 'moolre',
+            'action' => 'otp',
+            'recipient' => $phone,
+            'request_payload' => ['recipient' => $phone, 'message' => $message],
+            'response_payload' => $result->rawResponse,
+            'status_code' => $result->statusCode,
+        ]);
 
         RateLimiter::hit("otp-request-minute:{$phone}", 60);
         RateLimiter::hit("otp-request-hour:{$phone}", 3600);

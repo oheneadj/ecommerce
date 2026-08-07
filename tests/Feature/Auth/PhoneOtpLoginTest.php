@@ -9,10 +9,12 @@ use App\Actions\Auth\VerifyOtp;
 use App\Exceptions\InvalidOtpException;
 use App\Exceptions\OtpRateLimitedException;
 use App\Models\OtpCode;
+use App\Models\SmsApiLog;
 use App\Models\User;
 use App\Sms\Contracts\SmsGateway;
 use App\Sms\SmsSendResult;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -41,6 +43,31 @@ class PhoneOtpLoginTest extends TestCase
 
         $this->assertNotNull($otp);
         $this->assertMatchesRegularExpression('/^\$2y\$/', $otp->code_hash);
+    }
+
+    public function test_requesting_an_otp_records_an_sms_api_log_entry(): void
+    {
+        $this->fakeSmsGateway();
+
+        RequestOtp::run('+233201234567');
+
+        $log = SmsApiLog::query()->where('recipient', '+233201234567')->first();
+
+        $this->assertNotNull($log);
+        $this->assertSame('otp', $log->action);
+        $this->assertStringContainsString('login code', $log->request_payload['message']);
+    }
+
+    public function test_the_sms_api_log_payload_is_encrypted_at_rest(): void
+    {
+        $this->fakeSmsGateway();
+
+        RequestOtp::run('+233201234567');
+
+        $log = SmsApiLog::query()->where('recipient', '+233201234567')->first();
+        $raw = DB::table('sms_api_logs')->where('id', $log->id)->first();
+
+        $this->assertStringNotContainsString('login code', $raw->request_payload);
     }
 
     public function test_requesting_an_otp_twice_within_60_seconds_is_rate_limited(): void

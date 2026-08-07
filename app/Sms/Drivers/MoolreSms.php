@@ -41,12 +41,16 @@ readonly class MoolreSms implements SmsGateway
             return new SmsSendResult(
                 success: false,
                 errorMessage: $response->json('message') ?? 'Moolre SMS request failed.',
+                rawResponse: $response->json() ?? [],
+                statusCode: $response->status(),
             );
         }
 
         return new SmsSendResult(
             success: true,
             providerReference: $response->json('data.id'),
+            rawResponse: $response->json() ?? [],
+            statusCode: $response->status(),
         );
     }
 }

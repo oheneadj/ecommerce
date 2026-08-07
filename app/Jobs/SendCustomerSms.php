@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Models\SmsApiLog;
 use App\Models\User;
 use App\Sms\Contracts\SmsGateway;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -51,7 +52,16 @@ class SendCustomerSms implements ShouldQueue
             return;
         }
 
-        $sms->send($customer->phone, $this->message);
+        $result = $sms->send($customer->phone, $this->message);
+
+        SmsApiLog::query()->create([
+            'provider' => 'moolre',
+            'action' => 'customer_message',
+            'recipient' => $customer->phone,
+            'request_payload' => ['recipient' => $customer->phone, 'message' => $this->message],
+            'response_payload' => $result->rawResponse,
+            'status_code' => $result->statusCode,
+        ]);
     }
 
     public function failed(Throwable $exception): void

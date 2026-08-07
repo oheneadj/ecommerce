@@ -236,6 +236,23 @@ class CustomerMessagingTest extends TestCase
         Bus::assertDispatchedTimes(SendCustomerEmail::class, 3);
     }
 
+    public function test_sending_an_sms_records_an_sms_api_log_entry(): void
+    {
+        $this->fakeSmsGateway();
+        $this->actingAs($this->admin());
+
+        $customer = User::factory()->create(['phone' => '0551234567']);
+
+        Livewire::test(ListCustomers::class)
+            ->callTableAction('sendSms', $customer, data: ['message' => 'Your order has shipped!'])
+            ->assertHasNoTableActionErrors();
+
+        $this->assertDatabaseHas('sms_api_logs', [
+            'recipient' => '0551234567',
+            'action' => 'customer_message',
+        ]);
+    }
+
     public function test_bulk_send_email_skips_customers_with_no_email_and_reports_the_count(): void
     {
         Mail::fake();

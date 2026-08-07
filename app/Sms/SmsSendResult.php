@@ -13,9 +13,14 @@ namespace App\Sms;
  */
 final readonly class SmsSendResult
 {
+    /**
+     * @param  array<string, mixed>  $rawResponse
+     */
     public function __construct(
         public bool $success,
         public ?string $providerReference = null,
         public ?string $errorMessage = null,
+        public array $rawResponse = [],
+        public ?int $statusCode = null,
     ) {}
 }

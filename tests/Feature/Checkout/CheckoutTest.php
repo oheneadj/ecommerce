@@ -124,6 +124,22 @@ class CheckoutTest extends TestCase
         $this->assertMatchesRegularExpression('/^ORD-\d{4}-\d{6}$/', $order->order_number);
     }
 
+    public function test_the_order_number_sequence_resets_at_the_start_of_a_new_year_rather_than_continuing_an_all_time_count(): void
+    {
+        $this->travelTo('2020-06-15');
+        Order::factory()->count(3)->create();
+
+        $this->travelTo('2026-01-01');
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+        $cart = Cart::factory()->create();
+        AddItemToCart::run($cart, $variant, 1);
+        $address = Address::factory()->create(['user_id' => $cart->user_id]);
+
+        $order = CreateOrderFromCart::run($cart, $address);
+
+        $this->assertSame('ORD-2026-000001', $order->order_number);
+    }
+
     public function test_concurrent_checkout_on_last_unit_prevents_overselling(): void
     {
         $variant = ProductVariant::factory()->create(['stock' => 1]);

@@ -123,6 +123,6 @@ readonly class MoolreGateway implements PaymentGateway
 
     private function client(): PendingRequest
     {
-        return Http::baseUrl(self::BASE_URL)->withToken($this->apiKey);
+        return Http::baseUrl(self::BASE_URL)->withToken($this->apiKey)->timeout(15);
     }
 }

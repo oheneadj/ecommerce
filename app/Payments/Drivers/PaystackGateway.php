@@ -125,6 +125,6 @@ readonly class PaystackGateway implements PaymentGateway
 
     private function client(): PendingRequest
     {
-        return Http::baseUrl(self::BASE_URL)->withToken($this->secretKey);
+        return Http::baseUrl(self::BASE_URL)->withToken($this->secretKey)->timeout(15);
     }
 }

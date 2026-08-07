@@ -39,6 +39,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `VariantsRelationManager`'s `bulkAdjustPrice` computed the new price and called `$record->update()` directly inside the bulk action's closure, unlike its `bulkAdjustStock` sibling (and every other mutation in this codebase) which goes through an Action — and looped over the selected records with no transaction, so a failure partway through a multi-select batch would leave some variants updated and others not. Extracted `App\Actions\Catalog\AdjustVariantPrice` (single-variant percentage adjustment) and wrapped the bulk loop in `DB::transaction()`, matching `AdjustStockWithReservationCheck`'s pattern.
 - 4 new tests: the Action's increase/decrease/floor-at-zero behavior, and that an exception partway through a batch rolls back every record in it.
 
+### Fixed — Bug hunt: payment gateway drivers had no HTTP timeout
+- Same gap already fixed for `MoolreSms`: neither `MoolreGateway` nor `PaystackGateway` set a timeout on their HTTP client, so a hung connection could stall well past the enclosing job's own `timeout` before Laravel's job-level kill takes over, rather than failing cleanly with an HTTP-level timeout. Added `->timeout(15)` to both drivers' shared `client()` method.
+
 ### Fixed — Bug hunt: the notification SMS channel bypassed the audit trail just added
 - `SmsChannel` (the "sms" notification channel every `OrderPlaced`/`OrderShipped`/`PaymentSucceeded`/`PaymentFailed`/etc. notification uses) calls the SMS gateway directly — almost certainly higher volume than OTP + ad-hoc customer messages combined, and the one call site missed when `sms_api_logs` was added earlier in this same bug-hunt pass. Now logs every send the same way.
 - 1 new test.

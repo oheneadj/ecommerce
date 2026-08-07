@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Concerns\HasUlid;
 use Database\Factories\AddressFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,6 +18,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
+ * @property string $ulid
  * @property int|null $user_id
  * @property string|null $label
  * @property string $recipient_name
@@ -34,6 +36,8 @@ class Address extends Model
 {
     /** @use HasFactory<AddressFactory> */
     use HasFactory;
+
+    use HasUlid;
 
     /**
      * @return array<string, string>

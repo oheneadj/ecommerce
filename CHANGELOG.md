@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Fixed — Address had no ULID
+- Unlike every other externally-referenceable model (`Order`, `Payment`, `ProductVariant`, `Review`, etc.), `Address` had no `HasUlid` trait or `ulid` column — its raw bigint `id` would have been exposed the moment a customer-facing route needed to reference an address. Currently latent (no storefront exists yet), but fixed now rather than left as a landmine. Added the migration (backfilling existing rows) and the trait.
+- 2 new tests: a ULID is generated on creation, and it's used for route-model binding.
+
 ### Added — Missing Policy test coverage
 - 8 policies had no direct test coverage at all: `ActivityPolicy`, `AttributePolicy`, `StoreSettingPolicy`, `ShippingMethodPolicy`, `StockReservationPolicy`, `StockMovementPolicy`, `ProductImagePolicy`, and `UserPolicy` (including `sendCommunication`) — only incidentally exercised (if at all) through Livewire-level admin tests. Added `tests/Feature/Policies/` with one test class per policy, asserting every ability against every relevant role directly via `$user->can(...)`.
 

@@ -150,6 +150,19 @@ class MoneyInputTest extends TestCase
         $this->assertSame(2000, $payment->refunds()->sole()->amount);
     }
 
+    public function test_issuing_a_refund_with_a_zero_or_negative_amount_is_rejected_by_the_form(): void
+    {
+        $this->actingAs($this->superAdmin());
+
+        $payment = Payment::factory()->create(['provider' => 'fake', 'status' => PaymentStatus::Success, 'amount' => 5000]);
+
+        Livewire::test(ListPayments::class)
+            ->callTableAction('refund', $payment, data: ['amount' => 0])
+            ->assertHasTableActionErrors(['amount' => 'min']);
+
+        $this->assertSame(0, $payment->refunds()->count());
+    }
+
     public function test_creating_a_fixed_coupon_with_a_cedis_value_stores_pesewas(): void
     {
         $this->actingAs($this->admin());

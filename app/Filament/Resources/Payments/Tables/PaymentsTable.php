@@ -7,6 +7,7 @@ namespace App\Filament\Resources\Payments\Tables;
 use App\Actions\Payment\ProcessRefund;
 use App\Enums\PaymentStatus;
 use App\Enums\UserRole;
+use App\Exceptions\InvalidRefundAmountException;
 use App\Exceptions\RefundExceedsPaymentException;
 use App\Filament\Support\MoneyInput;
 use App\Models\Payment;
@@ -77,6 +78,7 @@ class PaymentsTable
                 MoneyInput::make('amount')
                     ->label('Amount')
                     ->required()
+                    ->minValue(0.01)
                     ->helperText(fn (Payment $record) => "Payment amount: {$record->amount_formatted}"),
                 TextInput::make('reason')
                     ->maxLength(255),
@@ -89,7 +91,7 @@ class PaymentsTable
                     // this only confirms the refund was accepted and reserved
                     // against the payment's balance, not that it's settled yet.
                     Notification::make()->title('Refund queued')->body('It will be processed shortly — check the Refunds tab for its final status.')->success()->send();
-                } catch (RefundExceedsPaymentException $e) {
+                } catch (RefundExceedsPaymentException|InvalidRefundAmountException $e) {
                     Notification::make()->title('Refund failed')->body($e->getMessage())->danger()->send();
                 }
             });

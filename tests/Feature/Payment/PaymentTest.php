@@ -14,6 +14,7 @@ use App\Enums\PaymentStatus;
 use App\Enums\RefundStatus;
 use App\Enums\StockMovementType;
 use App\Enums\StockReservationStatus;
+use App\Exceptions\InvalidRefundAmountException;
 use App\Exceptions\RefundExceedsPaymentException;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -222,6 +223,40 @@ class PaymentTest extends TestCase
         $this->expectException(RefundExceedsPaymentException::class);
 
         ProcessRefund::run($payment, 1500);
+    }
+
+    public function test_a_zero_refund_amount_is_rejected(): void
+    {
+        $payment = Payment::factory()->create(['provider' => 'fake', 'amount' => 1000, 'status' => PaymentStatus::Success]);
+
+        $this->expectException(InvalidRefundAmountException::class);
+
+        ProcessRefund::run($payment, 0);
+    }
+
+    public function test_a_negative_refund_amount_is_rejected(): void
+    {
+        // Without this guard, a negative amount would pass the "does this
+        // exceed the payment" cap check trivially, get queued to the real
+        // payment gateway, and drive the proportional-restock math negative.
+        $payment = Payment::factory()->create(['provider' => 'fake', 'amount' => 1000, 'status' => PaymentStatus::Success]);
+
+        $this->expectException(InvalidRefundAmountException::class);
+
+        ProcessRefund::run($payment, -500);
+    }
+
+    public function test_an_invalid_refund_amount_never_creates_a_refund_row(): void
+    {
+        $payment = Payment::factory()->create(['provider' => 'fake', 'amount' => 1000, 'status' => PaymentStatus::Success]);
+
+        try {
+            ProcessRefund::run($payment, -500);
+        } catch (InvalidRefundAmountException) {
+            // expected
+        }
+
+        $this->assertSame(0, $payment->refunds()->count());
     }
 
     public function test_refund_cannot_exceed_remaining_amount_after_a_prior_partial_refund(): void

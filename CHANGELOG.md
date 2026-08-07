@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Fixed — ProcessRefund did not reject a zero/negative refund amount
+- The refund cap check (`$amount > remaining balance`) only guarded against amounts that were too *large* — a zero or negative amount passed it trivially, would have been queued to the real payment gateway via `IssueProviderRefund`, and would have driven the proportional-restock math negative. Added a new `InvalidRefundAmountException`, thrown by `ProcessRefund` before the cap check for any `$amount <= 0`. Also added `->minValue(0.01)` to the Filament refund-amount field (via the shared `MoneyInput` helper) so the bad input is rejected with a friendly form error before it ever reaches the Action.
+- 4 new tests: zero and negative amounts both rejected at the Action level, confirming no `Refund` row is ever created for a rejected attempt, and the Filament form itself rejecting `0` with a `min` validation error.
+
 ### Fixed — Remaining bug-hunt findings (medium/low risk)
 - **OTP send could be abused by rotating phone numbers from one source**: the existing per-phone limit (1/60s, 5/hour) resets cleanly for every new number, so an attacker driving unlimited paid SMS sends just needs fresh numbers. Added a 30/hour per-IP limit alongside it in `RequestOtp`.
 - **`recovery-codes.blade.php`'s regenerable code list had no `wire:key`** — Livewire's DOM diffing could misalign a code with another's stale `wire:loading` opacity/animation state after "Regenerate codes". Added `wire:key` there and, for consistency, to the (static, lower-risk) appearance-toggle loop.

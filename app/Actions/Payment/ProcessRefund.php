@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace App\Actions\Payment;
 
 use App\Enums\RefundStatus;
+use App\Exceptions\InvalidRefundAmountException;
 use App\Exceptions\RefundExceedsPaymentException;
 use App\Jobs\IssueProviderRefund;
 use App\Models\Payment;
@@ -34,6 +35,7 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * is reserved; the Refund stays Pending until the queued job resolves it
  * to Success/Failed.
  *
+ * @throws InvalidRefundAmountException
  * @throws RefundExceedsPaymentException
  */
 class ProcessRefund
@@ -42,6 +44,10 @@ class ProcessRefund
 
     public function handle(Payment $payment, int $amount, ?string $reason = null): Refund
     {
+        if ($amount <= 0) {
+            throw new InvalidRefundAmountException($amount);
+        }
+
         $refund = DB::transaction(function () use ($payment, $amount, $reason): Refund {
             $locked = Payment::query()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
 

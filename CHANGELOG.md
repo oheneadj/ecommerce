@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Fixed — 12 foreign keys had no explicit delete behavior
+- `products.category_id`, `payments.order_id`, `refunds.payment_id`, `shipments.order_id`/`shipping_method_id`, `coupon_usages.coupon_id`/`order_id`, `stock_movements.product_variant_id`, `reviews.product_id`/`user_id`, and `stock_reservations.product_variant_id` had no `ON DELETE` behavior specified — implicitly restrict at the DB level, but as a raw, unhandled `QueryException` the moment it fired rather than a deliberate choice. Made explicit via `restrictOnDelete()`.
+- `product_variants.product_id` and `wishlist_items.product_variant_id` are now explicitly `cascadeOnDelete()` — the former matches `product_images.product_id` on the same parent (already cascading, so deleting a product now consistently takes both its images and variants with it instead of failing partway through); the latter removes a wishlist entry that would otherwise point at nothing once its variant is gone.
+- `reviews.order_item_id` is deliberately excluded here — it needs `nullOnDelete()`, not restrict, and is handled as its own fix.
+- 12 new tests, one per relationship, each directly proving the actual DB-level behavior (a real `QueryException` for restrict, the child row actually gone for cascade) rather than just checking application-level behavior.
+
 ### Fixed — RemoveItemFromCart had no ownership check
 - Took a bare `CartItem` and deleted it unconditionally — unlike `RemoveFromWishlist` (and its own sibling `AddItemToCart`), which take the owning `User`/`Cart` and scope through it. Not yet exploitable (no HTTP layer exists for cart/wishlist), but the wrong contract to build a future endpoint on top of — a route passing a raw `CartItem` from a route-model-bound ULID would have no way to verify it belongs to the acting session. Changed the signature to `handle(Cart $cart, ProductVariant $variant)`, matching `AddItemToCart` exactly, and scoped the delete through the cart relationship so it's structurally impossible to reach another cart's line.
 - 2 new tests: removing a variant the cart doesn't have does nothing, and the action cannot reach another cart's line item.

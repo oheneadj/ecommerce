@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Fixed — Filesystem disks silently swallowed write failures
+- All three disks (`local`, `public`, `s3`) had the framework's default `'throw' => false`, meaning a failed invoice/image write returns `false` instead of raising — easy to miss in code that doesn't explicitly check every write's return value. Flipped to `'throw' => true` on all three.
+- 1 new test asserting all three disks have `throw` enabled, to catch a future accidental revert.
+
 ### Fixed — Address had no ULID
 - Unlike every other externally-referenceable model (`Order`, `Payment`, `ProductVariant`, `Review`, etc.), `Address` had no `HasUlid` trait or `ulid` column — its raw bigint `id` would have been exposed the moment a customer-facing route needed to reference an address. Currently latent (no storefront exists yet), but fixed now rather than left as a landmine. Added the migration (backfilling existing rows) and the trait.
 - 2 new tests: a ULID is generated on creation, and it's used for route-model binding.

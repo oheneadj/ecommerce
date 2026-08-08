@@ -38,6 +38,23 @@ class AdminBarTest extends TestCase
         $this->assertStringNotContainsString('✅', $html);
     }
 
+    public function test_the_admin_bar_stays_below_filaments_notification_toast_layer(): void
+    {
+        // Filament's notification toasts render at z-50 and its own
+        // topbar/sidebar at z-30 — the bar must sit between them (above
+        // the panel's nav chrome, below notifications) so a toast is
+        // never covered by this bar, regardless of what it was set to
+        // before.
+        Role::findOrCreate(UserRole::Admin->value, 'web');
+        $user = User::factory()->create();
+        $user->assignRole(UserRole::Admin->value);
+        $this->actingAs($user);
+
+        $html = view('partials.admin-bar')->render();
+
+        $this->assertMatchesRegularExpression('/\.wp-admin-bar\s*\{[^}]*z-index:\s*40;/', $html);
+    }
+
     public function test_the_admin_bar_is_invisible_to_a_customer(): void
     {
         $user = User::factory()->create();

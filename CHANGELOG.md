@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- The admin bar was covering Filament's own notification toast popups — it was set to `z-index: 999999`, vastly outranking Filament's notifications (`z-50`) and its own topbar/sidebar (`z-30`). Lowered to `z-index: 40`, which sits above the panel's nav chrome but below the notification layer, so a toast is never hidden behind it. 1 new test.
+
 ### Changed
 - Removed all emoji usage from the admin bar (View Site/Admin Dashboard, New, Pending orders, Cache, and the cache-cleared flash message) — replaced with `x-app-icon` (globe, cog, plus, clock, arrow-path, check), two of which (`globe`, `clock`) didn't exist in that component yet and were added. Icons use inline `style` sizing rather than a Tailwind class, since this partial deliberately avoids Tailwind for cross-CSS-pipeline portability (it's shared between the Filament panel and the storefront layout, which don't purge for each other's Blade files). Swept the rest of the codebase for emoji usage — found none elsewhere. 2 new tests.
 

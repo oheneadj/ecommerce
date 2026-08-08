@@ -47,7 +47,11 @@
         <style>
             .wp-admin-bar {
                 position: relative;
-                z-index: 999999;
+                /* Filament's own topbar/sidebar use z-30 and its
+                   notification toasts use z-50 — 40 sits above the panel's
+                   nav chrome but stays below notifications, so a toast is
+                   never covered by this bar. */
+                z-index: 40;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;

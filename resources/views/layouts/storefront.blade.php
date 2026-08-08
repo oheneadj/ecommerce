@@ -15,6 +15,8 @@
         <link rel="stylesheet" href="{{ route('theme.css') }}">
     </head>
     <body class="min-h-screen bg-white text-zinc-900 antialiased dark:bg-zinc-900 dark:text-zinc-100">
+        @include('partials.admin-bar')
+
         <header class="border-b border-zinc-200 dark:border-zinc-700">
             <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
                 <a href="{{ route('home') }}" wire:navigate class="flex items-center gap-2">
@@ -26,6 +28,7 @@
                 </a>
 
                 <nav class="flex items-center gap-4 text-sm font-medium">
+                    <a href="{{ route('cart.show') }}" wire:navigate class="text-zinc-700 hover:text-brand-primary dark:text-zinc-300">{{ __('Cart') }}</a>
                     <a href="{{ route('account.show') }}" wire:navigate class="text-zinc-700 hover:text-brand-primary dark:text-zinc-300">{{ __('Account') }}</a>
                 </nav>
             </div>

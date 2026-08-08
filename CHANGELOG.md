@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Themeable customer pages: Cart
+- `/cart` — view items, change quantity, remove a line. New `App\Actions\Cart\GetCurrentCart` (resolves a user's still-open cart, creating one if none exists; starts a fresh cart once the previous one converts to an order, since a cart converts into at most one order and is then "closed") and `UpdateCartItemQuantity` (sets an exact quantity rather than a delta, scoped through the owning cart like `RemoveItemFromCart`/`AddItemToCart` — zero or less removes the line). Linked from the storefront header nav. 10 new tests, including that one customer's cart page never shows another customer's items.
+
 ### Added — Themeable customer pages: Address book
 - `/account/addresses` — customer-facing saved address book (add/edit/delete/set-default), the first of the remaining themeable pages (Cart, Checkout, Wishlist still to come). New `App\Actions\Address\{Create,Update,Delete}Address`, `AddressPolicy` (ownership-only, mirrors `ReviewPolicy`'s pattern), and `AddressObserver` (enforces exactly one default address per user, mirroring `ProductImageObserver`'s "only one primary" pattern). A brand-new account's first saved address is automatically the default; deleting the default promotes the next-most-recent remaining address rather than leaving the account with no default to preselect at checkout. Deleting an address that was used on a past order is always safe — `orders.address_id` nulls out, `address_snapshot` already froze the shipping details permanently. Linked from the `/account` dashboard. 9 new tests, including that a customer cannot edit or delete another customer's address.
 

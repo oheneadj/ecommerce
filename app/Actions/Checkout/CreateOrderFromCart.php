@@ -16,6 +16,7 @@ use App\Models\Cart;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\StoreSetting;
 use App\Notifications\OrderPlaced;
 use App\Notifications\Support\OrderRecipient;
 use App\Notifications\Support\SafeNotifier;
@@ -53,6 +54,12 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * this transaction — a rollback can't un-send an SMS. A delivery failure
  * never fails checkout itself (SafeNotifier logs and swallows it).
  *
+ * `tax_total` is computed once here, from `StoreSetting::current()->tax_rate`
+ * against the pre-discount `subtotal` — a single, uniform, whole-number
+ * percentage (Epic E13.4), matching how a later `ApplyCouponToOrder` call
+ * folds it into `grand_total` unchanged (a coupon discounts the sale price,
+ * never the tax already computed on it).
+ *
  * @throws EmptyCartException when the cart has no items
  */
 class CreateOrderFromCart
@@ -82,6 +89,7 @@ class CreateOrderFromCart
             }
 
             $subtotal = $items->sum(fn ($item) => $item->productVariant->price * $item->quantity);
+            $taxTotal = (int) round($subtotal * StoreSetting::current()->tax_rate / 100);
 
             $order = Order::query()->create([
                 'cart_id' => $cart->id,
@@ -100,9 +108,9 @@ class CreateOrderFromCart
                 'status' => OrderStatus::Pending,
                 'subtotal' => $subtotal,
                 'discount_total' => 0,
-                'tax_total' => 0,
+                'tax_total' => $taxTotal,
                 'shipping_total' => 0,
-                'grand_total' => $subtotal,
+                'grand_total' => $subtotal + $taxTotal,
             ]);
 
             foreach ($items as $item) {

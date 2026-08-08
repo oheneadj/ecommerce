@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Added — Sprint 9 (partial): Store Settings & Branding backend (Epic E13.1, E13.2, E13.4)
+- `StoreSetting` gained branding fields (`business_name`, `logo_path`, `primary_color`, `secondary_color`, `tagline`, `contact_email`, `contact_phone`, `contact_address`) and `tax_rate` — previously the model only held operational config (`stock_reservation_minutes`, `low_stock_threshold`); no branding existed at all, and tax was hardcoded to `0` everywhere in checkout with no config anywhere. `tax_rate` follows Coupon's existing Percentage convention (whole-number integer, e.g. `15` for 15%), applied uniformly to every order's subtotal — no per-jurisdiction/product tax rules, matching a single-jurisdiction deployment.
+- `ManageStoreSettings` (the existing Super-Admin-only settings page) now exposes all of the above, with the logo going through the same `maxSize`/WebP-conversion pipeline as every other catalog image.
+- `CreateOrderFromCart` computes `tax_total` from `StoreSetting::current()->tax_rate` against the pre-discount subtotal; a later coupon discount never reduces the tax already computed on it (matches the existing `ApplyCouponToOrder` formula, unchanged).
+- `GenerateOrderInvoice`'s PDF now renders a letterhead (business name/logo/tagline/contact details) — deliberately read live from `StoreSetting` at render time, not snapshotted like the order's line items, since a rebrand is meant to show up on a regenerated invoice for even an old order.
+- `StoreSettingSeeder` seeds sensible branding/tax defaults for a fresh deployment (Epic E13.4).
+- 9 new tests: tax applied/zeroed/unaffected-by-coupon-discount at checkout, the settings page's access gate and field validation, and the invoice's letterhead reading live (not snapshotted) branding data.
+
 ### Fixed — StockMovement.quantity allowed zero
 - A zero-quantity movement changes nothing but still writes a meaningless row to the immutable `stock_movements` ledger. Added a form-level `not_in:0` rule (`StockMovementForm`) as a courtesy, and the actual enforcement boundary in `RecordStockMovement` itself (throws `InvalidStockMovementQuantityException`) — the single write path for the ledger, so nothing can insert a zero-quantity row regardless of caller.
 - 4 new tests: the Action rejects zero and leaves stock/the ledger untouched, and the form rejects/accepts accordingly.

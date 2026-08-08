@@ -21,6 +21,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\StockReservation;
+use App\Models\StoreSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -122,6 +123,52 @@ class CheckoutTest extends TestCase
         $order = CreateOrderFromCart::run($cart, $address);
 
         $this->assertMatchesRegularExpression('/^ORD-\d{4}-\d{6}$/', $order->order_number);
+    }
+
+    public function test_checkout_applies_the_store_wide_tax_rate_to_the_subtotal(): void
+    {
+        StoreSetting::current()->update(['tax_rate' => 15]);
+
+        $variant = ProductVariant::factory()->create(['stock' => 10, 'price' => 1000]);
+        $cart = Cart::factory()->create();
+        AddItemToCart::run($cart, $variant, 1);
+        $address = Address::factory()->create(['user_id' => $cart->user_id]);
+
+        $order = CreateOrderFromCart::run($cart, $address);
+
+        $this->assertSame(150, $order->tax_total);
+        $this->assertSame(1150, $order->grand_total);
+    }
+
+    public function test_checkout_with_a_zero_tax_rate_charges_no_tax(): void
+    {
+        StoreSetting::current()->update(['tax_rate' => 0]);
+
+        $variant = ProductVariant::factory()->create(['stock' => 10, 'price' => 1000]);
+        $cart = Cart::factory()->create();
+        AddItemToCart::run($cart, $variant, 1);
+        $address = Address::factory()->create(['user_id' => $cart->user_id]);
+
+        $order = CreateOrderFromCart::run($cart, $address);
+
+        $this->assertSame(0, $order->tax_total);
+        $this->assertSame(1000, $order->grand_total);
+    }
+
+    public function test_a_coupon_discount_does_not_reduce_the_tax_already_computed_on_the_subtotal(): void
+    {
+        StoreSetting::current()->update(['tax_rate' => 10]);
+
+        $coupon = Coupon::factory()->create(['type' => CouponType::Fixed, 'value' => 500]);
+        $variant = ProductVariant::factory()->create(['stock' => 10, 'price' => 1000]);
+        $cart = Cart::factory()->create();
+        AddItemToCart::run($cart, $variant, 1);
+        $address = Address::factory()->create(['user_id' => $cart->user_id]);
+
+        $order = CreateOrderFromCart::run($cart, $address, couponCode: $coupon->code);
+
+        $this->assertSame(100, $order->fresh()->tax_total);
+        $this->assertSame(600, $order->fresh()->grand_total);
     }
 
     public function test_the_order_number_sequence_resets_at_the_start_of_a_new_year_rather_than_continuing_an_all_time_count(): void

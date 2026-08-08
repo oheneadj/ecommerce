@@ -10,9 +10,33 @@
         th, td { padding: 6px 8px; border-bottom: 1px solid #ddd; text-align: left; }
         .totals td { border-bottom: none; }
         .text-right { text-align: right; }
+        .letterhead { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+        .letterhead img { max-height: 48px; }
+        .letterhead .contact { text-align: right; font-size: 11px; color: #555; }
     </style>
 </head>
 <body>
+    {{-- Letterhead is read live from StoreSetting, never snapshotted — it's
+         this deployment's current business identity, not a fact about the
+         sale (see GenerateOrderInvoice's docblock). --}}
+    <div class="letterhead">
+        <div>
+            @if ($store->logo_path)
+                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->path($store->logo_path) }}" alt="{{ $store->business_name }}">
+            @elseif ($store->business_name)
+                <strong>{{ $store->business_name }}</strong>
+            @endif
+            @if ($store->tagline)
+                <div>{{ $store->tagline }}</div>
+            @endif
+        </div>
+        <div class="contact">
+            @if ($store->contact_email) {{ $store->contact_email }}<br> @endif
+            @if ($store->contact_phone) {{ $store->contact_phone }}<br> @endif
+            @if ($store->contact_address) {{ $store->contact_address }} @endif
+        </div>
+    </div>
+
     <h1>Invoice {{ $order->order_number }}</h1>
     <p>
         Date: {{ $order->created_at->format('d M Y') }}<br>

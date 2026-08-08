@@ -15,13 +15,38 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * Always exactly one row. Business-behavior configuration (reservation
  * window, branding, etc.) lives here so it's admin-editable without a
- * deploy — never hardcode these values in an Action.
+ * deploy — never hardcode these values in an Action. This is the one
+ * thing that changes between deployments of this codebase for different
+ * businesses (Epic E13): branding fields let the storefront/PDF receipts
+ * be reskinned per business with no code change, and `tax_rate` is the
+ * single-jurisdiction rate applied uniformly to every order's subtotal.
  *
  * @property int $id
+ * @property string|null $business_name
+ * @property string|null $logo_path
+ * @property string|null $primary_color
+ * @property string|null $secondary_color
+ * @property string|null $tagline
+ * @property string|null $contact_email
+ * @property string|null $contact_phone
+ * @property string|null $contact_address
+ * @property int $tax_rate
  * @property int $stock_reservation_minutes
  * @property int $low_stock_threshold
  */
-#[Fillable(['stock_reservation_minutes', 'low_stock_threshold'])]
+#[Fillable([
+    'business_name',
+    'logo_path',
+    'primary_color',
+    'secondary_color',
+    'tagline',
+    'contact_email',
+    'contact_phone',
+    'contact_address',
+    'tax_rate',
+    'stock_reservation_minutes',
+    'low_stock_threshold',
+])]
 class StoreSetting extends Model
 {
     use LogsAdminActivity;

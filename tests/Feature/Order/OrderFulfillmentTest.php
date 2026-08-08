@@ -15,6 +15,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
 use App\Models\ShippingMethod;
+use App\Models\StoreSetting;
 use App\Models\User;
 use App\Notifications\OrderShipped;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -44,6 +45,32 @@ class OrderFulfillmentTest extends TestCase
         $this->assertSame($path, $order->fresh()->invoice_path);
     }
 
+    public function test_invoice_renders_the_current_store_branding_not_a_snapshot(): void
+    {
+        StoreSetting::current()->update(['business_name' => 'Acme Store', 'contact_email' => 'hello@acme.test']);
+
+        $variant = ProductVariant::factory()->create();
+        $order = Order::factory()->create();
+        OrderItem::factory()->create([
+            'order_id' => $order->id,
+            'product_variant_id' => $variant->id,
+            'item_snapshot' => ['product_name' => 'Test Product', 'sku' => 'SKU-1'],
+        ]);
+
+        $html = view('pdf.order-invoice', ['order' => $order->load('items'), 'store' => StoreSetting::current()])->render();
+
+        $this->assertStringContainsString('Acme Store', $html);
+        $this->assertStringContainsString('hello@acme.test', $html);
+
+        // Rebranding shows up on a re-render of even an old order's invoice
+        // — the letterhead is deliberately not snapshotted like the items are.
+        StoreSetting::current()->update(['business_name' => 'Rebranded Store']);
+        $html = view('pdf.order-invoice', ['order' => $order->load('items'), 'store' => StoreSetting::current()])->render();
+
+        $this->assertStringContainsString('Rebranded Store', $html);
+        $this->assertStringNotContainsString('Acme Store', $html);
+    }
+
     public function test_invoice_rendering_does_not_read_live_product_data(): void
     {
         $variant = ProductVariant::factory()->create();
@@ -60,7 +87,7 @@ class OrderFulfillmentTest extends TestCase
         $variant->delete();
 
         $order->refresh()->load('items');
-        $html = view('pdf.order-invoice', ['order' => $order])->render();
+        $html = view('pdf.order-invoice', ['order' => $order, 'store' => StoreSetting::current()])->render();
 
         $this->assertStringContainsString('Snapshotted Name', $html);
         $this->assertStringContainsString('SNAP-SKU', $html);

@@ -16,6 +16,13 @@ use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Matches DashboardStatsOverview's card style (description + icon +
+ * sparkline) — flat-line sparklines here, same reasoning as that widget's
+ * "Low Stock Items" stat: these are live/point-in-time figures, not a
+ * per-day series, so a flat line at the current value is honest rather
+ * than fabricating a trend that doesn't exist.
+ */
 class ProductsOverviewWidget extends StatsOverviewWidget
 {
     protected function getStats(): array
@@ -28,16 +35,25 @@ class ProductsOverviewWidget extends StatsOverviewWidget
 
         return [
             Stat::make('Total Products', (string) $totalProducts)
+                ->description('All products in the catalog')
                 ->descriptionIcon(Heroicon::OutlinedCube)
-                ->color('primary'),
+                ->color('primary')
+                ->chart(array_fill(0, 7, $totalProducts))
+                ->chartColor('primary'),
 
             Stat::make('Stock On Hand', number_format($totalStockUnits).' units')
+                ->description('Active variants only')
                 ->descriptionIcon(Heroicon::OutlinedArchiveBox)
-                ->color('info'),
+                ->color('info')
+                ->chart(array_fill(0, 7, $totalStockUnits))
+                ->chartColor('info'),
 
             Stat::make('Inventory Value', 'GH₵'.number_format($totalInventoryValue / 100, 2))
+                ->description('Stock × price, active variants only')
                 ->descriptionIcon(Heroicon::OutlinedBanknotes)
-                ->color('success'),
+                ->color('success')
+                ->chart(array_fill(0, 7, $totalInventoryValue))
+                ->chartColor('success'),
         ];
     }
 }

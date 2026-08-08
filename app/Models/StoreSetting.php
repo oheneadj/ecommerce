@@ -9,8 +9,10 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Concerns\LogsAdminActivity;
+use App\Http\Controllers\Storefront\ThemeCssController;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Always exactly one row. Business-behavior configuration (reservation
@@ -50,6 +52,16 @@ use Illuminate\Database\Eloquent\Model;
 class StoreSetting extends Model
 {
     use LogsAdminActivity;
+
+    /**
+     * /theme.css is cached forever, not on a TTL — it must never serve a
+     * color an admin already changed, so the cache is cleared the instant
+     * this row saves instead.
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn (): bool => Cache::forget(ThemeCssController::CACHE_KEY));
+    }
 
     /**
      * Get the single settings row, creating it with defaults if missing.

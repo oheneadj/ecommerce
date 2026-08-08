@@ -23,6 +23,16 @@
     --color-accent: var(--color-neutral-800);
     --color-accent-content: var(--color-neutral-800);
     --color-accent-foreground: var(--color-white);
+
+    /*
+     * Per-deployment branding — fallback values only. The real values
+     * come from /theme.css (generated from StoreSetting, loaded after
+     * this stylesheet in <head>) so an admin can change them without a
+     * rebuild. These fallbacks just mean brand-* utilities render
+     * something sane before any store branding is configured.
+     */
+    --color-brand-primary: var(--color-zinc-900);
+    --color-brand-secondary: var(--color-zinc-600);
 }
 
 @layer theme {

@@ -23,6 +23,7 @@ class PagesRenderTest extends TestCase
             ['/login/phone'],
             ['/register'],
             ['/admin/login'],
+            ['/theme.css'],
         ];
     }
 

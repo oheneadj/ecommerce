@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\Orders;
 
+use App\Enums\OrderStatus;
 use App\Filament\Resources\Orders\Pages\ListOrders;
 use App\Filament\Resources\Orders\Pages\ViewOrder;
 use App\Filament\Resources\Orders\RelationManagers\ItemsRelationManager;
+use App\Filament\Resources\Orders\RelationManagers\PaymentsRelationManager;
 use App\Filament\Resources\Orders\Schemas\OrderInfolist;
 use App\Filament\Resources\Orders\Tables\OrdersTable;
 use App\Models\Order;
@@ -48,6 +50,7 @@ class OrderResource extends Resource
     {
         return [
             ItemsRelationManager::class,
+            PaymentsRelationManager::class,
         ];
     }
 
@@ -62,5 +65,21 @@ class OrderResource extends Resource
     public static function canCreate(): bool
     {
         return false;
+    }
+
+    /**
+     * Count of orders awaiting payment — same definition
+     * DashboardMetricsQuery::pendingOrdersCount() uses.
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        $count = Order::query()->where('status', OrderStatus::Pending)->count();
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'info';
     }
 }

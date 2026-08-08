@@ -128,13 +128,13 @@ Corresponds to story E13.3.
 - [ ] Codebase deployed from the shared repo
 - [ ] `.env` populated (see §4)
 - [ ] `php artisan migrate --force`
-- [ ] Seeders run (default categories, shipping methods, tax rate, static page placeholders)
+- [ ] Seeders run: `php artisan db:seed --class=ProductionSeeder --force` — **not** `migrate:fresh --seed`'s full `DatabaseSeeder`, which also creates fake demo users/catalog/orders meant for local dev only
 - [ ] Storage linked, upload directories writable
 
 **Configure**
-- [ ] First Super Admin account created
-- [ ] Store Settings populated — business name, logo, colours, contact details, reservation window
-- [ ] Static pages filled in (About, Contact, Terms, Privacy, Refund Policy)
+- [ ] First Super Admin account created via `php artisan app:create-super-admin` (interactive; never via `UserSeeder`, which is fake demo data with a password nobody knows)
+- [ ] Store Settings populated via the admin panel (`/admin` → Settings → Store Settings) — business name, logo, colours, tagline, contact details, tax rate, reservation window
+- [ ] Static pages filled in (About, Contact, Terms, Privacy, Refund Policy) via the admin panel (`/admin` → Settings → Static Pages) — content is authored here ahead of the storefront existing; publishing to a public URL is a storefront-phase task, not part of this checklist
 - [ ] Payment providers configured and tested with a real low-value transaction, refunded afterwards
 - [ ] SMS sending verified end-to-end on **each** network (MTN, Telecel, AirtelTigo)
 - [ ] Webhook URLs registered with Moolre and Paystack; signature verification confirmed working

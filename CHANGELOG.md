@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Added — Sprint 9 (partial): deployment tooling (Epic E13.3)
+- `docs/infrastructure-deployment.md` already documented most of E13.3's deployment checklist — updated it to reference concrete tooling rather than vague steps: seeding now points at a new `ProductionSeeder` instead of `migrate:fresh --seed`'s full `DatabaseSeeder` (which creates fake demo users/catalog/orders meant for local dev only), and "create the first Super Admin" now points at a new `php artisan app:create-super-admin` command instead of nothing concrete.
+- `app:create-super-admin` (interactive console command) — prompts for name/email/password, validates them the same way customer registration does, and assigns the Super Admin role atomically, so there's never a moment the account exists without it. `UserSeeder`'s `superadmin@example.com` has a random factory password nobody knows and was never meant for this.
+- `ProductionSeeder` — `RoleSeeder` + `StoreSettingSeeder` + `ShippingMethodSeeder` only, nothing that creates fake accounts/catalog/orders.
+- 5 new tests: the command creates a role-assigned account / rejects a mismatched confirmation / rejects a taken email, and the seeder seeds the right things and nothing else.
+
 ### Added — Sprint 9 (partial): Static Pages CMS, backend-only (Epic E12.8)
 - `StaticPage` model (`title`, `slug`, `content` rich HTML, `is_published`, `meta_title`, `meta_description`) + `StaticPageResource` (Filament CRUD, Admin/Super-Admin-only via new `StaticPagePolicy`, mirroring `ShippingMethodPolicy`'s scope). Lets an admin author content pages (About, Contact, Terms) ahead of the storefront existing — deliberately no public route renders these yet, that's deferred to the storefront phase.
 - 8 new tests: policy scope (Admin/Super Admin can manage, Store Keeper can't, only Super Admin force-deletes) and resource CRUD (list/create/slug-uniqueness/update).

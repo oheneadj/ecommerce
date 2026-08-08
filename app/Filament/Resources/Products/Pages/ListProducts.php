@@ -7,6 +7,7 @@ namespace App\Filament\Resources\Products\Pages;
 use App\Enums\ProductStatus;
 use App\Enums\VariantStatus;
 use App\Filament\Resources\Products\ProductResource;
+use App\Filament\Widgets\ProductsOverviewWidget;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Filament\Actions\CreateAction;
@@ -22,6 +23,13 @@ class ListProducts extends ListRecords
     {
         return [
             CreateAction::make(),
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            ProductsOverviewWidget::class,
         ];
     }
 

@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 - Filament sidebar navigation badges: **Products** shows the count of active low-stock variants (same definition `DashboardMetricsQuery`/`LowStockVariantsWidget` already use), **Orders** shows the count of orders awaiting payment (same definition `DashboardMetricsQuery::pendingOrdersCount()` uses) — gives staff an at-a-glance signal without opening the dashboard. 4 new tests.
+- Header stat cards on the Products and Orders list pages themselves (not just the dashboard): Products shows Total Products, Stock On Hand (units), and Inventory Value (stock × price, active variants only); Orders shows Total Orders and Pending Orders. 5 new tests.
 
 ### Added — Sprint 9 (partial): deployment tooling (Epic E13.3)
 - `docs/infrastructure-deployment.md` already documented most of E13.3's deployment checklist — updated it to reference concrete tooling rather than vague steps: seeding now points at a new `ProductionSeeder` instead of `migrate:fresh --seed`'s full `DatabaseSeeder` (which creates fake demo users/catalog/orders meant for local dev only), and "create the first Super Admin" now points at a new `php artisan app:create-super-admin` command instead of nothing concrete.

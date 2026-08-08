@@ -39,6 +39,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `VariantsRelationManager`'s `bulkAdjustPrice` computed the new price and called `$record->update()` directly inside the bulk action's closure, unlike its `bulkAdjustStock` sibling (and every other mutation in this codebase) which goes through an Action — and looped over the selected records with no transaction, so a failure partway through a multi-select batch would leave some variants updated and others not. Extracted `App\Actions\Catalog\AdjustVariantPrice` (single-variant percentage adjustment) and wrapped the bulk loop in `DB::transaction()`, matching `AdjustStockWithReservationCheck`'s pattern.
 - 4 new tests: the Action's increase/decrease/floor-at-zero behavior, and that an exception partway through a batch rolls back every record in it.
 
+### Fixed — Bug hunt: the profile settings page crashed for every phone+OTP customer
+- `name` and `email` are both nullable columns — `VerifyOtp` creates a phone-registered customer with no name at all, and no email until they explicitly add one — but `Profile::mount()` assigned `Auth::user()->name`/`->email` directly into typed `string` (non-nullable) component properties. Assigning `null` into a typed property throws a `TypeError` immediately, before the page ever renders. This wasn't a rare edge case — it was the **default state** of every fresh phone+OTP signup, and every test user happened to have a factory-assigned email, which is why it was never caught. Coalesced both to `''` in `mount()`.
+- 1 new test: a phone-only customer with no name/email can load `/settings/profile` without crashing.
+
 ### Fixed — Bug hunt: payment gateway drivers had no HTTP timeout
 - Same gap already fixed for `MoolreSms`: neither `MoolreGateway` nor `PaystackGateway` set a timeout on their HTTP client, so a hung connection could stall well past the enclosing job's own `timeout` before Laravel's job-level kill takes over, rather than failing cleanly with an HTTP-level timeout. Added `->timeout(15)` to both drivers' shared `client()` method.
 

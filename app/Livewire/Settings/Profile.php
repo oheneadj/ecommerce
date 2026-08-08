@@ -23,8 +23,12 @@ class Profile extends Component
      */
     public function mount(): void
     {
-        $this->name = Auth::user()->name;
-        $this->email = Auth::user()->email;
+        // Both columns are nullable — a phone+OTP customer's account starts
+        // with no name at all, and no email until they explicitly add one.
+        // Assigning a null model value straight into these typed string
+        // properties would throw before the page ever rendered.
+        $this->name = Auth::user()->name ?? '';
+        $this->email = Auth::user()->email ?? '';
     }
 
     /**

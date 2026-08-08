@@ -19,6 +19,18 @@ class ProfileUpdateTest extends TestCase
         $this->get('/settings/profile')->assertOk();
     }
 
+    public function test_a_phone_only_customer_with_no_name_or_email_can_view_the_profile_page(): void
+    {
+        $user = User::factory()->create(['name' => null, 'email' => null, 'phone' => '+233201234567']);
+        $this->actingAs($user);
+
+        $this->get('/settings/profile')->assertOk();
+
+        Livewire::test(Profile::class)
+            ->assertSet('name', '')
+            ->assertSet('email', '');
+    }
+
     public function test_profile_information_can_be_updated(): void
     {
         $user = User::factory()->create();

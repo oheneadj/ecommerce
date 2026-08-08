@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- The main Dashboard page wasn't consistently responding to its own date-range filter — root cause: `discoverWidgets()` auto-registers every widget class under `app/Filament/Widgets/` panel-wide, and Filament's base `Dashboard::getWidgets()` just renders all of them, so resource-scoped widgets (`ProductsOverviewWidget`, `OrdersOverviewWidget`) were silently also rendering on the Dashboard. Since those don't implement `InteractsWithPageFilters`, they never changed when the filter was applied, making it look like filtering was broken generally even though the widgets that actually belong on the dashboard were working correctly. `App\Filament\Pages\Dashboard::getWidgets()` now returns an explicit allowlist instead of the panel's auto-discovered set. This has no effect on `ListProducts`/`ListOrders`'s own `getHeaderWidgets()` (a separate mechanism) — those two widgets keep rendering there, unaffected by anything filtered on the dashboard. 3 new tests.
+
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 - Filament sidebar navigation badges: **Products** shows the count of active low-stock variants (same definition `DashboardMetricsQuery`/`LowStockVariantsWidget` already use), **Orders** shows the count of orders awaiting payment (same definition `DashboardMetricsQuery::pendingOrdersCount()` uses) — gives staff an at-a-glance signal without opening the dashboard. 4 new tests.

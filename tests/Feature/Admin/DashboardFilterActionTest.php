@@ -14,10 +14,15 @@ namespace Tests\Feature\Admin;
 use App\Enums\PaymentStatus;
 use App\Enums\UserRole;
 use App\Filament\Pages\Dashboard;
+use App\Filament\Resources\Orders\Pages\ListOrders;
+use App\Filament\Resources\Products\Pages\ListProducts;
 use App\Filament\Widgets\DashboardStatsOverview;
+use App\Filament\Widgets\OrdersOverviewWidget;
+use App\Filament\Widgets\ProductsOverviewWidget;
 use App\Filament\Widgets\RecentOrdersWidget;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -95,5 +100,48 @@ class DashboardFilterActionTest extends TestCase
         $stats = (new \ReflectionMethod($widget, 'getStats'))->invoke($widget);
 
         $this->assertCount(3, $stats);
+    }
+
+    public function test_the_dashboard_does_not_render_resource_scoped_widgets(): void
+    {
+        $this->actingAs($this->admin());
+
+        $this->assertNotContains(ProductsOverviewWidget::class, (new Dashboard)->getWidgets());
+        $this->assertNotContains(OrdersOverviewWidget::class, (new Dashboard)->getWidgets());
+    }
+
+    public function test_filtering_the_dashboard_does_not_affect_the_products_page_widget(): void
+    {
+        $this->actingAs($this->admin());
+        Product::factory()->count(2)->create();
+
+        Livewire::test(Dashboard::class)
+            ->callAction('filter', data: [
+                'startDate' => now()->subDays(2)->toDateString(),
+                'endDate' => now()->toDateString(),
+            ])
+            ->assertHasNoActionErrors();
+
+        // ListProducts is an entirely separate Livewire component tree —
+        // it never receives the dashboard's pageFilters, so it must show
+        // the same thing regardless of what was just applied there.
+        Livewire::test(ListProducts::class)->assertSuccessful();
+        Livewire::test(ProductsOverviewWidget::class)->assertSee('Total Products')->assertSee('2');
+    }
+
+    public function test_filtering_the_dashboard_does_not_affect_the_orders_page_widget(): void
+    {
+        $this->actingAs($this->admin());
+        Order::factory()->count(3)->create();
+
+        Livewire::test(Dashboard::class)
+            ->callAction('filter', data: [
+                'startDate' => now()->subDays(2)->toDateString(),
+                'endDate' => now()->toDateString(),
+            ])
+            ->assertHasNoActionErrors();
+
+        Livewire::test(ListOrders::class)->assertSuccessful();
+        Livewire::test(OrdersOverviewWidget::class)->assertSee('Total Orders')->assertSee('3');
     }
 }

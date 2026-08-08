@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Root `.htaccess` forwarding requests into `public/` for hosts pointing the document root at the project root.
 
+### Added — Sprint 9 (partial): Static Pages CMS, backend-only (Epic E12.8)
+- `StaticPage` model (`title`, `slug`, `content` rich HTML, `is_published`, `meta_title`, `meta_description`) + `StaticPageResource` (Filament CRUD, Admin/Super-Admin-only via new `StaticPagePolicy`, mirroring `ShippingMethodPolicy`'s scope). Lets an admin author content pages (About, Contact, Terms) ahead of the storefront existing — deliberately no public route renders these yet, that's deferred to the storefront phase.
+- 8 new tests: policy scope (Admin/Super Admin can manage, Store Keeper can't, only Super Admin force-deletes) and resource CRUD (list/create/slug-uniqueness/update).
+
 ### Added — Sprint 9 (partial): Store Settings & Branding backend (Epic E13.1, E13.2, E13.4)
 - `StoreSetting` gained branding fields (`business_name`, `logo_path`, `primary_color`, `secondary_color`, `tagline`, `contact_email`, `contact_phone`, `contact_address`) and `tax_rate` — previously the model only held operational config (`stock_reservation_minutes`, `low_stock_threshold`); no branding existed at all, and tax was hardcoded to `0` everywhere in checkout with no config anywhere. `tax_rate` follows Coupon's existing Percentage convention (whole-number integer, e.g. `15` for 15%), applied uniformly to every order's subtotal — no per-jurisdiction/product tax rules, matching a single-jurisdiction deployment.
 - `ManageStoreSettings` (the existing Super-Admin-only settings page) now exposes all of the above, with the logo going through the same `maxSize`/WebP-conversion pipeline as every other catalog image.

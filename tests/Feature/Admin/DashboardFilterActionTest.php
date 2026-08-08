@@ -11,19 +11,25 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\UserRole;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Resources\Orders\Pages\ListOrders;
 use App\Filament\Resources\Products\Pages\ListProducts;
+use App\Filament\Widgets\CustomerGrowthWidget;
+use App\Filament\Widgets\CustomerSegmentsWidget;
 use App\Filament\Widgets\DashboardStatsOverview;
+use App\Filament\Widgets\FlaggedOrdersWidget;
 use App\Filament\Widgets\OrdersOverviewWidget;
+use App\Filament\Widgets\OrdersYearOverYearWidget;
 use App\Filament\Widgets\ProductsOverviewWidget;
 use App\Filament\Widgets\RecentOrdersWidget;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\User;
+use App\Queries\DashboardMetricsQuery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -143,5 +149,89 @@ class DashboardFilterActionTest extends TestCase
 
         Livewire::test(ListOrders::class)->assertSuccessful();
         Livewire::test(OrdersOverviewWidget::class)->assertSee('Total Orders')->assertSee('3');
+    }
+
+    public function test_customer_growth_widget_scopes_to_the_chosen_range(): void
+    {
+        $this->actingAs($this->admin());
+
+        User::factory()->create(['created_at' => now()->subDays(20)]);
+        User::factory()->create(['created_at' => now()]);
+
+        Livewire::test(Dashboard::class)
+            ->callAction('filter', data: [
+                'startDate' => now()->subDays(2)->toDateString(),
+                'endDate' => now()->toDateString(),
+            ])
+            ->assertHasNoActionErrors();
+
+        Livewire::test(CustomerGrowthWidget::class, [
+            'pageFilters' => [
+                'startDate' => now()->subDays(2)->toDateString(),
+                'endDate' => now()->toDateString(),
+            ],
+        ])->assertSee('Customer Growth (selected period)');
+    }
+
+    public function test_orders_year_over_year_widget_scopes_to_the_chosen_range(): void
+    {
+        $this->actingAs($this->admin());
+
+        Livewire::test(OrdersYearOverYearWidget::class, [
+            'pageFilters' => [
+                'startDate' => now()->subDays(2)->toDateString(),
+                'endDate' => now()->toDateString(),
+            ],
+        ])
+            ->assertSee('Orders (selected period vs. prior year)')
+            ->assertSee('Selected Period')
+            ->assertSee('Same Period, Prior Year');
+    }
+
+    public function test_customer_segments_widget_scopes_to_the_chosen_range(): void
+    {
+        $this->actingAs($this->admin());
+
+        $customer = User::factory()->create();
+        Order::factory()->create(['user_id' => $customer->id, 'status' => OrderStatus::Paid, 'created_at' => now()->subDays(20)]);
+        Order::factory()->create(['user_id' => $customer->id, 'status' => OrderStatus::Paid, 'created_at' => now()]);
+
+        // All-time this customer is a 2-order "occasional" buyer; within
+        // the last 2 days they're only a 1-order "one-time" buyer.
+        $unfiltered = app(DashboardMetricsQuery::class)->customerSegmentsInRange(null, null);
+        $filtered = app(DashboardMetricsQuery::class)->customerSegmentsInRange(now()->subDays(2)->toDateString(), now()->toDateString());
+
+        $this->assertSame(1, $unfiltered['occasional']);
+        $this->assertSame(1, $filtered['one_time']);
+
+        Livewire::test(CustomerSegmentsWidget::class, [
+            'pageFilters' => [
+                'startDate' => now()->subDays(2)->toDateString(),
+                'endDate' => now()->toDateString(),
+            ],
+        ])->assertSee('Customer Segments (selected period)');
+    }
+
+    public function test_flagged_orders_widget_scopes_to_the_chosen_range(): void
+    {
+        $this->actingAs($this->admin());
+
+        $inRange = Order::factory()->create([
+            'status' => OrderStatus::Pending,
+            'created_at' => now()->subDays(5),
+        ]);
+        $outOfRange = Order::factory()->create([
+            'status' => OrderStatus::Pending,
+            'created_at' => now()->subDays(30),
+        ]);
+
+        Livewire::test(FlaggedOrdersWidget::class, [
+            'pageFilters' => [
+                'startDate' => now()->subDays(10)->toDateString(),
+                'endDate' => now()->toDateString(),
+            ],
+        ])
+            ->assertCanSeeTableRecords([$inRange])
+            ->assertCanNotSeeTableRecords([$outOfRange]);
     }
 }

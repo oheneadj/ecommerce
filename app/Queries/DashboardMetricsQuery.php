@@ -181,6 +181,191 @@ class DashboardMetricsQuery
             ->all();
     }
 
+    /**
+     * Orders placed per calendar month for the last 12 months (oldest
+     * first) alongside the same 12 months one year earlier — feeds the
+     * "Orders Year-over-Year" comparison chart.
+     *
+     * @return array{labels: array<int, string>, current: array<int, int>, prior: array<int, int>}
+     */
+    public function ordersYearOverYear(): array
+    {
+        $labels = [];
+        $current = [];
+        $prior = [];
+
+        foreach (range(11, 0) as $offset) {
+            $month = now()->subMonths($offset);
+            $labels[] = $month->format('M Y');
+            $current[] = Order::query()
+                ->whereYear('created_at', $month->year)
+                ->whereMonth('created_at', $month->month)
+                ->count();
+            $priorMonth = $month->copy()->subYear();
+            $prior[] = Order::query()
+                ->whereYear('created_at', $priorMonth->year)
+                ->whereMonth('created_at', $priorMonth->month)
+                ->count();
+        }
+
+        return ['labels' => $labels, 'current' => $current, 'prior' => $prior];
+    }
+
+    /**
+     * New customer signups per calendar month for the last 12 months
+     * (oldest first) — feeds the "Customer Growth" chart.
+     *
+     * @return array{labels: array<int, string>, counts: array<int, int>}
+     */
+    public function customerGrowthTrend(): array
+    {
+        $labels = [];
+        $counts = [];
+
+        foreach (range(11, 0) as $offset) {
+            $month = now()->subMonths($offset);
+            $labels[] = $month->format('M Y');
+            $counts[] = User::query()
+                ->whereDoesntHave('roles')
+                ->whereYear('created_at', $month->year)
+                ->whereMonth('created_at', $month->month)
+                ->count();
+        }
+
+        return ['labels' => $labels, 'counts' => $counts];
+    }
+
+    /**
+     * Orders sitting in Pending ("awaiting processing") or Processing
+     * ("stuck in processing") for longer than $days — surfaces orders that
+     * likely need manual intervention, ranked oldest first. "Stuck" is
+     * always judged against now() regardless of $start/$end — an order
+     * from a past filtered period is either still stuck today or it
+     * isn't; $start/$end only scope *which orders* (by creation date) are
+     * considered at all, when the dashboard's FilterAction has a range applied.
+     *
+     * @return Builder<Order>
+     */
+    public function flaggedOrdersQuery(?string $start = null, ?string $end = null, int $days = 3): Builder
+    {
+        $cutoff = now()->subDays($days);
+
+        return $this->scopeToRange(
+            Order::query()
+                ->whereIn('status', [OrderStatus::Pending, OrderStatus::Processing])
+                ->where('created_at', '<=', $cutoff),
+            $start,
+            $end,
+        )->orderBy('created_at');
+    }
+
+    /**
+     * Products ranked by net revenue (line-item price × quantity) from
+     * verified orders this calendar month — feeds the "Top Products by
+     * Revenue" chart.
+     *
+     * @return Collection<int, array{product_id: int, product_name: string, revenue: int}>
+     */
+    public function topProductsByRevenue(int $limit = 10): Collection
+    {
+        return $this->topProductsByRevenueInRange(null, null, $limit);
+    }
+
+    /**
+     * Same ranking as topProductsByRevenue(), scoped to an optional date
+     * range instead of the current calendar month — used when the
+     * dashboard's FilterAction has a range applied. Uses the
+     * permanently-snapshotted `unit_price` on each order item, never the
+     * live product price.
+     *
+     * @return Collection<int, array{product_id: int, product_name: string, revenue: int}>
+     */
+    public function topProductsByRevenueInRange(?string $start, ?string $end, int $limit = 10): Collection
+    {
+        $statuses = array_map(fn (OrderStatus $status) => $status->value, self::VERIFIED_ORDER_STATUSES);
+
+        $query = DB::table('order_items')
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->join('product_variants', 'product_variants.id', '=', 'order_items.product_variant_id')
+            ->join('products', 'products.id', '=', 'product_variants.product_id')
+            ->whereIn('orders.status', $statuses);
+
+        if ($start || $end) {
+            if ($start) {
+                $query->whereDate('orders.created_at', '>=', $start);
+            }
+
+            if ($end) {
+                $query->whereDate('orders.created_at', '<=', $end);
+            }
+        } else {
+            $query->whereYear('orders.created_at', now()->year)
+                ->whereMonth('orders.created_at', now()->month);
+        }
+
+        return $query
+            ->groupBy('products.id', 'products.name')
+            ->select([
+                'products.id as product_id',
+                'products.name as product_name',
+                DB::raw('SUM(order_items.unit_price * order_items.quantity) as revenue'),
+            ])
+            ->orderByDesc('revenue')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($row): array => [
+                'product_id' => (int) $row->product_id,
+                'product_name' => (string) $row->product_name,
+                'revenue' => (int) $row->revenue,
+            ]);
+    }
+
+    /**
+     * Customers bucketed by how many verified orders they've placed —
+     * feeds the "Customer Segments" donut chart. Mirrors the "verified
+     * purchase" definition used elsewhere on this dashboard; customers with
+     * zero verified orders aren't a "segment" and are excluded.
+     *
+     * @return array{one_time: int, occasional: int, regular: int, vip: int}
+     */
+    public function customerSegments(): array
+    {
+        return $this->customerSegmentsInRange(null, null);
+    }
+
+    /**
+     * Same segmentation as customerSegments(), but counting only orders
+     * placed within an optional date range instead of all-time — used
+     * when the dashboard's FilterAction has a range applied. A customer's
+     * segment can therefore differ from their all-time segment when
+     * scoped to a shorter period (e.g. a VIP all-time but only a one-time
+     * buyer within the selected window).
+     *
+     * @return array{one_time: int, occasional: int, regular: int, vip: int}
+     */
+    public function customerSegmentsInRange(?string $start, ?string $end): array
+    {
+        $statuses = array_map(fn (OrderStatus $status) => $status->value, self::VERIFIED_ORDER_STATUSES);
+
+        $orderCounts = User::query()
+            ->whereDoesntHave('roles')
+            ->withCount(['orders' => function (Builder $query) use ($statuses, $start, $end): Builder {
+                $query->whereIn('status', $statuses);
+
+                return $this->scopeToRange($query, $start, $end);
+            }])
+            ->get()
+            ->pluck('orders_count')
+            ->filter(fn (int $count) => $count > 0);
+
+        return [
+            'one_time' => $orderCounts->filter(fn (int $count) => $count === 1)->count(),
+            'occasional' => $orderCounts->filter(fn (int $count) => $count >= 2 && $count <= 3)->count(),
+            'regular' => $orderCounts->filter(fn (int $count) => $count >= 4 && $count <= 9)->count(),
+            'vip' => $orderCounts->filter(fn (int $count) => $count >= 10)->count(),
+        ];
+    }
+
     public function lowStockCount(): int
     {
         return ProductVariant::query()

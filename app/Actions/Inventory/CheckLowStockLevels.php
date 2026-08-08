@@ -37,8 +37,8 @@ class CheckLowStockLevels
 
         $lowStockVariants = ProductVariant::query()
             ->where('status', VariantStatus::Active)
-            ->get()
-            ->filter(fn (ProductVariant $variant) => $variant->isLowStock());
+            ->lowStock()
+            ->get();
 
         foreach ($lowStockVariants as $variant) {
             SafeNotifier::send($storeKeepers, new LowStockAlert($variant));

@@ -30,6 +30,14 @@
         </x-card>
 
         <x-card>
+            <h2 class="text-lg font-medium">{{ __('Addresses') }}</h2>
+            <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{{ __('Manage the addresses used at checkout.') }}</p>
+            <a href="{{ route('account.addresses') }}" wire:navigate class="mt-4 inline-block text-sm font-medium text-brand-primary hover:underline">
+                {{ __('Manage addresses') }} &rarr;
+            </a>
+        </x-card>
+
+        <x-card>
             <h2 class="text-lg font-medium">{{ __('Account settings') }}</h2>
             <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{{ __('Update your name, email, password, and two-factor authentication.') }}</p>
             <a href="{{ route('profile.edit') }}" wire:navigate class="mt-4 inline-block text-sm font-medium text-brand-primary hover:underline">

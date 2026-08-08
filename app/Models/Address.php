@@ -9,8 +9,10 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Concerns\HasUlid;
+use App\Observers\AddressObserver;
 use Database\Factories\AddressFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -32,6 +34,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  */
 #[Fillable(['user_id', 'label', 'recipient_name', 'phone', 'line1', 'line2', 'city', 'region', 'is_default'])]
+#[ObservedBy(AddressObserver::class)]
 class Address extends Model
 {
     /** @use HasFactory<AddressFactory> */

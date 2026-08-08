@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Themeable customer pages: Address book
+- `/account/addresses` — customer-facing saved address book (add/edit/delete/set-default), the first of the remaining themeable pages (Cart, Checkout, Wishlist still to come). New `App\Actions\Address\{Create,Update,Delete}Address`, `AddressPolicy` (ownership-only, mirrors `ReviewPolicy`'s pattern), and `AddressObserver` (enforces exactly one default address per user, mirroring `ProductImageObserver`'s "only one primary" pattern). A brand-new account's first saved address is automatically the default; deleting the default promotes the next-most-recent remaining address rather than leaving the account with no default to preselect at checkout. Deleting an address that was used on a past order is always safe — `orders.address_id` nulls out, `address_snapshot` already froze the shipping details permanently. Linked from the `/account` dashboard. 9 new tests, including that a customer cannot edit or delete another customer's address.
+
 ### Fixed
 - The admin bar was covering Filament's own notification toast popups — it was set to `z-index: 999999`, vastly outranking Filament's notifications (`z-50`) and its own topbar/sidebar (`z-30`). Lowered to `z-index: 40`, which sits above the panel's nav chrome but below the notification layer, so a toast is never hidden behind it. 1 new test.
 

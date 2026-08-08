@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\SystemCacheController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Storefront\AccountController;
 use App\Http\Controllers\Storefront\ThemeCssController;
@@ -18,6 +19,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::view('dashboard', 'dashboard')->name('dashboard');
 
     Route::get('account', [AccountController::class, 'show'])->name('account.show');
+
+    Route::view('account/addresses', 'account.addresses')->name('account.addresses');
+
+    Route::post('system/cache/{action}', [SystemCacheController::class, 'run'])
+        ->whereIn('action', ['config', 'route', 'view', 'event', 'all', 'optimize'])
+        ->name('system.cache.run');
 });
 
 require __DIR__.'/settings.php';

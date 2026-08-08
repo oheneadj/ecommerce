@@ -25,6 +25,12 @@ use Illuminate\Support\Facades\DB;
  */
 class ProductsOverviewWidget extends StatsOverviewWidget
 {
+    /**
+     * Forced to 3 for uniformity across every StatsOverviewWidget in the
+     * admin panel, rather than relying on Filament's count-based default.
+     */
+    protected int|array|null $columns = 3;
+
     protected function getStats(): array
     {
         $totalProducts = Product::query()->count();

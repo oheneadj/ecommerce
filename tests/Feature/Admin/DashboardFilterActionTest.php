@@ -86,4 +86,14 @@ class DashboardFilterActionTest extends TestCase
 
         $this->assertNull(Livewire::test(Dashboard::class)->get('filters'));
     }
+
+    public function test_admin_sees_exactly_three_stats_for_a_uniform_grid(): void
+    {
+        $this->actingAs($this->admin());
+
+        $widget = new DashboardStatsOverview;
+        $stats = (new \ReflectionMethod($widget, 'getStats'))->invoke($widget);
+
+        $this->assertCount(3, $stats);
+    }
 }

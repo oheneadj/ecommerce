@@ -23,10 +23,20 @@ use Illuminate\Support\Facades\Auth;
  * "Today's Sales" and "New Customers" respect the dashboard's date-range
  * FilterAction when one has been applied, falling back to their normal
  * today/this-month windows otherwise.
+ *
+ * Deliberately 3 cross-cutting business KPIs, not order-specific ones —
+ * order-status breakdown (pending/cancelled) lives on the Orders list
+ * page's own OrdersOverviewWidget instead, where it's actionable in
+ * context. Keeps every StatsOverviewWidget in the admin panel at exactly
+ * 3 stats for a uniform 3-per-row grid everywhere.
  */
 class DashboardStatsOverview extends StatsOverviewWidget
 {
     use InteractsWithPageFilters;
+
+    protected static ?int $sort = 1;
+
+    protected int|array|null $columns = 3;
 
     protected function getStats(): array
     {
@@ -62,12 +72,6 @@ class DashboardStatsOverview extends StatsOverviewWidget
                 ->color('success')
                 ->chart($metrics->dailySalesTrend())
                 ->chartColor('success'),
-            Stat::make('Pending Orders', (string) $metrics->pendingOrdersCount())
-                ->description('Awaiting payment')
-                ->descriptionIcon(Heroicon::OutlinedClock)
-                ->color('info')
-                ->chart($metrics->dailyOrdersTrend())
-                ->chartColor('info'),
             $lowStock,
             Stat::make('New Customers', (string) $newCustomers)
                 ->description($hasRange ? 'Selected period' : 'This month')

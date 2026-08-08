@@ -81,4 +81,14 @@ class ProductsOverviewWidgetTest extends TestCase
 
         Livewire::test(ListProducts::class)->assertSuccessful();
     }
+
+    public function test_it_has_exactly_three_stats_for_a_uniform_grid(): void
+    {
+        $this->actingAs($this->admin());
+
+        $widget = new ProductsOverviewWidget;
+        $stats = (new \ReflectionMethod($widget, 'getStats'))->invoke($widget);
+
+        $this->assertCount(3, $stats);
+    }
 }

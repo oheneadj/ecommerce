@@ -34,19 +34,31 @@ class OrdersOverviewWidgetTest extends TestCase
         return $user;
     }
 
-    public function test_it_shows_total_and_pending_order_counts(): void
+    public function test_it_shows_total_pending_and_cancelled_order_counts(): void
     {
         $this->actingAs($this->admin());
 
         Order::factory()->count(2)->create(['status' => OrderStatus::Pending]);
         Order::factory()->create(['status' => OrderStatus::Paid]);
-        Order::factory()->create(['status' => OrderStatus::Cancelled]);
+        Order::factory()->count(3)->create(['status' => OrderStatus::Cancelled]);
 
         Livewire::test(OrdersOverviewWidget::class)
             ->assertSee('Total Orders')
-            ->assertSee('4')
+            ->assertSee('6')
             ->assertSee('Pending Orders')
-            ->assertSee('2');
+            ->assertSee('2')
+            ->assertSee('Cancelled Orders')
+            ->assertSee('3');
+    }
+
+    public function test_it_has_exactly_three_stats_for_a_uniform_grid(): void
+    {
+        $this->actingAs($this->admin());
+
+        $widget = new OrdersOverviewWidget;
+        $stats = (new \ReflectionMethod($widget, 'getStats'))->invoke($widget);
+
+        $this->assertCount(3, $stats);
     }
 
     public function test_the_orders_list_page_renders_with_the_overview_widget(): void

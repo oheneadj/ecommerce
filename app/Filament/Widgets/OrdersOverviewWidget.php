@@ -18,17 +18,23 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 /**
  * Matches DashboardStatsOverview's card style (description + icon +
  * sparkline). Total Orders reuses the same daily-orders trend the
- * dashboard's own Pending Orders stat charts; Pending Orders itself is a
- * live/point-in-time count (not a per-day series), so it gets a flat-line
- * sparkline at the current value — same reasoning as that widget's "Low
- * Stock Items" stat.
+ * dashboard's own Pending Orders stat used to chart before that stat moved
+ * here; Pending/Cancelled are live/point-in-time counts (not a per-day
+ * series), so they get flat-line sparklines at the current value — same
+ * reasoning as DashboardStatsOverview's "Low Stock Items" stat.
+ *
+ * Exactly 3 stats, matching every other StatsOverviewWidget in the admin
+ * panel, for a uniform 3-per-row grid everywhere.
  */
 class OrdersOverviewWidget extends StatsOverviewWidget
 {
+    protected int|array|null $columns = 3;
+
     protected function getStats(): array
     {
         $metrics = app(DashboardMetricsQuery::class);
         $pendingCount = Order::query()->where('status', OrderStatus::Pending)->count();
+        $cancelledCount = Order::query()->where('status', OrderStatus::Cancelled)->count();
 
         return [
             Stat::make('Total Orders', (string) Order::query()->count())
@@ -44,6 +50,13 @@ class OrdersOverviewWidget extends StatsOverviewWidget
                 ->color('info')
                 ->chart(array_fill(0, 7, $pendingCount))
                 ->chartColor('info'),
+
+            Stat::make('Cancelled Orders', (string) $cancelledCount)
+                ->description('Never fulfilled')
+                ->descriptionIcon(Heroicon::OutlinedXCircle)
+                ->color('danger')
+                ->chart(array_fill(0, 7, $cancelledCount))
+                ->chartColor('danger'),
         ];
     }
 }

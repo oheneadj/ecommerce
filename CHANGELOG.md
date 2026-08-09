@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Public storefront: homepage, product listing/search, product detail (Epics E12.1–E12.3)
+- This is the last piece of the storefront that was missing — until now the app was backend/admin plus a signed-in-only account area, with no way for a visitor to actually browse and shop.
+- `/` — the real homepage (replacing the Laravel starter `welcome` view): top-level categories and up to 8 new-arrival products, both scoped to what's actually purchasable (`Product::active()` with at least one active, in-stock variant).
+- `/products` — reactive search/category/brand/price-range filtering via Livewire (`ProductListingPage`, URL-bound filters via `#[Url]` so a filtered link is shareable/bookmarkable), paginated 12 per page. Same purchasability rule as the homepage.
+- `/products/{product}` — image gallery, an attribute-term selector (Size/Color/etc.) that reactively resolves to the matching `ProductVariant` and updates price/stock/images, add-to-cart and add-to-wishlist (registered customers only, guests are redirected to sign in — consistent with Wishlist already being registered-only), and the product's approved reviews (`ReviewStatus::Approved` only) with an average rating.
+- New `x-product-card` Blade component shared between the homepage and listing page.
+- Per Epic E12's page classification, these three are **override-eligible** (a client can later get a bespoke `resources/views/clients/{slug}/` version) — everything else built this session (checkout, cart, account, orders, static pages, error pages) is shared/locked and reskinned only via `store_settings`.
+- 18 new tests.
+
 ### Added — Branded error pages (403/404/500)
 - `resources/views/errors/{403,404,500}.blade.php` now use the shared storefront layout instead of Laravel's default error views, so a broken link or server error still looks like the store rather than a generic framework page. 1 new test (404; only reachable outside `APP_DEBUG`, same as production).
 

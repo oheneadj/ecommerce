@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Branded error pages (403/404/500)
+- `resources/views/errors/{403,404,500}.blade.php` now use the shared storefront layout instead of Laravel's default error views, so a broken link or server error still looks like the store rather than a generic framework page. 1 new test (404; only reachable outside `APP_DEBUG`, same as production).
+
 ### Added — Public static pages (Epic E12.8, now rendered)
 - `/pages/{slug}` — publicly renders an admin-authored `StaticPage` (About, Contact, Terms, etc.), 404 for an unpublished one. The backend/admin side (Filament CRUD) already existed from Sprint 9; this is the first time it's actually reachable by a visitor. Every published page now also appears as a link in the shared storefront footer. 3 new tests.
 

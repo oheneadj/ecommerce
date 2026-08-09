@@ -17,6 +17,14 @@ Route::get('/pages/{staticPage}', [StaticPageController::class, 'show'])->name('
 Route::view('/products', 'products.index')->name('products.index');
 Route::view('/products/{product}', 'products.show')->name('products.show');
 
+// Guest checkout (BRD FR-3.2/FR-3.3): cart, checkout, and the order
+// confirmation page work for both guests and logged-in customers — a
+// guest's cart is tracked by session ID and folded into their account
+// cart if they log in later (see MergeGuestCartOnLogin).
+Route::view('cart', 'cart.show')->name('cart.show');
+Route::view('checkout', 'checkout.show')->name('checkout.show');
+Route::view('orders/{order}/confirmation', 'orders.confirmation')->name('orders.confirmation');
+
 Route::view('/login/phone', 'pages.login-phone')->middleware('guest')->name('login.phone');
 
 Route::get('/login/google', [GoogleAuthController::class, 'redirect'])->name('login.google');
@@ -32,13 +40,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::view('account/orders', 'account.orders')->name('account.orders');
     Route::view('account/orders/{order}', 'account.orders-show')->name('account.orders.show');
 
-    Route::view('cart', 'cart.show')->name('cart.show');
-
+    // Registered customers only — no guest wishlist (BRD FR-8.1).
     Route::view('wishlist', 'wishlist.show')->name('wishlist.show');
-
-    Route::view('checkout', 'checkout.show')->name('checkout.show');
-
-    Route::view('orders/{order}/confirmation', 'orders.confirmation')->name('orders.confirmation');
 
     Route::post('system/cache/{action}', [SystemCacheController::class, 'run'])
         ->whereIn('action', ['config', 'route', 'view', 'event', 'all', 'optimize'])

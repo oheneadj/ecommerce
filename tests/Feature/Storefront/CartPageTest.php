@@ -26,9 +26,9 @@ class CartPageTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_a_guest_is_redirected_to_login(): void
+    public function test_a_guest_can_view_an_empty_cart(): void
     {
-        $this->get('/cart')->assertRedirect('/login');
+        $this->get('/cart')->assertOk()->assertSee('Your cart is empty');
     }
 
     public function test_an_authenticated_customer_can_view_an_empty_cart(): void

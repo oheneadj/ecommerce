@@ -77,14 +77,16 @@ class ProductDetailPageTest extends TestCase
         $this->assertSame(1, $user->orders()->count() + Cart::query()->where('user_id', $user->id)->sole()->items()->where('product_variant_id', $variant->id)->count());
     }
 
-    public function test_a_guest_adding_to_cart_is_redirected_to_login(): void
+    public function test_a_guest_can_add_the_selected_variant_to_a_session_cart(): void
     {
         $product = Product::factory()->create(['status' => ProductStatus::Active]);
-        ProductVariant::factory()->create(['product_id' => $product->id]);
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id, 'stock' => 5]);
 
         Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
-            ->call('addToCart')
-            ->assertRedirect(route('login.phone'));
+            ->call('addToCart');
+
+        $guestCart = Cart::query()->whereNull('user_id')->sole();
+        $this->assertSame(1, $guestCart->items()->where('product_variant_id', $variant->id)->count());
     }
 
     public function test_only_approved_reviews_are_shown(): void

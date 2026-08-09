@@ -21,11 +21,21 @@ class OrderConfirmationPageTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_a_guest_is_redirected_to_login(): void
+    public function test_a_guest_can_view_their_own_guest_order_confirmation(): void
+    {
+        $order = Order::factory()->create(['user_id' => null, 'guest_email' => 'guest@example.com']);
+
+        $this->get("/orders/{$order->ulid}/confirmation")
+            ->assertOk()
+            ->assertSee($order->order_number)
+            ->assertSee('Thank you for your order');
+    }
+
+    public function test_a_guest_cannot_view_a_registered_customers_order_confirmation(): void
     {
         $order = Order::factory()->create();
 
-        $this->get("/orders/{$order->ulid}/confirmation")->assertRedirect('/login');
+        $this->get("/orders/{$order->ulid}/confirmation")->assertNotFound();
     }
 
     public function test_a_customer_sees_their_own_order_confirmation(): void

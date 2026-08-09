@@ -11,35 +11,73 @@
 
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="space-y-6 lg:col-span-2">
-            <x-card>
-                <div class="flex items-center justify-between">
-                    <h2 class="text-lg font-medium">{{ __('Delivery address') }}</h2>
-                    <a href="{{ route('account.addresses') }}" wire:navigate class="text-sm font-medium text-brand-primary hover:underline">{{ __('Manage addresses') }}</a>
-                </div>
-
-                @if ($this->addresses->isEmpty())
-                    <p class="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-                        {{ __('You have no saved addresses.') }}
-                        <a href="{{ route('account.addresses') }}" wire:navigate class="font-medium text-brand-primary hover:underline">{{ __('Add one') }}</a>
-                    </p>
-                @else
-                    <div class="mt-4 space-y-2">
-                        @foreach ($this->addresses as $address)
-                            <label wire:key="checkout-address-{{ $address->id }}" class="flex cursor-pointer items-start gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                                <input type="radio" wire:model="selectedAddressId" value="{{ $address->id }}" class="mt-1">
-                                <span class="text-sm">
-                                    <span class="font-medium">{{ $address->label ?: $address->recipient_name }}</span><br>
-                                    {{ $address->recipient_name }}, {{ $address->phone }}<br>
-                                    {{ $address->line1 }}@if ($address->line2), {{ $address->line2 }}@endif, {{ $address->city }}
-                                </span>
-                            </label>
-                        @endforeach
+            @auth
+                <x-card>
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-medium">{{ __('Delivery address') }}</h2>
+                        <a href="{{ route('account.addresses') }}" wire:navigate class="text-sm font-medium text-brand-primary hover:underline">{{ __('Manage addresses') }}</a>
                     </div>
-                @endif
-                @error('selectedAddressId')
-                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                @enderror
-            </x-card>
+
+                    @if ($this->addresses->isEmpty())
+                        <p class="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+                            {{ __('You have no saved addresses.') }}
+                            <a href="{{ route('account.addresses') }}" wire:navigate class="font-medium text-brand-primary hover:underline">{{ __('Add one') }}</a>
+                        </p>
+                    @else
+                        <div class="mt-4 space-y-2">
+                            @foreach ($this->addresses as $address)
+                                <label wire:key="checkout-address-{{ $address->id }}" class="flex cursor-pointer items-start gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                    <input type="radio" wire:model="selectedAddressId" value="{{ $address->id }}" class="mt-1">
+                                    <span class="text-sm">
+                                        <span class="font-medium">{{ $address->label ?: $address->recipient_name }}</span><br>
+                                        {{ $address->recipient_name }}, {{ $address->phone }}<br>
+                                        {{ $address->line1 }}@if ($address->line2), {{ $address->line2 }}@endif, {{ $address->city }}
+                                    </span>
+                                </label>
+                            @endforeach
+                        </div>
+                    @endif
+                    @error('selectedAddressId')
+                        <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </x-card>
+            @else
+                <x-card>
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-medium">{{ __('Your details') }}</h2>
+                        <a href="{{ route('login.phone') }}" class="text-sm font-medium text-brand-primary hover:underline">{{ __('Sign in instead') }}</a>
+                    </div>
+
+                    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <x-input wire:model="guestName" :placeholder="__('Full name')" />
+                            @error('guestName') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <x-input wire:model="guestPhone" type="tel" :placeholder="__('Phone number')" />
+                            @error('guestPhone') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                        </div>
+                        <div class="sm:col-span-2">
+                            <x-input wire:model="guestEmail" type="email" :placeholder="__('Email address')" />
+                            @error('guestEmail') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                        </div>
+                        <div class="sm:col-span-2">
+                            <x-input wire:model="guestLine1" :placeholder="__('Address line 1')" />
+                            @error('guestLine1') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                        </div>
+                        <div class="sm:col-span-2">
+                            <x-input wire:model="guestLine2" :placeholder="__('Address line 2 (optional)')" />
+                        </div>
+                        <div>
+                            <x-input wire:model="guestCity" :placeholder="__('City')" />
+                            @error('guestCity') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <x-input wire:model="guestRegion" :placeholder="__('Region (optional)')" />
+                        </div>
+                    </div>
+                </x-card>
+            @endauth
 
             <x-card>
                 <h2 class="text-lg font-medium">{{ __('Shipping method') }}</h2>

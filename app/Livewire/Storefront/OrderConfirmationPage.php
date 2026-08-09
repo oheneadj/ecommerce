@@ -23,7 +23,14 @@ class OrderConfirmationPage extends Component
 
     public function mount(string $orderUlid): void
     {
-        $this->order = Auth::user()->orders()->where('ulid', $orderUlid)->firstOrFail();
+        $this->order = Order::query()
+            ->where('ulid', $orderUlid)
+            ->when(
+                Auth::check(),
+                fn ($query) => $query->where('user_id', Auth::id()),
+                fn ($query) => $query->whereNull('user_id'),
+            )
+            ->firstOrFail();
     }
 
     public function render(): View

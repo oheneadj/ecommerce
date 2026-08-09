@@ -8,8 +8,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Storefront;
 
-use App\Actions\Cart\GetCurrentCart;
 use App\Actions\Cart\RemoveItemFromCart;
+use App\Actions\Cart\ResolveCurrentCart;
 use App\Actions\Cart\UpdateCartItemQuantity;
 use App\Models\Cart;
 use App\Models\ProductVariant;
@@ -29,7 +29,7 @@ class CartPage extends Component
     #[Computed]
     public function cart(): Cart
     {
-        $cart = GetCurrentCart::run(Auth::user());
+        $cart = ResolveCurrentCart::run(Auth::user(), ResolveCurrentCart::guestSessionId());
         $cart->load(['items.productVariant.product', 'items.productVariant.images', 'items.productVariant.product.images']);
 
         return $cart;

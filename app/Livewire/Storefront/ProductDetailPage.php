@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Livewire\Storefront;
 
 use App\Actions\Cart\AddItemToCart;
-use App\Actions\Cart\GetCurrentCart;
+use App\Actions\Cart\ResolveCurrentCart;
 use App\Actions\Wishlist\AddToWishlist;
 use App\Enums\ProductStatus;
 use App\Enums\ReviewStatus;
@@ -92,19 +92,13 @@ class ProductDetailPage extends Component
 
     public function addToCart(): void
     {
-        if (! Auth::check()) {
-            $this->redirectRoute('login.phone', navigate: true);
-
-            return;
-        }
-
         $variant = $this->selectedVariant;
 
         if ($variant === null || $variant->stock <= 0) {
             return;
         }
 
-        $cart = GetCurrentCart::run(Auth::user());
+        $cart = ResolveCurrentCart::run(Auth::user(), ResolveCurrentCart::guestSessionId());
         AddItemToCart::run($cart, $variant, 1);
         $this->dispatch('cart-updated');
         $this->dispatch('toast', variant: 'success', message: 'Added to cart.');

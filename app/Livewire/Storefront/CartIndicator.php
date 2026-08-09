@@ -11,7 +11,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Storefront;
 
-use App\Actions\Cart\GetCurrentCart;
+use App\Actions\Cart\ResolveCurrentCart;
 use App\Models\Cart;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -28,15 +28,21 @@ class CartIndicator extends Component
 {
     public bool $open = false;
 
+    /**
+     * A non-creating lookup — unlike ResolveCurrentCart, the header
+     * indicator must never create a cart row just because a page rendered;
+     * that would leave an empty cart behind for every anonymous visit.
+     */
     #[Computed]
     public function cart(): ?Cart
     {
-        if (! Auth::check()) {
-            return null;
-        }
+        $query = Auth::check()
+            ? Cart::query()->where('user_id', Auth::id())
+            : Cart::query()->where('session_id', ResolveCurrentCart::guestSessionId())->whereNull('user_id');
 
-        $cart = GetCurrentCart::run(Auth::user());
-        $cart->load(['items.productVariant.product', 'items.productVariant.images', 'items.productVariant.product.images']);
+        $cart = $query->whereDoesntHave('order')->latest('id')->first();
+
+        $cart?->load(['items.productVariant.product', 'items.productVariant.images', 'items.productVariant.product.images']);
 
         return $cart;
     }

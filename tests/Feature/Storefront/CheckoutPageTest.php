@@ -12,6 +12,7 @@ namespace Tests\Feature\Storefront;
 
 use App\Actions\Cart\AddItemToCart;
 use App\Actions\Cart\GetCurrentCart;
+use App\Actions\Cart\ResolveCurrentCart;
 use App\Enums\PaymentStatus;
 use App\Livewire\Storefront\CheckoutPage;
 use App\Models\Address;
@@ -49,9 +50,9 @@ class CheckoutPageTest extends TestCase
         ]);
     }
 
-    public function test_a_guest_is_redirected_to_login(): void
+    public function test_a_guest_can_view_checkout(): void
     {
-        $this->get('/checkout')->assertRedirect('/login');
+        $this->get('/checkout')->assertOk()->assertSee('Checkout');
     }
 
     public function test_an_authenticated_customer_can_view_checkout(): void
@@ -230,5 +231,54 @@ class CheckoutPageTest extends TestCase
 
         $this->assertSame(1, Order::query()->count());
         $this->assertNull(Auth::user()?->orders()->first()?->payments()->where('status', PaymentStatus::Success)->first());
+    }
+
+    public function test_a_guest_can_place_an_order_with_manually_entered_details(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 10, 'price' => 1000]);
+        $shippingMethod = ShippingMethod::factory()->create(['active' => true, 'cost' => 300]);
+
+        $component = Livewire::test(CheckoutPage::class);
+        AddItemToCart::run(
+            ResolveCurrentCart::run(null, ResolveCurrentCart::guestSessionId()),
+            $variant,
+            1,
+        );
+
+        $component
+            ->set('selectedShippingMethodId', $shippingMethod->id)
+            ->set('guestName', 'Ama Boateng')
+            ->set('guestEmail', 'ama@example.com')
+            ->set('guestPhone', '0244000000')
+            ->set('guestLine1', '12 Ring Road')
+            ->set('guestCity', 'Accra')
+            ->call('placeOrder');
+
+        $order = Order::query()->sole();
+        $this->assertNull($order->user_id);
+        $this->assertSame('ama@example.com', $order->guest_email);
+        $this->assertSame('0244000000', $order->guest_phone);
+        $this->assertSame('Ama Boateng', $order->address_snapshot['recipient_name']);
+        $this->assertSame(1300, $order->grand_total);
+    }
+
+    public function test_a_guest_checkout_is_rejected_without_required_details(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+        $shippingMethod = ShippingMethod::factory()->create(['active' => true]);
+
+        $component = Livewire::test(CheckoutPage::class);
+        AddItemToCart::run(
+            ResolveCurrentCart::run(null, ResolveCurrentCart::guestSessionId()),
+            $variant,
+            1,
+        );
+
+        $component
+            ->set('selectedShippingMethodId', $shippingMethod->id)
+            ->call('placeOrder')
+            ->assertHasErrors(['guestName', 'guestEmail', 'guestPhone', 'guestLine1', 'guestCity']);
+
+        $this->assertSame(0, Order::query()->count());
     }
 }

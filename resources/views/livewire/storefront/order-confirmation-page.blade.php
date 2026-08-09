@@ -28,7 +28,16 @@
     </x-card>
 
     <div class="flex justify-center gap-3">
-        <x-button variant="primary" href="{{ route('account.orders.show', $order) }}">{{ __('Track this order') }}</x-button>
-        <x-button href="{{ route('home') }}">{{ __('Continue shopping') }}</x-button>
+        @auth
+            <x-button variant="primary" href="{{ route('account.orders.show', $order) }}">{{ __('Track this order') }}</x-button>
+        @endauth
+        <x-button :variant="auth()->guest() ? 'primary' : 'outline'" href="{{ route('home') }}">{{ __('Continue shopping') }}</x-button>
     </div>
+
+    @guest
+        <p class="text-sm text-zinc-500 dark:text-zinc-400">
+            {{ __('Create an account to track this order and speed up your next checkout.') }}
+            <a href="{{ route('login.phone') }}" class="font-medium text-brand-primary hover:underline">{{ __('Sign up') }}</a>
+        </p>
+    @endguest
 </div>

@@ -32,7 +32,7 @@
                             <p class="mt-1 text-sm font-medium">{{ $variant->price_formatted }}</p>
                         </div>
 
-                        <x-button wire:click="addToCart({{ $variant->id }})" variant="primary">
+                        <x-button wire:click="addToCart({{ $variant->id }})" wire:loading.attr="disabled" wire:target="addToCart({{ $variant->id }})" icon="shopping-bag" variant="primary">
                             {{ __('Add to cart') }}
                         </x-button>
 

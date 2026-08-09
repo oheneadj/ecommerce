@@ -28,10 +28,20 @@
                     @endif
                 </a>
 
-                <nav class="flex items-center gap-4 text-sm font-medium">
-                    <a href="{{ route('wishlist.show') }}" wire:navigate class="text-zinc-700 hover:text-brand-primary dark:text-zinc-300">{{ __('Wishlist') }}</a>
-                    <a href="{{ route('cart.show') }}" wire:navigate class="text-zinc-700 hover:text-brand-primary dark:text-zinc-300">{{ __('Cart') }}</a>
-                    <a href="{{ route('account.show') }}" wire:navigate class="text-zinc-700 hover:text-brand-primary dark:text-zinc-300">{{ __('Account') }}</a>
+                <nav class="flex items-center gap-5 text-sm font-medium">
+                    <a href="{{ route('products.index') }}" wire:navigate class="flex items-center gap-1.5 text-zinc-700 hover:text-brand-primary dark:text-zinc-300">
+                        <x-app-icon name="magnifying-glass" class="size-5" />
+                        <span class="hidden sm:inline">{{ __('Shop') }}</span>
+                    </a>
+                    <a href="{{ route('wishlist.show') }}" wire:navigate class="flex items-center gap-1.5 text-zinc-700 hover:text-brand-primary dark:text-zinc-300">
+                        <x-app-icon name="heart" class="size-5" />
+                        <span class="hidden sm:inline">{{ __('Wishlist') }}</span>
+                    </a>
+                    <livewire:storefront.cart-indicator />
+                    <a href="{{ route('account.show') }}" wire:navigate class="flex items-center gap-1.5 text-zinc-700 hover:text-brand-primary dark:text-zinc-300">
+                        <x-app-icon name="user" class="size-5" />
+                        <span class="hidden sm:inline">{{ __('Account') }}</span>
+                    </a>
                 </nav>
             </div>
         </header>

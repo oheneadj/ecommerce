@@ -36,14 +36,24 @@
                             <p class="mt-1 text-sm font-medium">{{ $variant->price_formatted }}</p>
                         </div>
 
-                        <div class="flex items-center gap-2">
-                            <input
-                                type="number"
-                                min="0"
-                                value="{{ $item->quantity }}"
-                                wire:change="updateQuantity({{ $variant->id }}, $event.target.value)"
-                                class="w-16 rounded-lg border border-zinc-300 bg-white px-2 py-1 text-center text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                        <div class="flex items-center gap-2" wire:loading.class="opacity-50" wire:target="updateQuantity({{ $variant->id }}, {{ max(0, $item->quantity - 1) }}), updateQuantity({{ $variant->id }}, {{ $item->quantity + 1 }})">
+                            <button
+                                type="button"
+                                wire:click="updateQuantity({{ $variant->id }}, {{ $item->quantity - 1 }})"
+                                aria-label="{{ __('Decrease quantity') }}"
+                                class="flex size-8 items-center justify-center rounded-lg border border-zinc-300 hover:bg-zinc-50 dark:border-zinc-600 dark:hover:bg-zinc-800"
                             >
+                                <x-app-icon name="minus" class="size-4" />
+                            </button>
+                            <span class="w-8 text-center text-sm">{{ $item->quantity }}</span>
+                            <button
+                                type="button"
+                                wire:click="updateQuantity({{ $variant->id }}, {{ $item->quantity + 1 }})"
+                                aria-label="{{ __('Increase quantity') }}"
+                                class="flex size-8 items-center justify-center rounded-lg border border-zinc-300 hover:bg-zinc-50 dark:border-zinc-600 dark:hover:bg-zinc-800"
+                            >
+                                <x-app-icon name="plus" class="size-4" />
+                            </button>
                         </div>
 
                         <div class="w-24 text-right font-medium">

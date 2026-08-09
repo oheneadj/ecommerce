@@ -66,10 +66,11 @@
             @endforeach
 
             <div class="flex gap-3 pt-2">
-                <x-button wire:click="addToCart" variant="primary" :disabled="! $variant || $variant->stock <= 0">
-                    {{ __('Add to cart') }}
+                <x-button wire:click="addToCart" wire:loading.attr="disabled" wire:target="addToCart" icon="shopping-bag" variant="primary" :disabled="! $variant || $variant->stock <= 0">
+                    <span wire:loading.remove wire:target="addToCart">{{ __('Add to cart') }}</span>
+                    <span wire:loading wire:target="addToCart">{{ __('Adding…') }}</span>
                 </x-button>
-                <x-button wire:click="addToWishlist" :disabled="! $variant">
+                <x-button wire:click="addToWishlist" wire:loading.attr="disabled" wire:target="addToWishlist" icon="heart" :disabled="! $variant">
                     {{ __('Add to wishlist') }}
                 </x-button>
             </div>

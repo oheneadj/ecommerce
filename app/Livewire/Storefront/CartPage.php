@@ -48,6 +48,7 @@ class CartPage extends Component
         UpdateCartItemQuantity::run($this->cart, $variant, $quantity);
 
         unset($this->cart, $this->subtotal);
+        $this->dispatch('cart-updated');
     }
 
     public function removeItem(int $variantId): void
@@ -57,6 +58,7 @@ class CartPage extends Component
         RemoveItemFromCart::run($this->cart, $variant);
 
         unset($this->cart, $this->subtotal);
+        $this->dispatch('cart-updated');
         $this->dispatch('toast', variant: 'success', message: 'Removed from cart.');
     }
 

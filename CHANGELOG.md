@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Storefront nav/UX pass: live cart indicator, icons, interactive quantity controls
+- New `CartIndicator` Livewire component in the header (every storefront page): a cart icon with a live item-count badge and a click-to-open preview (line items with thumbnail/price, subtotal, "View cart"/"Checkout" links). It refreshes itself via a shared `cart-updated` browser event dispatched by every place that mutates the cart (`CartPage`, `WishlistPage::addToCart`, `ProductDetailPage::addToCart`) — no full page reload needed to see the count change.
+- Added `shopping-bag`, `heart`, `user`, `magnifying-glass`, and `minus` icons to the shared `x-app-icon` set; the header nav (Shop/Wishlist/Cart/Account) and the Add to cart/Add to wishlist buttons across Wishlist, Product detail, and Checkout now use them instead of text-only links.
+- The Cart page's quantity input is now a +/- stepper (`minus`/`plus` icons) instead of a raw number field, with a `wire:loading` dimmed state while a change is in flight — clearer and harder to fat-finger than free-typing a quantity.
+- Add-to-cart/add-to-wishlist buttons now show a `wire:loading` "Adding…" state instead of appearing to do nothing while the request is in flight.
+- 4 new tests for the cart indicator (guest sees no count, count reflects total quantity across items, preview dropdown opens, and it live-refreshes on `cart-updated`).
+
 ### Added — Public storefront: homepage, product listing/search, product detail (Epics E12.1–E12.3)
 - This is the last piece of the storefront that was missing — until now the app was backend/admin plus a signed-in-only account area, with no way for a visitor to actually browse and shop.
 - `/` — the real homepage (replacing the Laravel starter `welcome` view): top-level categories and up to 8 new-arrival products, both scoped to what's actually purchasable (`Product::active()` with at least one active, in-stock variant).

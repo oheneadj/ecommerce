@@ -51,6 +51,7 @@ class WishlistPage extends Component
         $variant = ProductVariant::query()->findOrFail($variantId);
         $cart = GetCurrentCart::run(Auth::user());
         AddItemToCart::run($cart, $variant, 1);
+        $this->dispatch('cart-updated');
         $this->dispatch('toast', variant: 'success', message: 'Added to cart.');
     }
 

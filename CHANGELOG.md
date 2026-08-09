@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Public static pages (Epic E12.8, now rendered)
+- `/pages/{slug}` — publicly renders an admin-authored `StaticPage` (About, Contact, Terms, etc.), 404 for an unpublished one. The backend/admin side (Filament CRUD) already existed from Sprint 9; this is the first time it's actually reachable by a visitor. Every published page now also appears as a link in the shared storefront footer. 3 new tests.
+
 ### Added — Themeable customer pages: Order history, detail/tracking, confirmation
 - `/account/orders` — every order the account has ever placed, newest first. `/account/orders/{order}` — a single order's items (read from each item's frozen `item_snapshot`, never live catalog data), financial breakdown, delivery address (`address_snapshot`), status-change timeline (`OrderStatusHistory`), shipment tracking number if assigned, and every payment attempt made against it. Both are scoped to the signed-in customer's own orders via `Auth::user()->orders()`, resolved by the order's `ulid` route key — deliberately not reusing `OrderPolicy` (admin/super-admin only) to avoid mixing staff and customer authorization in one policy. `/orders/{order}/confirmation` — the "thank you" page shown right after checkout, linking onward to the order's own tracking page; `CheckoutPage::placeOrder()` now redirects here (instead of the account dashboard) whenever the payment channel has no external gateway redirect URL. A dedicated "payment failed" page was considered but skipped — `CheckoutPage` already surfaces a failed payment-initiation inline as a form error, letting the customer immediately retry or pick a different channel without leaving checkout. Linked from the account dashboard's "Recent orders" card and each order row. 14 new tests.
 

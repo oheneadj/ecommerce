@@ -3,12 +3,15 @@
 use App\Http\Controllers\Admin\SystemCacheController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Storefront\AccountController;
+use App\Http\Controllers\Storefront\StaticPageController;
 use App\Http\Controllers\Storefront\ThemeCssController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/theme.css', ThemeCssController::class)->name('theme.css');
 
 Route::view('/', 'welcome')->name('home');
+
+Route::get('/pages/{staticPage}', [StaticPageController::class, 'show'])->name('pages.show');
 
 Route::view('/login/phone', 'pages.login-phone')->middleware('guest')->name('login.phone');
 

@@ -7,6 +7,7 @@
 --}}
 @php
     $store ??= \App\Models\StoreSetting::current();
+    $footerPages = \App\Models\StaticPage::query()->where('is_published', true)->orderBy('title')->get();
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -55,6 +56,13 @@
                         <span>{{ $store->contact_address }}</span>
                     @endif
                 </p>
+                @if ($footerPages->isNotEmpty())
+                    <p class="mt-4 flex flex-wrap gap-x-4">
+                        @foreach ($footerPages as $footerPage)
+                            <a href="{{ route('pages.show', $footerPage) }}" wire:navigate class="hover:text-brand-primary">{{ $footerPage->title }}</a>
+                        @endforeach
+                    </p>
+                @endif
             </div>
         </footer>
 

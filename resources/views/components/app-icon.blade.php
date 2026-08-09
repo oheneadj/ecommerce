@@ -1,4 +1,4 @@
-@props(['name'])
+@props(['name', 'filled' => false])
 
 @php
     $paths = [
@@ -40,6 +40,6 @@
     $isLoading = $name === 'loading';
 @endphp
 
-<svg {{ $attributes->merge(['class' => 'size-5']) }} fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" @if($isLoading) style="animation: spin 1s linear infinite;" @endif>
+<svg {{ $attributes->merge(['class' => 'size-5 transition-colors duration-200']) }} fill="{{ $filled ? 'currentColor' : 'none' }}" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" @if($isLoading) style="animation: spin 1s linear infinite;" @endif>
     <path stroke-linecap="round" stroke-linejoin="round" d="{{ $path }}" />
 </svg>

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Brands\Tables;
 
+use App\Models\Brand;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
@@ -10,6 +11,8 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Storage;
 
 class BrandsTable
 {
@@ -44,7 +47,14 @@ class BrandsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->before(function (Collection $records): void {
+                            foreach ($records as $record) {
+                                if ($record instanceof Brand && $record->logo_path) {
+                                    Storage::disk('public')->delete($record->logo_path);
+                                }
+                            }
+                        }),
                 ]),
             ])
             ->emptyStateHeading('No brands yet')

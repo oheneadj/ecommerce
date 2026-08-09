@@ -71,6 +71,7 @@ class ReviewsTable
     {
         return Action::make($name)
             ->label(ucfirst($name))
+            ->button()
             ->visible(fn (Review $record) => $record->status !== $status)
             ->authorize(fn (): bool => Auth::user()?->can('viewAny', Review::class) ?? false)
             ->requiresConfirmation()

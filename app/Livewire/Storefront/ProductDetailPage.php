@@ -12,12 +12,14 @@ namespace App\Livewire\Storefront;
 use App\Actions\Cart\AddItemToCart;
 use App\Actions\Cart\ResolveCurrentCart;
 use App\Actions\Wishlist\AddToWishlist;
+use App\Actions\Wishlist\RemoveFromWishlist;
 use App\Enums\ProductStatus;
 use App\Enums\ReviewStatus;
 use App\Enums\VariantStatus;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Review;
+use App\Models\WishlistItem;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -28,6 +30,7 @@ use Livewire\Component;
  * @property-read ProductVariant|null $selectedVariant
  * @property-read Collection<int, Review> $reviews
  * @property-read float $averageRating
+ * @property-read bool $isWishlisted
  */
 class ProductDetailPage extends Component
 {
@@ -35,6 +38,13 @@ class ProductDetailPage extends Component
 
     /** @var array<int, int> */
     public array $selectedTermIds = [];
+
+    /**
+     * Set only when a variant is picked directly (the fallback list shown
+     * for products with no global Attribute selector — see
+     * `hasAttributeSelector`). Takes precedence over `$selectedTermIds`.
+     */
+    public ?int $selectedVariantId = null;
 
     public function mount(string $productSlug): void
     {
@@ -48,15 +58,39 @@ class ProductDetailPage extends Component
                 'attributes.terms',
                 'variants' => fn ($query) => $query->where('status', VariantStatus::Active)->orderBy('price'),
                 'variants.attributeTerms',
+                'variants.attributeValues',
                 'variants.images',
                 'reviews' => fn ($query) => $query->where('status', ReviewStatus::Approved)->with('user')->latest(),
             ])
             ->firstOrFail();
     }
 
+    /**
+     * True when the product has variants to choose between but none of
+     * them differ by a global Attribute/AttributeTerm — e.g. variants
+     * created by SKU/price alone, or via custom per-variant attribute
+     * values only. The attribute-term button groups below have nothing to
+     * render in that case, so the view falls back to a plain per-variant
+     * list instead — otherwise every variant past the first is
+     * permanently unreachable on the storefront.
+     */
+    #[Computed]
+    public function hasAttributeSelector(): bool
+    {
+        return $this->product->attributes->isNotEmpty();
+    }
+
     #[Computed]
     public function selectedVariant(): ?ProductVariant
     {
+        if ($this->selectedVariantId !== null) {
+            $direct = $this->product->variants->firstWhere('id', $this->selectedVariantId);
+
+            if ($direct !== null) {
+                return $direct;
+            }
+        }
+
         if ($this->selectedTermIds === []) {
             return $this->product->variants->first();
         }
@@ -85,9 +119,33 @@ class ProductDetailPage extends Component
         return round((float) $this->reviews->avg('rating'), 1);
     }
 
+    #[Computed]
+    public function isWishlisted(): bool
+    {
+        if (! Auth::check() || $this->selectedVariant === null) {
+            return false;
+        }
+
+        return WishlistItem::query()
+            ->where('user_id', Auth::id())
+            ->where('product_variant_id', $this->selectedVariant->id)
+            ->exists();
+    }
+
     public function selectTerm(int $attributeId, int $termId): void
     {
+        $this->selectedVariantId = null;
         $this->selectedTermIds[$attributeId] = $termId;
+    }
+
+    /**
+     * Direct variant pick, used by the fallback list for products with no
+     * global Attribute selector (see `hasAttributeSelector`).
+     */
+    public function selectVariant(int $variantId): void
+    {
+        $this->selectedTermIds = [];
+        $this->selectedVariantId = $variantId;
     }
 
     public function addToCart(): void
@@ -104,7 +162,7 @@ class ProductDetailPage extends Component
         $this->dispatch('toast', variant: 'success', message: 'Added to cart.');
     }
 
-    public function addToWishlist(): void
+    public function toggleWishlist(): void
     {
         if (! Auth::check()) {
             $this->redirectRoute('login.phone', navigate: true);
@@ -118,8 +176,15 @@ class ProductDetailPage extends Component
             return;
         }
 
-        AddToWishlist::run(Auth::user(), $variant);
-        $this->dispatch('toast', variant: 'success', message: 'Added to wishlist.');
+        if ($this->isWishlisted) {
+            RemoveFromWishlist::run(Auth::user(), $variant);
+            $this->dispatch('toast', variant: 'success', message: 'Removed from wishlist.');
+        } else {
+            AddToWishlist::run(Auth::user(), $variant);
+            $this->dispatch('toast', variant: 'success', message: 'Added to wishlist.');
+        }
+
+        unset($this->isWishlisted);
     }
 
     public function render(): View

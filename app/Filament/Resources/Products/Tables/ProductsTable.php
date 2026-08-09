@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Products\Tables;
 
 use App\Actions\Catalog\DeleteProduct;
+use App\Actions\Catalog\DeleteProductImageFiles;
 use App\Enums\ProductStatus;
 use App\Models\Product;
 use Filament\Actions\BulkActionGroup;
@@ -52,7 +53,8 @@ class ProductsTable
                     ->options(ProductStatus::class),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->button(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -64,7 +66,14 @@ class ProductsTable
                                 }
                             }
                         }),
-                    ForceDeleteBulkAction::make(),
+                    ForceDeleteBulkAction::make()
+                        ->before(function (Collection $records): void {
+                            foreach ($records as $record) {
+                                if ($record instanceof Product) {
+                                    DeleteProductImageFiles::run($record);
+                                }
+                            }
+                        }),
                     RestoreBulkAction::make(),
                     ExportBulkAction::make()
                         ->exports([

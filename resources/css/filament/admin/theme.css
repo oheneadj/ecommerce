@@ -1,0 +1,18 @@
+/**
+ * A custom theme for the admin panel — needed because Filament's own
+ * precompiled CSS (public/css/filament/filament/app.css) ships zero raw
+ * Tailwind utility classes (no .flex, .p-4, .w-6, etc. — only its own
+ * semantic .fi-* component classes, scanned only from Filament's own core
+ * views at their build time). Plugins like Filament Breezy render plain
+ * Tailwind utility classes in their Blade views assuming a normal Tailwind
+ * build exists; without this file those classes never get generated,
+ * so their markup renders completely unstyled (unsized icons, no spacing).
+ * This file re-scans this app's own Filament resources *and* every
+ * installed Filament plugin's vendor views, so their utility classes get
+ * compiled too.
+ */
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament';
+@source '../../../../resources/views/filament';
+@source '../../../../vendor/jeffgreco13/filament-breezy/resources/views';

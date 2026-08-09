@@ -1,5 +1,4 @@
 @php
-    $formatMoney = fn (int $minorUnits): string => 'GH₵'.number_format($minorUnits / 100, 2);
     $variant = $this->selectedVariant;
     $galleryImages = $variant?->images->isNotEmpty() ? $variant->images : $product->images;
 @endphp
@@ -9,7 +8,7 @@
         <div class="space-y-3">
             <div class="flex aspect-square items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
                 @if ($galleryImages->isNotEmpty())
-                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($galleryImages->first()->path) }}" alt="{{ $product->name }}" class="h-full w-full rounded-lg object-cover">
+                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($galleryImages->first()->path) }}" alt="{{ $product->name }}" loading="eager" fetchpriority="high" class="h-full w-full rounded-lg object-cover">
                 @else
                     <x-app-icon name="folder" class="size-16 text-zinc-400" />
                 @endif
@@ -19,7 +18,7 @@
                 <div class="grid grid-cols-5 gap-2">
                     @foreach ($galleryImages as $image)
                         <div class="flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($image->path) }}" alt="{{ $product->name }}" class="h-full w-full object-cover">
+                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($image->path) }}" alt="{{ $product->name }}" loading="lazy" class="h-full w-full object-cover">
                         </div>
                     @endforeach
                 </div>
@@ -48,30 +47,59 @@
                 <p class="text-sm text-red-600 dark:text-red-400">{{ __('Currently unavailable') }}</p>
             @endif
 
-            @foreach ($product->attributes as $attribute)
-                <div wire:key="attribute-{{ $attribute->id }}">
-                    <p class="text-sm font-medium">{{ $attribute->name }}</p>
+            @if ($this->hasAttributeSelector)
+                @foreach ($product->attributes as $attribute)
+                    <div wire:key="attribute-{{ $attribute->id }}">
+                        <p class="text-sm font-medium">{{ $attribute->name }}</p>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            @foreach ($attribute->terms as $term)
+                                <button
+                                    type="button"
+                                    wire:click="selectTerm({{ $attribute->id }}, {{ $term->id }})"
+                                    class="rounded-lg border px-3 py-1.5 text-sm {{ ($selectedTermIds[$attribute->id] ?? null) === $term->id ? 'border-brand-primary text-brand-primary' : 'border-zinc-300 dark:border-zinc-600' }}"
+                                >
+                                    {{ $term->value }}
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+                @endforeach
+            @elseif ($product->variants->count() > 1)
+                {{-- No global Attribute is attached to this product, so there's
+                     nothing for the loop above to render — without this, every
+                     variant past the first would be permanently unreachable. --}}
+                <div>
+                    <p class="text-sm font-medium">{{ __('Options') }}</p>
                     <div class="mt-2 flex flex-wrap gap-2">
-                        @foreach ($attribute->terms as $term)
+                        @foreach ($product->variants as $productVariant)
                             <button
                                 type="button"
-                                wire:click="selectTerm({{ $attribute->id }}, {{ $term->id }})"
-                                class="rounded-lg border px-3 py-1.5 text-sm {{ ($selectedTermIds[$attribute->id] ?? null) === $term->id ? 'border-brand-primary text-brand-primary' : 'border-zinc-300 dark:border-zinc-600' }}"
+                                wire:key="variant-option-{{ $productVariant->id }}"
+                                wire:click="selectVariant({{ $productVariant->id }})"
+                                class="rounded-lg border px-3 py-1.5 text-sm {{ $variant?->id === $productVariant->id ? 'border-brand-primary text-brand-primary' : 'border-zinc-300 dark:border-zinc-600' }}"
                             >
-                                {{ $term->value }}
+                                {{ $productVariant->display_label }}
                             </button>
                         @endforeach
                     </div>
                 </div>
-            @endforeach
+            @endif
 
             <div class="flex gap-3 pt-2">
                 <x-button wire:click="addToCart" wire:loading.attr="disabled" wire:target="addToCart" icon="shopping-bag" variant="primary" :disabled="! $variant || $variant->stock <= 0">
                     <span wire:loading.remove wire:target="addToCart">{{ __('Add to cart') }}</span>
                     <span wire:loading wire:target="addToCart">{{ __('Adding…') }}</span>
                 </x-button>
-                <x-button wire:click="addToWishlist" wire:loading.attr="disabled" wire:target="addToWishlist" icon="heart" :disabled="! $variant">
-                    {{ __('Add to wishlist') }}
+                <x-button
+                    wire:click="toggleWishlist"
+                    wire:loading.attr="disabled"
+                    wire:target="toggleWishlist"
+                    icon="heart"
+                    :icon-filled="$this->isWishlisted"
+                    :variant="$this->isWishlisted ? 'filled' : 'outline'"
+                    :disabled="! $variant"
+                >
+                    {{ $this->isWishlisted ? __('In wishlist') : __('Add to wishlist') }}
                 </x-button>
             </div>
 

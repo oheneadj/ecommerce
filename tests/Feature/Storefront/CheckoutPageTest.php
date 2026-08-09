@@ -77,6 +77,45 @@ class CheckoutPageTest extends TestCase
             ->assertSet('selectedShippingMethodId', $cheap->id);
     }
 
+    /**
+     * Regression: the shipping radio input previously used plain
+     * `wire:model`, which only syncs to the server on the *next* network
+     * request rather than immediately — so switching shipping methods
+     * never actually re-rendered the order summary's shipping/total
+     * figures until some other action fired. It must be `wire:model.live`
+     * since `shippingCost`/`estimatedTotal` are computed properties that
+     * only recompute on render.
+     */
+    public function test_the_shipping_radio_input_is_live_bound_so_the_summary_updates_immediately(): void
+    {
+        ShippingMethod::factory()->create(['active' => true]);
+
+        Livewire::test(CheckoutPage::class)
+            ->assertSeeHtml('wire:model.live="selectedShippingMethodId"');
+    }
+
+    public function test_changing_the_shipping_method_updates_the_shipping_cost_and_total(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $variant = ProductVariant::factory()->create(['price' => 1000]);
+        $cart = GetCurrentCart::run($user);
+        AddItemToCart::run($cart, $variant, 1);
+
+        $cheap = ShippingMethod::factory()->create(['active' => true, 'cost' => 500]);
+        $express = ShippingMethod::factory()->create(['active' => true, 'cost' => 2000]);
+
+        $component = Livewire::test(CheckoutPage::class)
+            ->assertSet('selectedShippingMethodId', $cheap->id)
+            ->assertSet('shippingCost', 500)
+            ->assertSee('GH₵5.00');
+
+        $component->set('selectedShippingMethodId', $express->id)
+            ->assertSet('shippingCost', 2000)
+            ->assertSet('estimatedTotal', $component->get('subtotal') + $component->get('taxEstimate') + 2000)
+            ->assertSee('GH₵20.00');
+    }
+
     public function test_placing_an_order_with_an_empty_cart_is_rejected(): void
     {
         $user = User::factory()->create();

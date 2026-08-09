@@ -131,6 +131,27 @@ class ProductVariant extends Model
     }
 
     /**
+     * A human label distinguishing this variant from its siblings, for UI
+     * that needs to list variants directly rather than through a global
+     * Attribute selector (e.g. a product with no Attributes attached, only
+     * per-variant SKUs/prices). Prefers global attribute terms, falls back
+     * to custom per-variant attribute values, then the SKU — always
+     * something, since every variant has a SKU.
+     */
+    public function getDisplayLabelAttribute(): string
+    {
+        if ($this->relationLoaded('attributeTerms') && $this->attributeTerms->isNotEmpty()) {
+            return $this->attributeTerms->pluck('value')->implode(' / ');
+        }
+
+        if ($this->relationLoaded('attributeValues') && $this->attributeValues->isNotEmpty()) {
+            return $this->attributeValues->pluck('value')->implode(' / ');
+        }
+
+        return $this->sku;
+    }
+
+    /**
      * This variant's own threshold, or the store-wide default if unset.
      */
     public function effectiveLowStockThreshold(): int

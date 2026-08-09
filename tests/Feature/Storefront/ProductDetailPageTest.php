@@ -19,6 +19,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Review;
 use App\Models\User;
+use App\Models\WishlistItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -64,6 +65,40 @@ class ProductDetailPageTest extends TestCase
             ->assertSee('GH₵20.00');
     }
 
+    /**
+     * Regression: a product with more than one variant but no global
+     * Attribute attached (e.g. variants distinguished only by SKU/price —
+     * the common case, per real catalog data) previously had no UI at all
+     * for reaching any variant past the first. The fallback "Options" list
+     * must let the customer switch to it directly.
+     */
+    public function test_a_product_with_no_attribute_selector_falls_back_to_a_direct_variant_list(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        $small = ProductVariant::factory()->create(['product_id' => $product->id, 'sku' => 'SHOE-S', 'price' => 1000]);
+        $large = ProductVariant::factory()->create(['product_id' => $product->id, 'sku' => 'SHOE-L', 'price' => 2000]);
+
+        $component = Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->assertSet('hasAttributeSelector', false)
+            ->assertSet('selectedVariant.id', $small->id)
+            ->assertSee('GH₵10.00')
+            ->assertSee('SHOE-S')
+            ->assertSee('SHOE-L');
+
+        $component->call('selectVariant', $large->id)
+            ->assertSet('selectedVariant.id', $large->id)
+            ->assertSee('GH₵20.00');
+    }
+
+    public function test_a_single_variant_product_shows_no_options_list(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->assertDontSee('Options');
+    }
+
     public function test_an_authenticated_customer_can_add_the_selected_variant_to_their_cart(): void
     {
         $user = User::factory()->create();
@@ -100,5 +135,37 @@ class ProductDetailPageTest extends TestCase
         $this->get("/products/{$product->slug}")
             ->assertSee('Great product, approved review.')
             ->assertDontSee('This one is still pending review.');
+    }
+
+    public function test_wishlist_button_reflects_state_and_toggles_on_click(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        Livewire::actingAs($user)->test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->assertSet('isWishlisted', false)
+            ->assertSeeText('Add to wishlist')
+            ->call('toggleWishlist')
+            ->assertSet('isWishlisted', true)
+            ->assertSeeText('In wishlist')
+            ->call('toggleWishlist')
+            ->assertSet('isWishlisted', false)
+            ->assertSeeText('Add to wishlist');
+
+        $this->assertSame(
+            0,
+            WishlistItem::query()->where('user_id', $user->id)->where('product_variant_id', $variant->id)->count(),
+        );
+    }
+
+    public function test_guest_is_redirected_to_login_when_attempting_to_wishlist(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->call('toggleWishlist')
+            ->assertRedirect(route('login.phone'));
     }
 }

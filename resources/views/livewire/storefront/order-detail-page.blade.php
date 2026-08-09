@@ -1,5 +1,4 @@
 @php
-    $formatMoney = fn (int $minorUnits): string => 'GH₵'.number_format($minorUnits / 100, 2);
     $addressLines = collect([
         $order->address_snapshot['line1'] ?? null,
         $order->address_snapshot['line2'] ?? null,

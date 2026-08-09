@@ -13,6 +13,7 @@ use App\Http\Controllers\Storefront\ThemeCssController;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Always exactly one row. Business-behavior configuration (reservation
@@ -56,11 +57,25 @@ class StoreSetting extends Model
     /**
      * /theme.css is cached forever, not on a TTL — it must never serve a
      * color an admin already changed, so the cache is cleared the instant
-     * this row saves instead.
+     * this row saves instead. The old logo file is deleted the same way,
+     * whenever it's replaced or cleared, since this singleton row is
+     * never itself deleted.
      */
     protected static function booted(): void
     {
         static::saved(fn (): bool => Cache::forget(ThemeCssController::CACHE_KEY));
+
+        static::saving(function (self $settings): void {
+            if (! $settings->isDirty('logo_path')) {
+                return;
+            }
+
+            $original = $settings->getOriginal('logo_path');
+
+            if ($original) {
+                Storage::disk('public')->delete($original);
+            }
+        });
     }
 
     /**

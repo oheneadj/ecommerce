@@ -46,6 +46,47 @@ class OrdersYearOverYearWidget extends ChartWidget
             $end = CarbonImmutable::parse($this->filters['endDate'] ?? now()->toDateString());
             $days = $start->diffInDays($end) + 1;
 
+            // Beyond ~2 months, a day-by-day breakdown means two queries
+            // per day (and an unreadable chart) — switch to monthly
+            // points instead. Matters for wide ranges like the
+            // dashboard's "All time" filter, which can span years.
+            if ($days > 62) {
+                $months = collect();
+
+                for ($cursor = $start->startOfMonth(); $cursor->lte($end); $cursor = $cursor->addMonth()) {
+                    $months->push($cursor);
+                }
+
+                $current = $months->map(fn (CarbonImmutable $month) => $metrics->ordersCountInRange(
+                    $month->startOfMonth()->toDateString(),
+                    $month->endOfMonth()->toDateString(),
+                ));
+                $prior = $months->map(fn (CarbonImmutable $month) => $metrics->ordersCountInRange(
+                    $month->subYear()->startOfMonth()->toDateString(),
+                    $month->subYear()->endOfMonth()->toDateString(),
+                ));
+
+                return [
+                    'datasets' => [
+                        [
+                            'label' => 'Selected Period',
+                            'data' => $current->values()->all(),
+                            'fill' => true,
+                            'borderColor' => '#3b82f6',
+                            'backgroundColor' => 'rgba(59, 130, 246, 0.15)',
+                        ],
+                        [
+                            'label' => 'Same Period, Prior Year',
+                            'data' => $prior->values()->all(),
+                            'fill' => false,
+                            'borderColor' => '#9ca3af',
+                            'borderDash' => [5, 5],
+                        ],
+                    ],
+                    'labels' => $months->map(fn (CarbonImmutable $month) => $month->format('M Y'))->all(),
+                ];
+            }
+
             $dates = collect(range(0, (int) max(0, $days - 1)))->map(fn (int|float $offset) => $start->addDays((int) $offset));
             $current = $dates->map(fn (CarbonImmutable $date) => $metrics->ordersCountInRange($date->toDateString(), $date->toDateString()));
             $prior = $dates->map(fn (CarbonImmutable $date) => $metrics->ordersCountInRange(

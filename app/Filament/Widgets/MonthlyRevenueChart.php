@@ -21,6 +21,8 @@ class MonthlyRevenueChart extends ChartWidget
 
     protected ?string $heading = 'Revenue (last 6 months)';
 
+    protected static ?int $sort = 4;
+
     public static function canView(): bool
     {
         return Auth::user()?->hasAnyRole([UserRole::SuperAdmin->value, UserRole::Admin->value]) ?? false;
@@ -39,6 +41,31 @@ class MonthlyRevenueChart extends ChartWidget
             $start = CarbonImmutable::parse($this->filters['startDate'] ?? now()->subDays(6)->toDateString());
             $end = CarbonImmutable::parse($this->filters['endDate'] ?? now()->toDateString());
             $days = $start->diffInDays($end) + 1;
+
+            // Beyond ~2 months, a day-by-day breakdown means a query per
+            // day (and an unreadable chart) — switch to monthly points
+            // instead, the same granularity the no-range fallback uses.
+            // Matters for wide ranges like the dashboard's "All time"
+            // filter, which can span years.
+            if ($days > 62) {
+                $months = collect();
+
+                for ($cursor = $start->startOfMonth(); $cursor->lte($end); $cursor = $cursor->addMonth()) {
+                    $months->push($cursor);
+                }
+
+                $revenue = $months->map(fn (CarbonImmutable $month) => $metrics->revenueForMonth($month) / 100);
+
+                return [
+                    'datasets' => [
+                        [
+                            'label' => 'Revenue (GH₵)',
+                            'data' => $revenue->values()->all(),
+                        ],
+                    ],
+                    'labels' => $months->map(fn (CarbonImmutable $month) => $month->format('M Y'))->all(),
+                ];
+            }
 
             $dates = collect(range(0, (int) max(0, $days - 1)))->map(fn (int|float $offset) => $start->addDays((int) $offset));
             $revenue = $dates->map(fn (CarbonImmutable $date) => $metrics->revenueInRange($date->toDateString(), $date->toDateString()) / 100);

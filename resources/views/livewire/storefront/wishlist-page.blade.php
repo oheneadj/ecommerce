@@ -12,27 +12,19 @@
                     @php
                         $variant = $wishlistItem->productVariant;
                         $product = $variant->product;
-                        $image = $variant->images->firstWhere('is_primary', true)
-                            ?? $variant->images->first()
-                            ?? $product->images->firstWhere('is_primary', true)
-                            ?? $product->images->first();
                     @endphp
                     <div wire:key="wishlist-item-{{ $wishlistItem->id }}" class="flex items-center gap-4 py-4">
-                        @if ($image)
-                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($image->path) }}" alt="{{ $product->name }}" class="h-16 w-16 rounded-lg object-cover">
-                        @else
-                            <div class="flex h-16 w-16 items-center justify-center rounded-lg bg-zinc-100 text-zinc-400 dark:bg-zinc-800">
-                                <x-app-icon name="folder" class="size-6" />
-                            </div>
-                        @endif
+                        <a href="{{ route('products.show', $product) }}" wire:navigate class="flex items-center gap-4 flex-1 rounded-lg -m-2 p-2 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-700/50">
+                            <x-product-thumbnail :variant="$variant" :product="$product" class="h-16 w-16" />
 
                         <div class="flex-1">
                             <p class="font-medium">{{ $product->name }}</p>
                             <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ $variant->sku }}</p>
                             <p class="mt-1 text-sm font-medium">{{ $variant->price_formatted }}</p>
                         </div>
+                        </a>
 
-                        <x-button wire:click="addToCart({{ $variant->id }})" wire:loading.attr="disabled" wire:target="addToCart({{ $variant->id }})" icon="shopping-bag" variant="primary">
+                        <x-button wire:click="addToCart({{ $variant->id }})" variant="primary">
                             {{ __('Add to cart') }}
                         </x-button>
 

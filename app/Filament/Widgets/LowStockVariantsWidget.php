@@ -24,6 +24,10 @@ class LowStockVariantsWidget extends TableWidget
 {
     protected static ?string $heading = 'Low Stock Variants';
 
+    protected static ?int $sort = 10;
+
+    protected int|string|array $columnSpan = 'full';
+
     /**
      * Same visibility as the Low Stock Items stat — Store Keeper cares
      * about this most, but Admin/Super Admin see it too.

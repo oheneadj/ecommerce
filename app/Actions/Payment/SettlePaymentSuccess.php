@@ -10,6 +10,7 @@ namespace App\Actions\Payment;
 
 use App\Actions\Inventory\RecordStockMovement;
 use App\Actions\Order\UpdateOrderStatus;
+use App\Actions\Wishlist\RemoveOrderItemsFromWishlist;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\StockMovementType;
@@ -77,6 +78,8 @@ class SettlePaymentSuccess
             }
 
             UpdateOrderStatus::run($order, OrderStatus::Paid, note: 'Payment confirmed.');
+
+            RemoveOrderItemsFromWishlist::run($order);
 
             DB::afterCommit(function () use ($order): void {
                 GenerateOrderInvoicePdf::dispatch($order->id);

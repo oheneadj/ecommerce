@@ -46,6 +46,36 @@ class CustomerGrowthWidget extends ChartWidget
             $end = CarbonImmutable::parse($this->filters['endDate'] ?? now()->toDateString());
             $days = $start->diffInDays($end) + 1;
 
+            // Beyond ~2 months, a day-by-day breakdown means a query per
+            // day (and an unreadable chart) — switch to monthly points
+            // instead. Matters for wide ranges like the dashboard's
+            // "All time" filter, which can span years.
+            if ($days > 62) {
+                $months = collect();
+
+                for ($cursor = $start->startOfMonth(); $cursor->lte($end); $cursor = $cursor->addMonth()) {
+                    $months->push($cursor);
+                }
+
+                $counts = $months->map(fn (CarbonImmutable $month) => $metrics->newCustomersCountInRange(
+                    $month->startOfMonth()->toDateString(),
+                    $month->endOfMonth()->toDateString(),
+                ));
+
+                return [
+                    'datasets' => [
+                        [
+                            'label' => 'New Customers',
+                            'data' => $counts->values()->all(),
+                            'fill' => true,
+                            'borderColor' => '#22c55e',
+                            'backgroundColor' => 'rgba(34, 197, 94, 0.15)',
+                        ],
+                    ],
+                    'labels' => $months->map(fn (CarbonImmutable $month) => $month->format('M Y'))->all(),
+                ];
+            }
+
             $dates = collect(range(0, (int) max(0, $days - 1)))->map(fn (int|float $offset) => $start->addDays((int) $offset));
             $counts = $dates->map(fn (CarbonImmutable $date) => $metrics->newCustomersCountInRange($date->toDateString(), $date->toDateString()));
 

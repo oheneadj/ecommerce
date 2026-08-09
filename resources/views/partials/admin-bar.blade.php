@@ -105,11 +105,6 @@
                 margin: 0 4px;
                 flex-shrink: 0;
             }
-            .wp-admin-bar-role {
-                color: #999;
-                padding: 0 8px;
-                white-space: nowrap;
-            }
             .wp-admin-bar-item {
                 position: relative;
                 height: 32px;
@@ -274,7 +269,7 @@
         </div>
 
         <div class="wp-admin-bar-group">
-            <span class="wp-admin-bar-role">{{ $adminBarUser->name }}</span>
+            <a href="{{ route('filament.admin.pages.my-profile') }}">{{ $adminBarUser->name }}</a>
             <form method="POST" action="{{ request()->is('admin*') ? route('filament.admin.auth.logout') : route('logout') }}">
                 @csrf
                 <button type="submit">Log out</button>

@@ -92,16 +92,23 @@ class ManageStoreSettings extends Page implements HasForms
 
                         FileUpload::make('logo_path')
                             ->image()
+                            ->imageEditor()
+                            ->imageEditorAspectRatios([
+                                null,
+                                '1:1',
+                                '16:9',
+                                '4:3',
+                            ])
                             ->maxSize(config('media.max_upload_size_kb'))
                             ->disk('public')
                             ->directory('branding')
                             ->saveUploadedFileUsing(ConvertImageToWebp::forFileUpload())
-                            ->helperText('Displayed on the storefront and PDF receipts.'),
+                            ->helperText('Displayed on the storefront and PDF receipts. Crop or adjust before saving.'),
                     ]),
 
                 Section::make('Contact details')
                     ->schema([
-                        Grid::make(2)
+                        Grid::make(3)
                             ->schema([
                                 TextInput::make('contact_email')
                                     ->email()
@@ -112,14 +119,13 @@ class ManageStoreSettings extends Page implements HasForms
                                     ->maxLength(255),
 
                                 TextInput::make('contact_address')
-                                    ->maxLength(255)
-                                    ->columnSpanFull(),
+                                    ->maxLength(255),
                             ]),
                     ]),
 
                 Section::make('Checkout & inventory')
                     ->schema([
-                        Grid::make(2)
+                        Grid::make(3)
                             ->schema([
                                 TextInput::make('tax_rate')
                                     ->label('Tax rate (%)')

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Widgets;
 
 use App\Enums\UserRole;
+use App\Filament\Resources\Orders\OrderResource;
 use App\Models\Order;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -18,6 +19,10 @@ class RecentOrdersWidget extends TableWidget
     use InteractsWithPageFilters;
 
     protected static ?string $heading = 'Recent Orders';
+
+    protected static ?int $sort = 2;
+
+    protected int|string|array $columnSpan = 'full';
 
     public static function canView(): bool
     {
@@ -44,6 +49,7 @@ class RecentOrdersWidget extends TableWidget
                 return $query->limit(10);
             })
             ->paginated(false)
+            ->recordUrl(fn (Order $record): string => OrderResource::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('order_number'),
                 TextColumn::make('user.name')

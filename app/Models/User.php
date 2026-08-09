@@ -10,18 +10,23 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\UserRole;
+use App\Observers\UserObserver;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasAvatar;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Jeffgreco13\FilamentBreezy\Traits\TwoFactorAuthenticatable as BreezyTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -39,6 +44,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $email_verified_at
  * @property string|null $password
  * @property string|null $google_id
+ * @property string|null $avatar_url
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
@@ -47,12 +53,13 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  */
-#[Fillable(['name', 'phone', 'email', 'password', 'google_id'])]
+#[Fillable(['name', 'phone', 'email', 'password', 'google_id', 'avatar_url'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable implements FilamentUser, PasskeyUser
+#[ObservedBy(UserObserver::class)]
+class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, Notifiable, PasskeyAuthenticatable, SoftDeletes, TwoFactorAuthenticatable;
+    use BreezyTwoFactorAuthenticatable, HasFactory, HasRoles, Notifiable, PasskeyAuthenticatable, SoftDeletes, TwoFactorAuthenticatable;
 
     /**
      * Get the attributes that should be cast.
@@ -66,6 +73,16 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * The admin panel's avatar, uploaded via the Filament Breezy profile
+     * page and stored on the public disk — never a live-fetched external
+     * URL, so it keeps working even if the account's email changes.
+     */
+    public function getFilamentAvatarUrl(): ?string
+    {
+        return $this->avatar_url ? Storage::disk('public')->url($this->avatar_url) : null;
     }
 
     /**

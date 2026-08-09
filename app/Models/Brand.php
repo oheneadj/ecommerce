@@ -9,8 +9,10 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Concerns\LogsAdminActivity;
+use App\Observers\BrandObserver;
 use Database\Factories\BrandFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -29,6 +31,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  */
 #[Fillable(['name', 'slug', 'logo_path', 'description'])]
+#[ObservedBy(BrandObserver::class)]
 class Brand extends Model
 {
     /** @use HasFactory<BrandFactory> */

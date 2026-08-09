@@ -29,16 +29,16 @@
                 </a>
 
                 <nav class="flex items-center gap-5 text-sm font-medium">
-                    <a href="{{ route('products.index') }}" wire:navigate class="flex items-center gap-1.5 text-zinc-700 hover:text-brand-primary dark:text-zinc-300">
+                    <a href="{{ route('products.index') }}" wire:navigate class="flex items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary dark:text-zinc-300">
                         <x-app-icon name="magnifying-glass" class="size-5" />
                         <span class="hidden sm:inline">{{ __('Shop') }}</span>
                     </a>
-                    <a href="{{ route('wishlist.show') }}" wire:navigate class="flex items-center gap-1.5 text-zinc-700 hover:text-brand-primary dark:text-zinc-300">
+                    <a href="{{ route('wishlist.show') }}" wire:navigate class="flex items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary dark:text-zinc-300">
                         <x-app-icon name="heart" class="size-5" />
                         <span class="hidden sm:inline">{{ __('Wishlist') }}</span>
                     </a>
                     <livewire:storefront.cart-indicator />
-                    <a href="{{ route('account.show') }}" wire:navigate class="flex items-center gap-1.5 text-zinc-700 hover:text-brand-primary dark:text-zinc-300">
+                    <a href="{{ route('account.show') }}" wire:navigate class="flex items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary dark:text-zinc-300">
                         <x-app-icon name="user" class="size-5" />
                         <span class="hidden sm:inline">{{ __('Account') }}</span>
                     </a>
@@ -69,7 +69,7 @@
                 @if ($footerPages->isNotEmpty())
                     <p class="mt-4 flex flex-wrap gap-x-4">
                         @foreach ($footerPages as $footerPage)
-                            <a href="{{ route('pages.show', $footerPage) }}" wire:navigate class="hover:text-brand-primary">{{ $footerPage->title }}</a>
+                            <a href="{{ route('pages.show', $footerPage) }}" wire:navigate class="transition-colors hover:text-brand-primary">{{ $footerPage->title }}</a>
                         @endforeach
                     </p>
                 @endif

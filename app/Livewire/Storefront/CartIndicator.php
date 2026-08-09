@@ -16,6 +16,7 @@ use App\Models\Cart;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Lazy;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -24,6 +25,7 @@ use Livewire\Component;
  * @property-read int $itemCount
  * @property-read int $subtotal
  */
+#[Lazy]
 class CartIndicator extends Component
 {
     public bool $open = false;
@@ -73,5 +75,15 @@ class CartIndicator extends Component
     public function render(): View
     {
         return view('livewire.storefront.cart-indicator');
+    }
+
+    /**
+     * Shown on every page load until this component's own follow-up
+     * request resolves — matches the real button's exact markup (icon +
+     * label, no badge) so there's no layout shift when it swaps in.
+     */
+    public function placeholder(): View
+    {
+        return view('livewire.storefront.cart-indicator-placeholder');
     }
 }

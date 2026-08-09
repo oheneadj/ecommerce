@@ -14,11 +14,15 @@ use App\Filament\Widgets\OrdersYearOverYearWidget;
 use App\Filament\Widgets\RecentOrdersWidget;
 use App\Filament\Widgets\TopProductsByRevenueWidget;
 use App\Filament\Widgets\TopProductsWidget;
+use App\Models\Order;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Pages\Dashboard\Actions\FilterAction;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Pages\Dashboard\Concerns\HasFiltersAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\Widget;
+use Illuminate\Support\Carbon;
 
 /**
  * Filters dashboard widget data via an action modal (rather than an
@@ -80,6 +84,61 @@ class Dashboard extends BaseDashboard
                         ->default(now()->toDateString())
                         ->afterOrEqual('startDate'),
                 ]),
+
+            // Bounded by the earliest order rather than a fixed far-past
+            // sentinel — a sentinel like 2000-01-01 would still work
+            // (every widget below floors to whatever data actually
+            // exists), but pads the range-mode charts with years of empty
+            // months before the store's first real order.
+            Action::make('allTimeFilter')
+                ->label('All time')
+                ->color('gray')
+                ->icon(Heroicon::OutlinedCalendarDays)
+                ->action(function (): void {
+                    $this->filters = [
+                        'startDate' => $this->earliestOrderDate(),
+                        'endDate' => now()->toDateString(),
+                    ];
+                }),
+
+            Action::make('resetFilter')
+                ->label('Reset')
+                ->color('gray')
+                ->icon(Heroicon::OutlinedXMark)
+                ->visible(fn (): bool => filled($this->filters))
+                ->action(function (): void {
+                    $this->filters = null;
+                }),
         ];
+    }
+
+    /**
+     * States, in plain words, exactly which period the widgets below are
+     * showing — no filter falls back to "the current calendar month"
+     * since that's what most widgets themselves default to (today's
+     * sales/this month's top products/etc. all key off "now").
+     */
+    public function getSubheading(): ?string
+    {
+        $start = $this->filters['startDate'] ?? null;
+        $end = $this->filters['endDate'] ?? null;
+
+        if (! $start && ! $end) {
+            return now()->format('F').' Overview';
+        }
+
+        if ($start === $this->earliestOrderDate() && $end === now()->toDateString()) {
+            return 'All Time Overview';
+        }
+
+        $startLabel = $start ? Carbon::parse($start)->format('M j, Y') : 'the beginning';
+        $endLabel = $end ? Carbon::parse($end)->format('M j, Y') : 'today';
+
+        return "Overview from {$startLabel} to {$endLabel}";
+    }
+
+    private function earliestOrderDate(): string
+    {
+        return Order::query()->oldest()->value('created_at')?->toDateString() ?? now()->toDateString();
     }
 }

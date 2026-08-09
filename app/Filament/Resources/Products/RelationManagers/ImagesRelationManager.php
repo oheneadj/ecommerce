@@ -27,6 +27,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -110,7 +111,10 @@ class ImagesRelationManager extends RelationManager
                 $this->deleteAction(),
             ])
             ->toolbarActions([
-                DeleteBulkAction::make(),
+                DeleteBulkAction::make()
+                    ->before(function (Collection $records): void {
+                        Storage::disk('public')->delete($records->pluck('path')->all());
+                    }),
             ])
             ->emptyStateHeading('No images yet')
             ->emptyStateDescription('Upload a general product photo, or scope one to a specific variant.')

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Models\ProductImage;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Runs on every create/update regardless of entry point (the admin panel's
@@ -33,5 +34,17 @@ class ProductImageObserver
             )
             ->when($productImage->exists, fn ($query) => $query->where('id', '!=', $productImage->id))
             ->update(['is_primary' => false]);
+    }
+
+    /**
+     * A safety net for any deletion path that isn't already covered by an
+     * explicit `->before()` hook (e.g. a future Action or console command
+     * calling `$image->delete()` directly) — `Storage::delete()` on an
+     * already-removed file is a harmless no-op, so this is safe to run
+     * alongside the admin panel's own explicit cleanup.
+     */
+    public function deleted(ProductImage $productImage): void
+    {
+        Storage::disk('public')->delete($productImage->path);
     }
 }

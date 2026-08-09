@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\StaticPages\Tables;
 
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
@@ -37,6 +38,9 @@ class StaticPagesTable
             ])
             ->recordActions([
                 EditAction::make()
+                    ->button(),
+                Action::make('preview')
+                    ->label('Preview')
                     ->button(),
             ])
             ->toolbarActions([

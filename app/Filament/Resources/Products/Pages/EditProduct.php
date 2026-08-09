@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Products\Pages;
 
 use App\Actions\Catalog\DeleteProduct;
+use App\Actions\Catalog\DeleteProductImageFiles;
 use App\Actions\Catalog\UpdateProduct;
 use App\Exceptions\ProductRequiresVariantException;
 use App\Filament\Resources\Products\ProductResource;
@@ -28,7 +29,8 @@ class EditProduct extends EditRecord
 
                     return true;
                 }),
-            ForceDeleteAction::make(),
+            ForceDeleteAction::make()
+                ->before(fn (Product $record) => DeleteProductImageFiles::run($record)),
             RestoreAction::make(),
         ];
     }

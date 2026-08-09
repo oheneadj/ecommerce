@@ -1,7 +1,3 @@
-@php
-    $formatMoney = fn (int $minorUnits): string => 'GH₵'.number_format($minorUnits / 100, 2);
-@endphp
-
 <div class="space-y-6">
     <h1 class="text-2xl font-semibold">{{ __('Checkout') }}</h1>
 
@@ -89,7 +85,7 @@
                         @foreach ($this->shippingMethods as $method)
                             <label wire:key="checkout-shipping-{{ $method->id }}" class="flex cursor-pointer items-center justify-between rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
                                 <span class="flex items-center gap-3 text-sm">
-                                    <input type="radio" wire:model="selectedShippingMethodId" value="{{ $method->id }}">
+                                    <input type="radio" wire:model.live="selectedShippingMethodId" value="{{ $method->id }}">
                                     {{ $method->name }}
                                 </span>
                                 <span class="text-sm font-medium">{{ $method->cost_formatted }}</span>
@@ -125,7 +121,7 @@
                     @foreach ($this->cart->items as $item)
                         <div wire:key="summary-item-{{ $item->id }}" class="flex justify-between">
                             <span>{{ $item->productVariant->product->name }} &times; {{ $item->quantity }}</span>
-                            <span>{{ $formatMoney($item->productVariant->price * $item->quantity) }}</span>
+                            <span><x-money :amount="$item->productVariant->price * $item->quantity" /></span>
                         </div>
                     @endforeach
                 </div>
@@ -134,11 +130,11 @@
                     <x-input wire:model="couponCode" placeholder="{{ __('Coupon code') }}" />
                 </div>
 
-                <div class="mt-4 space-y-2 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-700">
-                    <div class="flex justify-between"><span>{{ __('Subtotal') }}</span><span>{{ $formatMoney($this->subtotal) }}</span></div>
-                    <div class="flex justify-between"><span>{{ __('Tax') }}</span><span>{{ $formatMoney($this->taxEstimate) }}</span></div>
-                    <div class="flex justify-between"><span>{{ __('Shipping') }}</span><span>{{ $formatMoney($this->shippingCost) }}</span></div>
-                    <div class="flex justify-between text-base font-semibold"><span>{{ __('Total') }}</span><span>{{ $formatMoney($this->estimatedTotal) }}</span></div>
+                <div class="mt-4 space-y-2 border-t border-zinc-200 pt-4 text-sm transition-opacity duration-150 dark:border-zinc-700" wire:loading.class="opacity-50" wire:target="selectedShippingMethodId">
+                    <div class="flex justify-between"><span>{{ __('Subtotal') }}</span><span><x-money :amount="$this->subtotal" /></span></div>
+                    <div class="flex justify-between"><span>{{ __('Tax') }}</span><span><x-money :amount="$this->taxEstimate" /></span></div>
+                    <div class="flex justify-between"><span>{{ __('Shipping') }}</span><span><x-money :amount="$this->shippingCost" /></span></div>
+                    <div class="flex justify-between text-base font-semibold"><span>{{ __('Total') }}</span><span><x-money :amount="$this->estimatedTotal" /></span></div>
                 </div>
 
                 <x-button wire:click="placeOrder" wire:loading.attr="disabled" variant="primary" class="mt-4 w-full">

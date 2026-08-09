@@ -10,6 +10,7 @@ namespace App\Actions\Payment;
 
 use App\Actions\Inventory\RecordStockMovement;
 use App\Actions\Order\UpdateOrderStatus;
+use App\Actions\Wishlist\RemoveOrderItemsFromWishlist;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\StockMovementType;
@@ -82,6 +83,8 @@ class HandleLatePaymentConfirmation
             }
 
             $updated = UpdateOrderStatus::run($order, OrderStatus::Paid, note: 'Payment confirmed after reservation expired; stock was still available.');
+
+            RemoveOrderItemsFromWishlist::run($order);
 
             DB::afterCommit(fn () => GenerateOrderInvoicePdf::dispatch($order->id));
 

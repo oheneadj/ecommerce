@@ -1,6 +1,7 @@
 @props([
     'variant' => 'outline',
     'icon' => null,
+    'iconFilled' => false,
     'type' => 'button',
     'href' => null,
 ])
@@ -14,18 +15,18 @@
         'ghost' => 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800',
     ];
 
-    $classes = 'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer '
+    $classes = 'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-150 ease-out active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 cursor-pointer '
         .($variants[$variant] ?? $variants['outline']);
 @endphp
 
 @if($href)
     <a href="{{ $href }}" {{ $attributes->merge(['class' => $classes]) }}>
-        @if($icon)<x-app-icon :name="$icon" class="size-4" />@endif
+        @if($icon)<x-app-icon :name="$icon" :filled="$iconFilled" class="size-4" />@endif
         {{ $slot }}
     </a>
 @else
     <button type="{{ $type }}" {{ $attributes->merge(['class' => $classes]) }}>
-        @if($icon)<x-app-icon :name="$icon" class="size-4" />@endif
+        @if($icon)<x-app-icon :name="$icon" :filled="$iconFilled" class="size-4" />@endif
         {{ $slot }}
     </button>
 @endif

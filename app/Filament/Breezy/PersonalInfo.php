@@ -1,0 +1,39 @@
+<?php
+
+/**
+ * Extends Filament Breezy's own "Personal Info" profile tab to add the one
+ * field this app's User model has that Breezy's default form doesn't know
+ * about: phone. `$only` (Breezy's own allow-list for what gets read/saved)
+ * must be extended too, or the field would render but silently never save.
+ */
+
+declare(strict_types=1);
+
+namespace App\Filament\Breezy;
+
+use Filament\Forms\Components\TextInput;
+use Jeffgreco13\FilamentBreezy\Livewire\PersonalInfo as BasePersonalInfo;
+
+class PersonalInfo extends BasePersonalInfo
+{
+    public array $only = ['name', 'email', 'phone'];
+
+    protected function getProfileFormComponents(): array
+    {
+        return [
+            $this->getNameComponent(),
+            $this->getEmailComponent(),
+            $this->getPhoneComponent(),
+            $this->getCurrentPasswordComponent(),
+        ];
+    }
+
+    protected function getPhoneComponent(): TextInput
+    {
+        return TextInput::make('phone')
+            ->tel()
+            ->maxLength(255)
+            ->unique($this->userClass, ignorable: $this->user)
+            ->label('Phone');
+    }
+}

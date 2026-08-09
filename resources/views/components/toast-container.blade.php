@@ -13,7 +13,12 @@
     <template x-for="toast in toasts" :key="toast.id">
         <div
             x-show="true"
-            x-transition
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+            x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+            x-transition:leave-end="opacity-0 translate-y-2 scale-95"
             class="rounded-lg px-4 py-3 text-sm shadow-lg"
             x-bind:class="toast.variant === 'success' ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'bg-zinc-800 text-white'"
             x-text="toast.text"

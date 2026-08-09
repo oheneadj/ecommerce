@@ -1,7 +1,3 @@
-@php
-    $formatMoney = fn (int $minorUnits): string => 'GH₵'.number_format($minorUnits / 100, 2);
-@endphp
-
 <div class="space-y-6">
     <h1 class="text-2xl font-semibold">{{ __('My Cart') }}</h1>
 
@@ -16,19 +12,9 @@
                     @php
                         $variant = $item->productVariant;
                         $product = $variant->product;
-                        $image = $variant->images->firstWhere('is_primary', true)
-                            ?? $variant->images->first()
-                            ?? $product->images->firstWhere('is_primary', true)
-                            ?? $product->images->first();
                     @endphp
-                    <div wire:key="cart-item-{{ $item->id }}" class="flex items-center gap-4 py-4">
-                        @if ($image)
-                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($image->path) }}" alt="{{ $product->name }}" class="h-16 w-16 rounded-lg object-cover">
-                        @else
-                            <div class="flex h-16 w-16 items-center justify-center rounded-lg bg-zinc-100 text-zinc-400 dark:bg-zinc-800">
-                                <x-app-icon name="folder" class="size-6" />
-                            </div>
-                        @endif
+                    <div wire:key="cart-item-{{ $item->id }}" class="flex items-center gap-4 rounded-lg p-4 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-700/30">
+                        <x-product-thumbnail :variant="$variant" :product="$product" class="h-16 w-16" />
 
                         <div class="flex-1">
                             <p class="font-medium">{{ $product->name }}</p>
@@ -36,12 +22,12 @@
                             <p class="mt-1 text-sm font-medium">{{ $variant->price_formatted }}</p>
                         </div>
 
-                        <div class="flex items-center gap-2" wire:loading.class="opacity-50" wire:target="updateQuantity({{ $variant->id }}, {{ max(0, $item->quantity - 1) }}), updateQuantity({{ $variant->id }}, {{ $item->quantity + 1 }})">
+                        <div class="flex items-center gap-2 transition-opacity duration-150" wire:loading.class="opacity-50" wire:target="updateQuantity({{ $variant->id }}, {{ max(0, $item->quantity - 1) }}), updateQuantity({{ $variant->id }}, {{ $item->quantity + 1 }})">
                             <button
                                 type="button"
                                 wire:click="updateQuantity({{ $variant->id }}, {{ $item->quantity - 1 }})"
                                 aria-label="{{ __('Decrease quantity') }}"
-                                class="flex size-8 items-center justify-center rounded-lg border border-zinc-300 hover:bg-zinc-50 dark:border-zinc-600 dark:hover:bg-zinc-800"
+                                class="flex size-8 items-center justify-center rounded-lg border border-zinc-300 transition-colors hover:bg-zinc-50 active:scale-95 dark:border-zinc-600 dark:hover:bg-zinc-800"
                             >
                                 <x-app-icon name="minus" class="size-4" />
                             </button>
@@ -50,14 +36,14 @@
                                 type="button"
                                 wire:click="updateQuantity({{ $variant->id }}, {{ $item->quantity + 1 }})"
                                 aria-label="{{ __('Increase quantity') }}"
-                                class="flex size-8 items-center justify-center rounded-lg border border-zinc-300 hover:bg-zinc-50 dark:border-zinc-600 dark:hover:bg-zinc-800"
+                                class="flex size-8 items-center justify-center rounded-lg border border-zinc-300 transition-colors hover:bg-zinc-50 active:scale-95 dark:border-zinc-600 dark:hover:bg-zinc-800"
                             >
                                 <x-app-icon name="plus" class="size-4" />
                             </button>
                         </div>
 
                         <div class="w-24 text-right font-medium">
-                            {{ $formatMoney($variant->price * $item->quantity) }}
+                            <x-money :amount="$variant->price * $item->quantity" />
                         </div>
 
                         <x-button wire:click="removeItem({{ $variant->id }})" wire:confirm="{{ __('Remove this item?') }}" variant="ghost">
@@ -69,7 +55,7 @@
 
             <div class="mt-4 flex items-center justify-between border-t border-zinc-200 pt-4 dark:border-zinc-700">
                 <span class="text-lg font-medium">{{ __('Subtotal') }}</span>
-                <span class="text-lg font-semibold">{{ $formatMoney($this->subtotal) }}</span>
+                <span class="text-lg font-semibold"><x-money :amount="$this->subtotal" /></span>
             </div>
         </x-card>
 

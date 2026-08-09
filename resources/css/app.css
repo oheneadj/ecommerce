@@ -52,4 +52,24 @@
     ::file-selector-button {
         border-color: var(--color-gray-200, currentColor);
     }
+
+    /*
+     * A soft cross-fade between wire:navigate page loads — the
+     * data-navigating attribute is toggled on <html> (which survives the
+     * body morph) by resources/js/app.js, so the outgoing page fades out
+     * and the incoming one fades back in through the same transition.
+     */
+    main {
+        transition: opacity 150ms ease-out;
+    }
+
+    html[data-navigating] main {
+        opacity: 0;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        main {
+            transition: none;
+        }
+    }
 }

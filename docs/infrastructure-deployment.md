@@ -83,7 +83,7 @@ php artisan queue:work database --queue=external-api,notifications
 
 `external-api` (payment gateway verify/refund calls) and `notifications` (order/payment emails and SMS) are kept separate from Laravel's `default` queue so a slow/flaky provider call never delays a transactional notification, or vice versa.
 
-**Monitoring:** add an uptime/heartbeat check for both the scheduler and the queue worker. Both fail quietly; neither produces a user-visible error until a customer complains.
+**Monitoring:** add an uptime/heartbeat check for both the scheduler and the queue worker. Both fail quietly; neither produces a user-visible error until a customer complains. The System Health dashboard's `ScheduleCheck`/`QueueCheck` cover "is the scheduler/worker alive at all," and `ExpiredReservationsAreBeingReleased`/`PendingPaymentsAreBeingVerified` cover the subtler failure of the scheduler being alive while one specific job errors or is unregistered — see `docs/TASK-system-health-checks.md`.
 
 ---
 
@@ -119,8 +119,20 @@ Provider credentials live in `.env`, never in `store_settings`. Settings control
 
 Corresponds to story E13.3.
 
+> Most of this checklist is now checked automatically by the System Health
+> dashboard (`/admin` → Settings → System Health, Super Admin only) and its
+> CLI counterpart, `php artisan system:check --critical` (wired into the
+> post-deploy step so a failing deploy aborts — see
+> `docs/TASK-system-health-checks.md`). Items below are annotated with
+> **[health]** where a check already verifies them on demand, **[nightly]**
+> where a check verifies them via a nightly scheduled scan, and
+> **[attestation]** where the platform can only ever record that a human
+> confirmed it, never invent a pass — this checklist still names the exact
+> manual action to take; the dashboard is where you go afterward to confirm
+> it stuck.
+
 **Provision**
-- [ ] Server/hosting provisioned, PHP 8.2+, MySQL 8 with InnoDB confirmed
+- [ ] Server/hosting provisioned, PHP 8.2+, MySQL 8 with InnoDB confirmed **[health: `DatabaseEngineIsInnoDb`]**
 - [ ] Domain pointed, SSL/TLS issued and auto-renewing
 - [ ] Isolated database created for this client
 
@@ -129,21 +141,21 @@ Corresponds to story E13.3.
 - [ ] `.env` populated (see §4)
 - [ ] `php artisan migrate --force`
 - [ ] Seeders run: `php artisan db:seed --class=ProductionSeeder --force` — **not** `migrate:fresh --seed`'s full `DatabaseSeeder`, which also creates fake demo users/catalog/orders meant for local dev only
-- [ ] Storage linked, upload directories writable
+- [ ] Storage linked, upload directories writable **[health: `StorageIsWritableAndLinked`]**
 
 **Configure**
-- [ ] First Super Admin account created via `php artisan app:create-super-admin` (interactive; never via `UserSeeder`, which is fake demo data with a password nobody knows)
-- [ ] Store Settings populated via the admin panel (`/admin` → Settings → Store Settings) — business name, logo, colours, tagline, contact details, tax rate, reservation window
-- [ ] Static pages filled in (About, Contact, Terms, Privacy, Refund Policy) via the admin panel (`/admin` → Settings → Static Pages) — content is authored here ahead of the storefront existing; publishing to a public URL is a storefront-phase task, not part of this checklist
-- [ ] Payment providers configured and tested with a real low-value transaction, refunded afterwards
-- [ ] SMS sending verified end-to-end on **each** network (MTN, Telecel, AirtelTigo)
-- [ ] Webhook URLs registered with Moolre and Paystack; signature verification confirmed working
+- [ ] First Super Admin account created via `php artisan app:create-super-admin` (interactive; never via `UserSeeder`, which is fake demo data with a password nobody knows) **[health: `SuperAdminExists`]**
+- [ ] Store Settings populated via the admin panel (`/admin` → Settings → Store Settings) — business name, logo, colours, tagline, contact details, tax rate, reservation window **[health: `StoreSettingsPopulated`]**
+- [ ] Static pages filled in (About, Contact, Terms, Privacy, Refund Policy) via the admin panel (`/admin` → Settings → Static Pages) — content is authored here ahead of the storefront existing; publishing to a public URL is a storefront-phase task, not part of this checklist **[health: `StaticPagesHaveContent`]**
+- [ ] Payment providers configured **[health: `PaymentProvidersConfigured`, presence only]** and tested with a real low-value transaction, refunded afterwards **[attestation: `real_payment_transaction_tested`]**
+- [ ] SMS sending verified end-to-end on **each** network (MTN, Telecel, AirtelTigo) **[attestation: `sms_verified_all_networks`]**
+- [ ] Webhook URLs registered with Moolre and Paystack; signature verification confirmed working **[attestation: `webhook_signature_verified`]**
 
 **Operational (the steps most often forgotten)**
-- [ ] **Cron entry added and verified running** — see §3
-- [ ] **Queue worker running under supervisor and verified**
-- [ ] Automated daily backups configured and one restore tested
-- [ ] `APP_DEBUG=false` confirmed
+- [ ] **Cron entry added and verified running** — see §3 **[health: `ScheduleCheck`, heartbeat]**
+- [ ] **Queue worker running under supervisor and verified** **[health: `QueueCheck`, heartbeat]**
+- [ ] Automated daily backups configured and one restore tested **[attestation: `backup_restore_tested`, re-confirm every 90 days]**
+- [ ] `APP_DEBUG=false` confirmed **[health: `DebugModeCheck`]**
 - [ ] Error monitoring / log destination configured
 - [ ] Uptime monitoring on the site, the scheduler, and the queue worker
 

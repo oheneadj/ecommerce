@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Themeable customer pages: Wishlist
+- `/wishlist` — view saved variants, move one into the cart, or remove it. Reuses the already-built `AddToWishlist`/`RemoveFromWishlist` Actions and `WishlistItem` model (registered users only, per BRD FR-8.1) — no backend work needed, just the page. Adding a wishlisted variant to the cart does not remove it from the wishlist. Linked from the storefront header nav. This is the last of the themeable customer pages (Address book, Cart, Checkout, Wishlist); the public storefront itself is still deferred. 6 new tests.
+
 ### Added — Themeable customer pages: Checkout
 - `/checkout` — select a saved delivery address and active shipping method, apply a coupon, pick a payment channel, and place the order. Preselects the customer's default address (falling back to their first saved address) and the cheapest active shipping method on load. Rejects an empty cart, a missing address, or a missing shipping method with an inline form error instead of a 500; selecting another customer's address is rejected via `AddressPolicy`. On success, calls `CreateOrderFromCart` (now accepting an optional `ShippingMethod`) then `InitiatePayment`, redirecting to the gateway's returned URL, or to `/account` if none is given; a failed payment-initiation attempt surfaces its error inline rather than losing the just-created order. `orders` gained `shipping_method_id` (nullable FK, `nullOnDelete()`) and `shipping_method_name` — the latter is snapshotted at checkout the same way `address_snapshot` freezes shipping details, so a later rename of the shipping method never changes how a past order displays. Linked from the Cart page. 9 new tests.
 

@@ -24,6 +24,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::view('cart', 'cart.show')->name('cart.show');
 
+    Route::view('wishlist', 'wishlist.show')->name('wishlist.show');
+
     Route::view('checkout', 'checkout.show')->name('checkout.show');
 
     Route::post('system/cache/{action}', [SystemCacheController::class, 'run'])

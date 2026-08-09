@@ -28,6 +28,7 @@
                 </a>
 
                 <nav class="flex items-center gap-4 text-sm font-medium">
+                    <a href="{{ route('wishlist.show') }}" wire:navigate class="text-zinc-700 hover:text-brand-primary dark:text-zinc-300">{{ __('Wishlist') }}</a>
                     <a href="{{ route('cart.show') }}" wire:navigate class="text-zinc-700 hover:text-brand-primary dark:text-zinc-300">{{ __('Cart') }}</a>
                     <a href="{{ route('account.show') }}" wire:navigate class="text-zinc-700 hover:text-brand-primary dark:text-zinc-300">{{ __('Account') }}</a>
                 </nav>

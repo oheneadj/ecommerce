@@ -163,7 +163,7 @@ class CheckoutPage extends Component
             return;
         }
 
-        $this->redirectRoute('account.show', navigate: true);
+        $this->redirectRoute('orders.confirmation', ['order' => $order], navigate: true);
     }
 
     public function render(): View

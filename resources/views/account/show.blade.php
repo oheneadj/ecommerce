@@ -7,6 +7,7 @@
         <x-card>
             <div class="flex items-center justify-between">
                 <h2 class="text-lg font-medium">{{ __('Recent orders') }}</h2>
+                <a href="{{ route('account.orders') }}" wire:navigate class="text-sm font-medium text-brand-primary hover:underline">{{ __('View all') }}</a>
             </div>
 
             @if ($orders->isEmpty())
@@ -14,7 +15,7 @@
             @else
                 <div class="mt-4 divide-y divide-zinc-200 dark:divide-zinc-700">
                     @foreach ($orders as $order)
-                        <div class="flex items-center justify-between gap-4 py-3">
+                        <a href="{{ route('account.orders.show', $order) }}" wire:navigate class="flex items-center justify-between gap-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800">
                             <div>
                                 <p class="font-medium">{{ $order->order_number }}</p>
                                 <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ $order->created_at->format('d M Y') }}</p>
@@ -23,7 +24,7 @@
                                 <span class="font-medium">{{ $order->grand_total_formatted }}</span>
                                 <x-status-badge :color="$order->status->getColor()">{{ $order->status->getLabel() }}</x-status-badge>
                             </div>
-                        </div>
+                        </a>
                     @endforeach
                 </div>
             @endif

@@ -22,11 +22,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::view('account/addresses', 'account.addresses')->name('account.addresses');
 
+    Route::view('account/orders', 'account.orders')->name('account.orders');
+    Route::view('account/orders/{order}', 'account.orders-show')->name('account.orders.show');
+
     Route::view('cart', 'cart.show')->name('cart.show');
 
     Route::view('wishlist', 'wishlist.show')->name('wishlist.show');
 
     Route::view('checkout', 'checkout.show')->name('checkout.show');
+
+    Route::view('orders/{order}/confirmation', 'orders.confirmation')->name('orders.confirmation');
 
     Route::post('system/cache/{action}', [SystemCacheController::class, 'run'])
         ->whereIn('action', ['config', 'route', 'view', 'event', 'all', 'optimize'])

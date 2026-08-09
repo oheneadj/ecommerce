@@ -16,12 +16,18 @@ use App\Enums\PaymentStatus;
 use App\Livewire\Storefront\CheckoutPage;
 use App\Models\Address;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\ProductVariant;
 use App\Models\ShippingMethod;
 use App\Models\User;
+use App\Payments\Contracts\PaymentGateway;
+use App\Payments\PaymentInitiationResult;
 use App\Payments\PaymentManager;
+use App\Payments\PaymentVerificationResult;
+use App\Payments\RefundResult;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Livewire;
 use Tests\Feature\Payment\FakePaymentGateway;
@@ -153,6 +159,56 @@ class CheckoutPageTest extends TestCase
         $this->assertSame('Express', $order->shipping_method_name);
         $this->assertSame(500, $order->shipping_total);
         $this->assertSame(2500, $order->grand_total);
+    }
+
+    public function test_a_channel_with_no_gateway_redirect_url_sends_the_customer_to_the_order_confirmation_page(): void
+    {
+        $this->app->make(PaymentManager::class)->extend('no_redirect', fn () => new class implements PaymentGateway
+        {
+            public function initiate(Order $order, string $channel): PaymentInitiationResult
+            {
+                return new PaymentInitiationResult(success: true, providerReference: 'ref-1');
+            }
+
+            public function verify(string $providerReference): PaymentVerificationResult
+            {
+                return new PaymentVerificationResult(status: PaymentStatus::Pending, providerReference: $providerReference);
+            }
+
+            public function refund(Payment $payment, int $amount, ?string $reason = null): RefundResult
+            {
+                return new RefundResult(success: true);
+            }
+
+            public function verifyWebhookSignature(Request $request): bool
+            {
+                return true;
+            }
+
+            public function webhookEventId(Request $request): string
+            {
+                return 'event-1';
+            }
+
+            public function paymentReferenceFromWebhook(Request $request): ?string
+            {
+                return null;
+            }
+        });
+        config(['payments.channels.mobile_money' => 'no_redirect']);
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+        AddItemToCart::run(GetCurrentCart::run($user), $variant, 1);
+        $address = Address::factory()->create(['user_id' => $user->id, 'is_default' => true]);
+        $shippingMethod = ShippingMethod::factory()->create(['active' => true]);
+
+        Livewire::test(CheckoutPage::class)
+            ->set('selectedAddressId', $address->id)
+            ->set('selectedShippingMethodId', $shippingMethod->id)
+            ->call('placeOrder')
+            ->assertRedirect(route('orders.confirmation', ['order' => Order::query()->sole()]));
     }
 
     public function test_a_failed_payment_initiation_shows_an_error_instead_of_redirecting(): void

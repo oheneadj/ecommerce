@@ -1,0 +1,113 @@
+@php
+    $formatMoney = fn (int $minorUnits): string => 'GH₵'.number_format($minorUnits / 100, 2);
+@endphp
+
+<div class="space-y-6">
+    <h1 class="text-2xl font-semibold">{{ __('Checkout') }}</h1>
+
+    @error('cart')
+        <div class="rounded-lg bg-red-50 p-4 text-sm text-red-700 dark:bg-red-900/40 dark:text-red-300">{{ $message }}</div>
+    @enderror
+
+    <div class="grid gap-6 lg:grid-cols-3">
+        <div class="space-y-6 lg:col-span-2">
+            <x-card>
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-medium">{{ __('Delivery address') }}</h2>
+                    <a href="{{ route('account.addresses') }}" wire:navigate class="text-sm font-medium text-brand-primary hover:underline">{{ __('Manage addresses') }}</a>
+                </div>
+
+                @if ($this->addresses->isEmpty())
+                    <p class="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+                        {{ __('You have no saved addresses.') }}
+                        <a href="{{ route('account.addresses') }}" wire:navigate class="font-medium text-brand-primary hover:underline">{{ __('Add one') }}</a>
+                    </p>
+                @else
+                    <div class="mt-4 space-y-2">
+                        @foreach ($this->addresses as $address)
+                            <label wire:key="checkout-address-{{ $address->id }}" class="flex cursor-pointer items-start gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <input type="radio" wire:model="selectedAddressId" value="{{ $address->id }}" class="mt-1">
+                                <span class="text-sm">
+                                    <span class="font-medium">{{ $address->label ?: $address->recipient_name }}</span><br>
+                                    {{ $address->recipient_name }}, {{ $address->phone }}<br>
+                                    {{ $address->line1 }}@if ($address->line2), {{ $address->line2 }}@endif, {{ $address->city }}
+                                </span>
+                            </label>
+                        @endforeach
+                    </div>
+                @endif
+                @error('selectedAddressId')
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </x-card>
+
+            <x-card>
+                <h2 class="text-lg font-medium">{{ __('Shipping method') }}</h2>
+
+                @if ($this->shippingMethods->isEmpty())
+                    <p class="mt-4 text-sm text-zinc-500 dark:text-zinc-400">{{ __('No shipping methods are currently available.') }}</p>
+                @else
+                    <div class="mt-4 space-y-2">
+                        @foreach ($this->shippingMethods as $method)
+                            <label wire:key="checkout-shipping-{{ $method->id }}" class="flex cursor-pointer items-center justify-between rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <span class="flex items-center gap-3 text-sm">
+                                    <input type="radio" wire:model="selectedShippingMethodId" value="{{ $method->id }}">
+                                    {{ $method->name }}
+                                </span>
+                                <span class="text-sm font-medium">{{ $method->cost_formatted }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                @endif
+                @error('selectedShippingMethodId')
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </x-card>
+
+            <x-card>
+                <h2 class="text-lg font-medium">{{ __('Payment method') }}</h2>
+                <div class="mt-4 space-y-2">
+                    <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-700">
+                        <input type="radio" wire:model="channel" value="mobile_money">
+                        {{ __('Mobile Money') }}
+                    </label>
+                    <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-700">
+                        <input type="radio" wire:model="channel" value="card">
+                        {{ __('Card') }}
+                    </label>
+                </div>
+            </x-card>
+        </div>
+
+        <div>
+            <x-card>
+                <h2 class="text-lg font-medium">{{ __('Order summary') }}</h2>
+
+                <div class="mt-4 space-y-2 text-sm">
+                    @foreach ($this->cart->items as $item)
+                        <div wire:key="summary-item-{{ $item->id }}" class="flex justify-between">
+                            <span>{{ $item->productVariant->product->name }} &times; {{ $item->quantity }}</span>
+                            <span>{{ $formatMoney($item->productVariant->price * $item->quantity) }}</span>
+                        </div>
+                    @endforeach
+                </div>
+
+                <div class="mt-4 space-y-2 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-700">
+                    <x-input wire:model="couponCode" placeholder="{{ __('Coupon code') }}" />
+                </div>
+
+                <div class="mt-4 space-y-2 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-700">
+                    <div class="flex justify-between"><span>{{ __('Subtotal') }}</span><span>{{ $formatMoney($this->subtotal) }}</span></div>
+                    <div class="flex justify-between"><span>{{ __('Tax') }}</span><span>{{ $formatMoney($this->taxEstimate) }}</span></div>
+                    <div class="flex justify-between"><span>{{ __('Shipping') }}</span><span>{{ $formatMoney($this->shippingCost) }}</span></div>
+                    <div class="flex justify-between text-base font-semibold"><span>{{ __('Total') }}</span><span>{{ $formatMoney($this->estimatedTotal) }}</span></div>
+                </div>
+
+                <x-button wire:click="placeOrder" wire:loading.attr="disabled" variant="primary" class="mt-4 w-full">
+                    <span wire:loading.remove wire:target="placeOrder">{{ __('Place order') }}</span>
+                    <span wire:loading wire:target="placeOrder">{{ __('Placing order…') }}</span>
+                </x-button>
+            </x-card>
+        </div>
+    </div>
+</div>

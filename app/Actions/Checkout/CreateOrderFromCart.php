@@ -16,6 +16,7 @@ use App\Models\Cart;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\ShippingMethod;
 use App\Models\StoreSetting;
 use App\Notifications\OrderPlaced;
 use App\Notifications\Support\OrderRecipient;
@@ -58,7 +59,10 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * against the pre-discount `subtotal` — a single, uniform, whole-number
  * percentage (Epic E13.4), matching how a later `ApplyCouponToOrder` call
  * folds it into `grand_total` unchanged (a coupon discounts the sale price,
- * never the tax already computed on it).
+ * never the tax already computed on it). `shipping_total` comes from the
+ * chosen `ShippingMethod`'s current `cost` at checkout, with its name
+ * snapshotted the same way `address_snapshot` freezes shipping details —
+ * a later rename must never change how a past order displays.
  *
  * @throws EmptyCartException when the cart has no items
  */
@@ -72,8 +76,9 @@ class CreateOrderFromCart
         ?string $guestEmail = null,
         ?string $guestPhone = null,
         ?string $couponCode = null,
+        ?ShippingMethod $shippingMethod = null,
     ): Order {
-        return DB::transaction(function () use ($cart, $address, $guestEmail, $guestPhone, $couponCode): Order {
+        return DB::transaction(function () use ($cart, $address, $guestEmail, $guestPhone, $couponCode, $shippingMethod): Order {
             $lockedCart = Cart::query()->whereKey($cart->id)->lockForUpdate()->firstOrFail();
 
             $existing = $lockedCart->order;
@@ -90,6 +95,7 @@ class CreateOrderFromCart
 
             $subtotal = $items->sum(fn ($item) => $item->productVariant->price * $item->quantity);
             $taxTotal = (int) round($subtotal * StoreSetting::current()->tax_rate / 100);
+            $shippingTotal = $shippingMethod !== null ? $shippingMethod->cost : 0;
 
             $order = Order::query()->create([
                 'cart_id' => $cart->id,
@@ -105,12 +111,14 @@ class CreateOrderFromCart
                     'city' => $address->city,
                     'region' => $address->region,
                 ],
+                'shipping_method_id' => $shippingMethod?->id,
+                'shipping_method_name' => $shippingMethod?->name,
                 'status' => OrderStatus::Pending,
                 'subtotal' => $subtotal,
                 'discount_total' => 0,
                 'tax_total' => $taxTotal,
-                'shipping_total' => 0,
-                'grand_total' => $subtotal + $taxTotal,
+                'shipping_total' => $shippingTotal,
+                'grand_total' => $subtotal + $taxTotal + $shippingTotal,
             ]);
 
             foreach ($items as $item) {

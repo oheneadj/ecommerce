@@ -63,6 +63,8 @@
             </div>
         </x-card>
 
-        {{-- "Proceed to checkout" link added once the Checkout page ships. --}}
+        <div class="flex justify-end">
+            <x-button variant="primary" href="{{ route('checkout.show') }}">{{ __('Proceed to checkout') }}</x-button>
+        </div>
     @endif
 </div>

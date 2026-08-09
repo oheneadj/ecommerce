@@ -24,6 +24,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::view('cart', 'cart.show')->name('cart.show');
 
+    Route::view('checkout', 'checkout.show')->name('checkout.show');
+
     Route::post('system/cache/{action}', [SystemCacheController::class, 'run'])
         ->whereIn('action', ['config', 'route', 'view', 'event', 'all', 'optimize'])
         ->name('system.cache.run');

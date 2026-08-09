@@ -98,8 +98,11 @@ class OrderInfolist
                                     ->label('Subtotal'),
                                 TextEntry::make('discount_total_formatted')
                                     ->label('Discount'),
+                                TextEntry::make('shipping_method_name')
+                                    ->label('Shipping method')
+                                    ->placeholder('—'),
                                 TextEntry::make('shipping_total_formatted')
-                                    ->label('Shipping'),
+                                    ->label('Shipping cost'),
                                 TextEntry::make('tax_total_formatted')
                                     ->label('Tax'),
                                 TextEntry::make('grand_total_formatted')

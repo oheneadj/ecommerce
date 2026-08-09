@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Themeable customer pages: Checkout
+- `/checkout` — select a saved delivery address and active shipping method, apply a coupon, pick a payment channel, and place the order. Preselects the customer's default address (falling back to their first saved address) and the cheapest active shipping method on load. Rejects an empty cart, a missing address, or a missing shipping method with an inline form error instead of a 500; selecting another customer's address is rejected via `AddressPolicy`. On success, calls `CreateOrderFromCart` (now accepting an optional `ShippingMethod`) then `InitiatePayment`, redirecting to the gateway's returned URL, or to `/account` if none is given; a failed payment-initiation attempt surfaces its error inline rather than losing the just-created order. `orders` gained `shipping_method_id` (nullable FK, `nullOnDelete()`) and `shipping_method_name` — the latter is snapshotted at checkout the same way `address_snapshot` freezes shipping details, so a later rename of the shipping method never changes how a past order displays. Linked from the Cart page. 9 new tests.
+
 ### Added — Themeable customer pages: Cart
 - `/cart` — view items, change quantity, remove a line. New `App\Actions\Cart\GetCurrentCart` (resolves a user's still-open cart, creating one if none exists; starts a fresh cart once the previous one converts to an order, since a cart converts into at most one order and is then "closed") and `UpdateCartItemQuantity` (sets an exact quantity rather than a delta, scoped through the owning cart like `RemoveItemFromCart`/`AddItemToCart` — zero or less removes the line). Linked from the storefront header nav. 10 new tests, including that one customer's cart page never shows another customer's items.
 

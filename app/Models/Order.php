@@ -46,6 +46,8 @@ use Illuminate\Support\Carbon;
  * @property string|null $guest_phone
  * @property int|null $address_id
  * @property array<string, string|null>|null $address_snapshot
+ * @property int|null $shipping_method_id
+ * @property string|null $shipping_method_name
  * @property int|null $coupon_id
  * @property OrderStatus $status
  * @property int $subtotal
@@ -58,7 +60,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  */
 #[Fillable([
-    'cart_id', 'user_id', 'guest_email', 'guest_phone', 'address_id', 'address_snapshot', 'coupon_id', 'status',
+    'cart_id', 'user_id', 'guest_email', 'guest_phone', 'address_id', 'address_snapshot',
+    'shipping_method_id', 'shipping_method_name', 'coupon_id', 'status',
     'subtotal', 'discount_total', 'tax_total', 'shipping_total', 'grand_total', 'invoice_path',
 ])]
 #[ObservedBy(OrderObserver::class)]
@@ -118,6 +121,18 @@ class Order extends Model
     public function coupon(): BelongsTo
     {
         return $this->belongsTo(Coupon::class);
+    }
+
+    /**
+     * The live ShippingMethod record chosen at checkout — may be null (the
+     * method was later deleted). Never used for display; use
+     * `shipping_method_name` instead, same reason as `address_snapshot`.
+     *
+     * @return BelongsTo<ShippingMethod, $this>
+     */
+    public function shippingMethod(): BelongsTo
+    {
+        return $this->belongsTo(ShippingMethod::class);
     }
 
     /**

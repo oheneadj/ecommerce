@@ -12,6 +12,7 @@ use App\Payments\PaymentInitiationResult;
 use App\Payments\PaymentVerificationResult;
 use App\Payments\RefundResult;
 use Illuminate\Http\Request;
+use RuntimeException;
 
 /**
  * A test double proving Actions never depend on a specific vendor —
@@ -30,6 +31,15 @@ class FakePaymentGateway implements PaymentGateway
 
     public static int $providerReferenceCounter = 0;
 
+    /**
+     * Simulates a transport-level failure (timeout, connection refused) —
+     * distinct from $verifyStatus/$refundSucceeds, which simulate the
+     * gateway responding normally with a failure result.
+     */
+    public static bool $verifyThrows = false;
+
+    public static bool $refundThrows = false;
+
     public static function reset(): void
     {
         self::$initiateSucceeds = true;
@@ -37,6 +47,8 @@ class FakePaymentGateway implements PaymentGateway
         self::$refundSucceeds = true;
         self::$webhookSignatureValid = true;
         self::$providerReferenceCounter = 0;
+        self::$verifyThrows = false;
+        self::$refundThrows = false;
     }
 
     public function initiate(Order $order, string $channel): PaymentInitiationResult
@@ -56,6 +68,10 @@ class FakePaymentGateway implements PaymentGateway
 
     public function verify(string $providerReference): PaymentVerificationResult
     {
+        if (self::$verifyThrows) {
+            throw new RuntimeException('Simulated connection failure.');
+        }
+
         return new PaymentVerificationResult(
             status: self::$verifyStatus,
             providerReference: $providerReference,
@@ -64,6 +80,10 @@ class FakePaymentGateway implements PaymentGateway
 
     public function refund(Payment $payment, int $amount, ?string $reason = null): RefundResult
     {
+        if (self::$refundThrows) {
+            throw new RuntimeException('Simulated connection failure.');
+        }
+
         if (! self::$refundSucceeds) {
             return new RefundResult(success: false, errorMessage: 'Simulated refund failure.');
         }

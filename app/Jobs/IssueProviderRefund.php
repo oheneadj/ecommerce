@@ -54,15 +54,33 @@ class IssueProviderRefund implements ShouldQueue
         }
 
         $payment = $refund->payment;
-        $gateway = $payments->driver($payment->provider);
-        $result = $gateway->refund($payment, $refund->amount, $refund->reason);
+        $requestPayload = ['payment_id' => $payment->id, 'amount' => $refund->amount, 'reason' => $refund->reason];
+
+        // See VerifyPaymentWithGateway's matching comment — a transport-
+        // level failure here used to skip the PaymentApiLog write
+        // entirely, leaving no record of the attempt for reconciliation.
+        try {
+            $result = $payments->driver($payment->provider)->refund($payment, $refund->amount, $refund->reason);
+        } catch (Throwable $e) {
+            PaymentApiLog::query()->create([
+                'order_id' => $payment->order_id,
+                'payment_id' => $payment->id,
+                'provider' => $payment->provider,
+                'action' => 'refund',
+                'request_payload' => $requestPayload,
+                'response_payload' => ['error' => $e->getMessage()],
+                'status_code' => 500,
+            ]);
+
+            throw $e;
+        }
 
         PaymentApiLog::query()->create([
             'order_id' => $payment->order_id,
             'payment_id' => $payment->id,
             'provider' => $payment->provider,
             'action' => 'refund',
-            'request_payload' => ['payment_id' => $payment->id, 'amount' => $refund->amount, 'reason' => $refund->reason],
+            'request_payload' => $requestPayload,
             'response_payload' => $result->rawResponse,
             'status_code' => $result->success ? 200 : 422,
         ]);

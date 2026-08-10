@@ -10,6 +10,7 @@ namespace App\Sms\Drivers;
 
 use App\Sms\Contracts\SmsGateway;
 use App\Sms\SmsSendResult;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -29,13 +30,27 @@ readonly class MoolreSms implements SmsGateway
      */
     public function send(string $to, string $message): SmsSendResult
     {
-        $response = Http::withToken($this->apiKey)
-            ->timeout(10)
-            ->post('https://api.moolre.com/open/message/send', [
-                'sender' => $this->senderId,
-                'recipient' => $to,
-                'message' => $message,
-            ]);
+        // A connection-level failure (DNS, timeout, refused connection)
+        // throws instead of returning a response — normalized into a
+        // failure SmsSendResult, same as a gateway-reported error below,
+        // so every caller's SmsApiLog write still happens for this
+        // failure mode instead of being skipped entirely.
+        try {
+            $response = Http::withToken($this->apiKey)
+                ->timeout(10)
+                ->post('https://api.moolre.com/open/message/send', [
+                    'sender' => $this->senderId,
+                    'recipient' => $to,
+                    'message' => $message,
+                ]);
+        } catch (ConnectionException $e) {
+            return new SmsSendResult(
+                success: false,
+                errorMessage: $e->getMessage(),
+                rawResponse: ['error' => $e->getMessage()],
+                statusCode: null,
+            );
+        }
 
         if ($response->failed()) {
             return new SmsSendResult(

@@ -58,8 +58,31 @@ class VerifyPaymentWithGateway implements ShouldQueue
             return;
         }
 
-        $gateway = $payments->driver($payment->provider);
-        $result = $gateway->verify($payment->provider_reference);
+        // A transport-level failure (timeout, connection refused) here
+        // used to skip the PaymentApiLog write entirely — only a gateway-
+        // reported error made it into the log, so the failure mode that
+        // most needs a reconciliation record (we don't even know if the
+        // provider received the request) had none. Logged here the same
+        // way regardless of outcome, matching InitiatePayment's pattern —
+        // the request is retried by this job's own retry policy, not
+        // rethrown.
+        try {
+            $result = $payments->driver($payment->provider)->verify($payment->provider_reference);
+            $responsePayload = $result->rawResponse;
+            $statusCode = 200;
+        } catch (Throwable $e) {
+            PaymentApiLog::query()->create([
+                'order_id' => $payment->order_id,
+                'payment_id' => $payment->id,
+                'provider' => $payment->provider,
+                'action' => 'verify',
+                'request_payload' => ['provider_reference' => $payment->provider_reference],
+                'response_payload' => ['error' => $e->getMessage()],
+                'status_code' => 500,
+            ]);
+
+            throw $e;
+        }
 
         PaymentApiLog::query()->create([
             'order_id' => $payment->order_id,
@@ -67,8 +90,8 @@ class VerifyPaymentWithGateway implements ShouldQueue
             'provider' => $payment->provider,
             'action' => 'verify',
             'request_payload' => ['provider_reference' => $payment->provider_reference],
-            'response_payload' => $result->rawResponse,
-            'status_code' => 200,
+            'response_payload' => $responsePayload,
+            'status_code' => $statusCode,
         ]);
 
         $payment->refresh();

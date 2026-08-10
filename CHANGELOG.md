@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — Store branding (business name, logo) applied everywhere it should be
+- Full audit of every place `StoreSetting`'s branding fields should apply but didn't: page `<title>` and favicon (`partials/head.blade.php` — was hardcoded to `config('app.name')`/a static `/favicon.ico`, now uses the business name/logo with the same fallback), the mail "From" display name (was config/env-only), and every customer-facing notification's mail signature and SMS body (`OrderPlaced`, `OrderShipped`, `PaymentSucceeded`, `PaymentFailed`, plus the login OTP SMS) — was fully generic, no business name anywhere.
+- New `App\Notifications\Support\BrandedMessage` — one shared helper (`mail()` sets the closing signature, `sms()` prefixes the body), used by all 4 customer notifications + OTP, so the branding logic lives in exactly one place.
+- New `MessageSending` listener in `AppServiceProvider` sets the "From" **display name** to the business name on every outgoing email, globally, with no per-Mailable/Notification change needed. Deliberately never touches the "From" **address** — overriding that to an arbitrary per-store `contact_email` would risk SPF/DKIM failures and land mail in spam; only the name changes, the address stays whatever's actually configured/verified with the mail provider.
+- Confirmed already correct and left untouched: PDF invoice letterhead, the storefront layout header/footer, `ThemeCssController`'s dynamic colour stylesheet, and the error pages (they inherit branding via the storefront layout).
+- 9 new tests (`BrandedMessageTest`, `StoreBrandingTest`).
+
 ### Added — Critical health alert in the admin bar + daily Super Admin reminder
 - The critical health check alert moved out of its own standalone banner and into the admin bar (present on every panel/storefront page for staff) — role-differentiated: a Super Admin sees "Critical issue — view system health" linking straight to the System Health page; a plain Admin (who can't access that page) sees a generic "Critical system issue — contact your Super Admin" with no link, since exposing infrastructure detail to non-Super-Admin roles was never the intent.
 - New `App\Actions\Health\ListCriticalHealthFailures` is now the single source of "what's critically broken right now" (label list), shared by the admin bar, the System Health page, and the new daily notification — `DetermineCriticalHealthFailure` is now a thin boolean wrapper over it instead of duplicating the same check loop.

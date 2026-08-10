@@ -11,6 +11,7 @@ namespace App\Actions\Auth;
 use App\Exceptions\OtpRateLimitedException;
 use App\Models\OtpCode;
 use App\Models\SmsApiLog;
+use App\Notifications\Support\BrandedMessage;
 use App\Sms\Contracts\SmsGateway;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -49,7 +50,7 @@ class RequestOtp
             'expires_at' => now()->addMinutes(10),
         ]);
 
-        $message = "Your login code is {$code}. It expires in 10 minutes.";
+        $message = BrandedMessage::sms("Your login code is {$code}. It expires in 10 minutes.");
         $result = $this->sms->send($phone, $message);
 
         SmsApiLog::query()->create([

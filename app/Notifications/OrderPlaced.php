@@ -8,22 +8,31 @@ declare(strict_types=1);
 
 namespace App\Notifications;
 
+use App\Notifications\Support\BrandedMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
 class OrderPlaced extends OrderNotification
 {
+    /**
+     * Confirms the order was received, signed with the store's business name.
+     */
     public function toMail(mixed $notifiable): MailMessage
     {
-        return (new MailMessage)
-            ->subject("Order {$this->order->order_number} received")
-            ->greeting('Thanks for your order!')
-            ->line("We've received order {$this->order->order_number} for {$this->order->grand_total_formatted}.")
-            ->line('We\'ll let you know as soon as payment is confirmed.');
+        return BrandedMessage::mail(
+            (new MailMessage)
+                ->subject("Order {$this->order->order_number} received")
+                ->greeting('Thanks for your order!')
+                ->line("We've received order {$this->order->order_number} for {$this->order->grand_total_formatted}.")
+                ->line('We\'ll let you know as soon as payment is confirmed.'),
+        );
     }
 
+    /**
+     * The SMS equivalent, prefixed with the store's business name.
+     */
     public function toSms(mixed $notifiable): string
     {
-        return "Order {$this->order->order_number} received — total {$this->order->grand_total_formatted}. We'll confirm once payment clears.";
+        return BrandedMessage::sms("Order {$this->order->order_number} received — total {$this->order->grand_total_formatted}. We'll confirm once payment clears.");
     }
 
     /**

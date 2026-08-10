@@ -1,13 +1,26 @@
+@php
+    // Self-contained rather than relying on the including layout to have
+    // already defined $store (this partial is shared by the storefront
+    // layout and the auth/settings layouts alike) — same pattern
+    // layouts/storefront.blade.php uses.
+    $headStore ??= \App\Models\StoreSetting::current();
+    $headBusinessName = $headStore->business_name ?: config('app.name', 'Laravel');
+@endphp
+
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
 <title>
-    {{ filled($title ?? null) ? $title.' - '.config('app.name', 'Laravel') : config('app.name', 'Laravel') }}
+    {{ filled($title ?? null) ? $title.' - '.$headBusinessName : $headBusinessName }}
 </title>
 
-<link rel="icon" href="/favicon.ico" sizes="any">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+@if ($headStore->logo_path)
+    <link rel="icon" href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($headStore->logo_path) }}">
+@else
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+@endif
 
 @fonts
 

@@ -10,15 +10,22 @@ namespace App\Notifications;
 
 use App\Models\Order;
 use App\Models\Shipment;
+use App\Notifications\Support\BrandedMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
 class OrderShipped extends OrderNotification
 {
+    /**
+     * @param  Shipment  $shipment  the shipment record that just dispatched
+     */
     public function __construct(Order $order, private readonly Shipment $shipment)
     {
         parent::__construct($order);
     }
 
+    /**
+     * Announces the shipment, signed with the store's business name.
+     */
     public function toMail(mixed $notifiable): MailMessage
     {
         $message = (new MailMessage)
@@ -30,14 +37,17 @@ class OrderShipped extends OrderNotification
             $message->line("Tracking number: {$this->shipment->tracking_number}");
         }
 
-        return $message;
+        return BrandedMessage::mail($message);
     }
 
+    /**
+     * The SMS equivalent, prefixed with the store's business name.
+     */
     public function toSms(mixed $notifiable): string
     {
         $tracking = $this->shipment->tracking_number !== null ? " Tracking: {$this->shipment->tracking_number}" : '';
 
-        return "Order {$this->order->order_number} has shipped.{$tracking}";
+        return BrandedMessage::sms("Order {$this->order->order_number} has shipped.{$tracking}");
     }
 
     /**

@@ -66,17 +66,17 @@
                         <x-app-icon name="x-circle" class="size-8" />
                     </button>
 
-                    <div x-show="lightboxOpen" x-transition class="relative flex max-h-full max-w-4xl items-center">
+                    <div x-show="lightboxOpen" x-transition class="relative flex max-h-full max-w-5xl items-center gap-3">
                         @if ($galleryImages->count() > 1)
-                            <button type="button" @click.stop="prev()" class="absolute left-2 z-10 rounded-full bg-zinc-900/70 p-2 text-white hover:bg-zinc-900/90" aria-label="{{ __('Previous image') }}">
+                            <button type="button" @click.stop="prev()" class="z-10 shrink-0 rounded-full bg-zinc-900/70 p-2 text-white hover:bg-zinc-900/90" aria-label="{{ __('Previous image') }}">
                                 <x-app-icon name="chevron-up" class="size-6 -rotate-90" />
                             </button>
                         @endif
 
-                        <img :src="images[selected]" alt="{{ $product->name }}" class="max-h-[85vh] w-full rounded-lg object-contain" @click.stop>
+                        <img :src="images[selected]" alt="{{ $product->name }}" class="max-h-[85vh] min-w-0 rounded-lg object-contain" @click.stop>
 
                         @if ($galleryImages->count() > 1)
-                            <button type="button" @click.stop="next()" class="absolute right-2 z-10 rounded-full bg-zinc-900/70 p-2 text-white hover:bg-zinc-900/90" aria-label="{{ __('Next image') }}">
+                            <button type="button" @click.stop="next()" class="z-10 shrink-0 rounded-full bg-zinc-900/70 p-2 text-white hover:bg-zinc-900/90" aria-label="{{ __('Next image') }}">
                                 <x-app-icon name="chevron-up" class="size-6 rotate-90" />
                             </button>
 

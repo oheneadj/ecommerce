@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — Lightbox carousel arrows moved outside the image
+- The prev/next arrows were absolutely positioned on top of the image's edges, overlapping it. Now laid out as flex siblings beside the image (with a gap) so they sit in the backdrop area instead of over the photo itself.
+
 ### Fixed — Lightbox carousel arrows invisible against light/white product images
 - The prev/next arrow buttons used a translucent `bg-white/10` background, relying on the lightbox's dark backdrop for contrast — but they sit flush against the image edge, so a light or white product photo showing through made the white icon nearly invisible. Now a solid `bg-zinc-900/70` (`/90` on hover), guaranteeing contrast regardless of what's behind them.
 

@@ -38,7 +38,7 @@ class ResolveCurrentCart
         return Cart::query()
             ->where('session_id', $guestSessionId)
             ->whereNull('user_id')
-            ->whereDoesntHave('order')
+            ->open()
             ->latest('id')
             ->first()
             ?? Cart::query()->create(['session_id' => $guestSessionId]);

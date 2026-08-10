@@ -13,9 +13,11 @@ namespace Tests\Feature\Storefront;
 use App\Actions\Cart\AddItemToCart;
 use App\Actions\Cart\GetCurrentCart;
 use App\Actions\Checkout\CreateOrderFromCart;
+use App\Enums\PaymentStatus;
 use App\Livewire\Storefront\CartPage;
 use App\Models\Address;
 use App\Models\Cart;
+use App\Models\Payment;
 use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -58,14 +60,28 @@ class CartPageTest extends TestCase
         $this->assertSame($first->id, $second->id);
     }
 
-    public function test_get_current_cart_starts_a_new_cart_after_the_old_one_checked_out(): void
+    /**
+     * A cart only truly "closes" once its order has a payment actually in
+     * flight or settled (see Cart::scopeOpen()) — an order with no
+     * payment attempt yet, or only failed ones, isn't a real checkout,
+     * it's still in progress. Covered fully at the model level in
+     * tests/Feature/Cart/CartScopeOpenTest.php; this asserts the same
+     * thing through the Action customers actually go through.
+     */
+    public function test_get_current_cart_starts_a_new_cart_only_once_the_old_one_has_a_payment_in_progress(): void
     {
         $user = User::factory()->create();
         $variant = ProductVariant::factory()->create(['stock' => 10]);
         $checkedOutCart = GetCurrentCart::run($user);
         AddItemToCart::run($checkedOutCart, $variant, 1);
         $address = Address::factory()->create(['user_id' => $user->id]);
-        CreateOrderFromCart::run($checkedOutCart, $address);
+        $order = CreateOrderFromCart::run($checkedOutCart, $address);
+
+        // The order exists but no payment has been attempted yet — still
+        // mid-checkout, so the same cart must keep resolving.
+        $this->assertSame($checkedOutCart->id, GetCurrentCart::run($user)->id);
+
+        Payment::factory()->create(['order_id' => $order->id, 'status' => PaymentStatus::Pending]);
 
         $newCart = GetCurrentCart::run($user);
 

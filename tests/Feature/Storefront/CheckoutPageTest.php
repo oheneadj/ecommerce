@@ -16,6 +16,7 @@ use App\Actions\Cart\ResolveCurrentCart;
 use App\Enums\PaymentStatus;
 use App\Livewire\Storefront\CheckoutPage;
 use App\Models\Address;
+use App\Models\Cart;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\ProductVariant;
@@ -270,6 +271,73 @@ class CheckoutPageTest extends TestCase
 
         $this->assertSame(1, Order::query()->count());
         $this->assertNull(Auth::user()?->orders()->first()?->payments()->where('status', PaymentStatus::Success)->first());
+    }
+
+    /**
+     * Regression: previously, the cart "closed" the instant an Order was
+     * created for it, regardless of whether payment ever actually
+     * started. So a failed payment attempt orphaned that Order forever —
+     * the very next `placeOrder` call resolved a brand-new, empty cart
+     * and immediately failed with "Your cart is empty," no matter how
+     * many times the customer retried. `Cart::scopeOpen()` fixes this:
+     * a cart whose order has only `Failed` payments stays open, so
+     * retrying reuses the same Order (no duplicate row, no re-reserved
+     * stock) and simply attempts payment again.
+     */
+    public function test_retrying_after_a_failed_payment_reuses_the_same_order_and_can_then_succeed(): void
+    {
+        FakePaymentGateway::$initiateSucceeds = false;
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+        AddItemToCart::run(GetCurrentCart::run($user), $variant, 1);
+        $address = Address::factory()->create(['user_id' => $user->id, 'is_default' => true]);
+        $shippingMethod = ShippingMethod::factory()->create(['active' => true]);
+
+        // First attempt: fails.
+        Livewire::test(CheckoutPage::class)
+            ->set('selectedAddressId', $address->id)
+            ->set('selectedShippingMethodId', $shippingMethod->id)
+            ->call('placeOrder')
+            ->assertHasErrors('cart');
+
+        $order = Order::query()->sole();
+        $this->assertSame(1, $order->payments()->count());
+        $this->assertSame(PaymentStatus::Failed, $order->payments()->sole()->status);
+
+        // The cart must still be open — same cart, same items — not a
+        // fresh empty one.
+        $cart = GetCurrentCart::run($user);
+        $this->assertSame($order->cart_id, $cart->id);
+        $this->assertSame(1, $cart->items()->count());
+
+        // Retry, gateway still down: same order, a second Failed payment
+        // attempt, still no duplicate order.
+        Livewire::test(CheckoutPage::class)
+            ->set('selectedAddressId', $address->id)
+            ->set('selectedShippingMethodId', $shippingMethod->id)
+            ->call('placeOrder')
+            ->assertHasErrors('cart');
+
+        $this->assertSame(1, Order::query()->count());
+        $this->assertSame($order->id, Order::query()->sole()->id);
+        $this->assertSame(2, $order->payments()->count());
+
+        // Retry again, gateway now working: succeeds against the same order.
+        FakePaymentGateway::$initiateSucceeds = true;
+
+        Livewire::test(CheckoutPage::class)
+            ->set('selectedAddressId', $address->id)
+            ->set('selectedShippingMethodId', $shippingMethod->id)
+            ->call('placeOrder')
+            ->assertRedirect();
+
+        $this->assertSame(1, Order::query()->count());
+        $this->assertTrue($order->payments()->where('status', PaymentStatus::Pending)->exists());
+
+        // Cart is now genuinely closed — a live/successful payment exists.
+        $this->assertFalse(Cart::query()->whereKey($cart->id)->open()->exists());
     }
 
     public function test_a_guest_can_place_an_order_with_manually_entered_details(): void

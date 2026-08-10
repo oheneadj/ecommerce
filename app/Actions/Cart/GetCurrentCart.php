@@ -14,10 +14,13 @@ use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
  * A cart converts into at most one order (`orders.cart_id` is unique) and
- * is then "closed" — once that's happened, the user needs a fresh cart
- * for their next purchase rather than reusing the one that already
- * checked out. Shared by the Cart page and (eventually) Checkout, so
- * both always agree on which cart is "the" cart for this user right now.
+ * is then "closed" once that order has a payment actually in flight or
+ * settled (see `Cart::scopeOpen()`) — only then does the user need a
+ * fresh cart for their next purchase. A cart whose order's payment
+ * attempts all failed stays open, so retrying checkout reuses the same
+ * cart/order instead of orphaning it. Shared by the Cart page and
+ * Checkout, so both always agree on which cart is "the" cart for this
+ * user right now.
  */
 class GetCurrentCart
 {
@@ -27,7 +30,7 @@ class GetCurrentCart
     {
         return Cart::query()
             ->where('user_id', $user->id)
-            ->whereDoesntHave('order')
+            ->open()
             ->latest('id')
             ->first()
             ?? Cart::query()->create(['user_id' => $user->id]);

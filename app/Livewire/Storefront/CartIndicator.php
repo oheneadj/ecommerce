@@ -42,7 +42,7 @@ class CartIndicator extends Component
             ? Cart::query()->where('user_id', Auth::id())
             : Cart::query()->where('session_id', ResolveCurrentCart::guestSessionId())->whereNull('user_id');
 
-        $cart = $query->whereDoesntHave('order')->latest('id')->first();
+        $cart = $query->open()->latest('id')->first();
 
         $cart?->load(['items.productVariant.product', 'items.productVariant.images', 'items.productVariant.product.images']);
 

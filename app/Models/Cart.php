@@ -8,8 +8,10 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\PaymentStatus;
 use Database\Factories\CartFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -61,5 +63,26 @@ class Cart extends Model
     public function order(): HasOne
     {
         return $this->hasOne(Order::class);
+    }
+
+    /**
+     * Carts still usable for checkout — either never converted to an
+     * order, or converted but every payment attempt on that order has
+     * failed (nothing `Pending`/`Success`). A cart only becomes truly
+     * "closed" once its order has a payment actually in flight or
+     * settled — until then, retrying checkout should reuse the same
+     * cart/order rather than silently starting a fresh, empty one and
+     * orphaning the original order.
+     */
+    public function scopeOpen(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query): void {
+            $query->whereDoesntHave('order')
+                ->orWhereHas('order', function (Builder $query): void {
+                    $query->whereDoesntHave('payments', function (Builder $query): void {
+                        $query->whereIn('status', [PaymentStatus::Pending, PaymentStatus::Success]);
+                    });
+                });
+        });
     }
 }

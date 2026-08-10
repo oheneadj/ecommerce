@@ -13,18 +13,21 @@
             <span class="text-green-600 dark:text-green-400">{{ $passingCount }} passing</span>
         </div>
 
-        <x-filament::button wire:click="rerunChecks" icon="heroicon-o-arrow-path" outlined>
-            Re-run checks
+        <x-filament::button wire:click="rerunChecks" wire:loading.attr="disabled" wire:target="rerunChecks" icon="heroicon-o-arrow-path" outlined>
+            <span wire:loading.remove wire:target="rerunChecks">Re-run checks</span>
+            <span wire:loading wire:target="rerunChecks">Re-running checks…</span>
         </x-filament::button>
 
         @if ($criticalCount > 0)
             @if ($alertsSnoozedUntil && $alertsSnoozedUntil->isFuture())
-                <x-filament::button wire:click="resumeAlerts" color="gray" outlined>
-                    Resume daily alerts (snoozed until {{ $alertsSnoozedUntil->format('d M, H:i') }})
+                <x-filament::button wire:click="resumeAlerts" wire:loading.attr="disabled" wire:target="resumeAlerts" icon="heroicon-o-bell-alert" color="success" outlined>
+                    <span wire:loading.remove wire:target="resumeAlerts">Resume daily alerts (snoozed until {{ $alertsSnoozedUntil->format('d M, H:i') }})</span>
+                    <span wire:loading wire:target="resumeAlerts">Resuming…</span>
                 </x-filament::button>
             @else
-                <x-filament::button wire:click="snoozeAlerts" color="gray" outlined>
-                    Snooze daily alerts for 24 hours
+                <x-filament::button wire:click="snoozeAlerts" wire:loading.attr="disabled" wire:target="snoozeAlerts" icon="heroicon-o-bell-slash" color="warning" outlined>
+                    <span wire:loading.remove wire:target="snoozeAlerts">Snooze daily alerts for 24 hours</span>
+                    <span wire:loading wire:target="snoozeAlerts">Snoozing…</span>
                 </x-filament::button>
             @endif
         @endif

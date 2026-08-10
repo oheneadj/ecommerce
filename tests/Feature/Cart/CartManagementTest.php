@@ -81,7 +81,7 @@ class CartManagementTest extends TestCase
 
     public function test_merging_a_guest_cart_into_an_existing_user_cart_combines_quantities(): void
     {
-        $variant = ProductVariant::factory()->create();
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
         $user = User::factory()->create();
         $userCart = Cart::factory()->create(['user_id' => $user->id]);
         AddItemToCart::run($userCart, $variant, 2);

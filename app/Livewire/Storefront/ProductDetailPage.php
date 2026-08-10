@@ -74,6 +74,18 @@ class ProductDetailPage extends Component
                 'reviews' => fn ($query) => $query->where('status', ReviewStatus::Approved)->with('user')->latest(),
             ])
             ->firstOrFail();
+
+        // When the product uses the global attribute selector, a variant
+        // with no attribute term set at all is incomplete catalog data —
+        // it can never be reached through the selector (its combination
+        // matches nothing) and would only ever surface as an unlabelled
+        // default. Drop it rather than let it silently show/sell.
+        if ($this->product->attributes->isNotEmpty()) {
+            $this->product->setRelation(
+                'variants',
+                $this->product->variants->filter(fn (ProductVariant $variant): bool => $variant->attributeTerms->isNotEmpty())->values(),
+            );
+        }
     }
 
     /**

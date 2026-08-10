@@ -11,6 +11,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A single variant's own "Attribute values" picker (the flat multi-select bound to `attributeTerms`) could be given two different terms of the same attribute (e.g. both Red and Blue) — added a validation rule rejecting more than one selected term per attribute.
 - 2 new tests (`GenerateVariantsActionTest`, `ProductVariantGlobalAttributesTest`).
 
+### Fixed — Product detail page: incomplete variants no longer selectable, stock count shown when a variant is picked
+- A variant with no attribute term set at all, on a product that otherwise uses the global attribute selector (`ProductDetailPage::hasAttributeSelector`), is incomplete catalog data — its combination can never be reached through the term selector, so it only ever surfaced as an unlabelled default (`variants->first()`). `mount()` now drops such variants from the product's loaded `variants` relation whenever the product has global attributes attached.
+- The "In stock"/"Out of stock" line now shows the actual quantity left (":count in stock") once a variant is selected, instead of a plain "In stock" with no number.
+- New regression tests in `ProductDetailPageTest` for both.
+
 ### Fixed — PHPStan errors across Cart, Filament Breezy profile, health migration, and the historical data seeder
 - `Cart::scopeOpen()` was missing its `Builder<Cart>` generic type annotations (matches the existing `@param`/`@return Builder<Model>` convention used by `ProductVariant::scopeLowStock()`).
 - `App\Filament\Breezy\PersonalInfo` (the admin profile form extension adding a `phone` field) had an untyped `$only` array and an untyped `getProfileFormComponents()` return — added proper `array<int, string>`/`array<int, Component>` annotations.

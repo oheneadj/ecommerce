@@ -41,7 +41,7 @@
             @if ($variant)
                 <p class="text-2xl font-semibold">{{ $variant->price_formatted }}</p>
                 <p class="text-sm {{ $variant->stock > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
-                    {{ $variant->stock > 0 ? __('In stock') : __('Out of stock') }}
+                    {{ $variant->stock > 0 ? __(':count in stock', ['count' => $variant->stock]) : __('Out of stock') }}
                 </p>
             @else
                 <p class="text-sm text-red-600 dark:text-red-400">{{ __('Currently unavailable') }}</p>

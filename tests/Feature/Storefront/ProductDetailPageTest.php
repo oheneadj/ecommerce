@@ -132,6 +132,37 @@ class ProductDetailPageTest extends TestCase
             ->assertDontSee('GH₵10.00');
     }
 
+    /**
+     * A variant with no attribute term set at all, on a product that
+     * otherwise uses the global attribute selector, is incomplete catalog
+     * data — it can never be reached through the selector and must not
+     * be selectable/shown, including as the implicit default variant.
+     */
+    public function test_a_variant_with_no_attribute_term_is_excluded_when_the_product_uses_the_attribute_selector(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        $attribute = Attribute::factory()->create(['name' => 'Size']);
+        $product->attributes()->attach($attribute->id);
+        $small = AttributeTerm::factory()->create(['attribute_id' => $attribute->id, 'value' => 'Small']);
+
+        $smallVariant = ProductVariant::factory()->create(['product_id' => $product->id, 'sku' => 'SHOE-S', 'price' => 1000]);
+        $smallVariant->attributeTerms()->attach($small->id);
+        $bareVariant = ProductVariant::factory()->create(['product_id' => $product->id, 'sku' => 'SHOE-BARE', 'price' => 500]);
+
+        Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->assertSet('selectedVariant.id', $smallVariant->id)
+            ->assertDontSee('SHOE-BARE');
+    }
+
+    public function test_the_stock_count_is_shown_for_the_selected_variant(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        ProductVariant::factory()->create(['product_id' => $product->id, 'stock' => 7]);
+
+        Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->assertSee('7 in stock');
+    }
+
     public function test_a_single_variant_product_shows_no_options_list(): void
     {
         $product = Product::factory()->create(['status' => ProductStatus::Active]);

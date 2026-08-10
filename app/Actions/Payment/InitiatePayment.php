@@ -13,7 +13,9 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PaymentApiLog;
 use App\Payments\PaymentManager;
+use Illuminate\Support\Facades\Log;
 use Lorisleiva\Actions\Concerns\AsAction;
+use Throwable;
 
 /**
  * Idempotent per order: if a pending payment already exists for this order,
@@ -31,6 +33,18 @@ class InitiatePayment
         private readonly PaymentManager $payments,
     ) {}
 
+    /**
+     * Anything between resolving the driver and getting a response back —
+     * a missing/misconfigured API key (PaymentManager throws
+     * InvalidArgumentException), a network error, a malformed provider
+     * response — must never bubble up as an uncaught exception here. The
+     * order has already been created by this point in checkout; a raw
+     * 500 would strand the customer on a broken page with a real order
+     * they can't pay for. Instead this always returns a Payment row (a
+     * caught failure looks identical to a gateway-reported one — Failed
+     * status, a customer-safe message in metadata.error), and logs the
+     * underlying exception for whoever's on call to actually investigate.
+     */
     public function handle(Order $order, string $channel): Payment
     {
         $existing = $order->payments()->where('status', PaymentStatus::Pending)->latest('id')->first();
@@ -39,32 +53,56 @@ class InitiatePayment
             return $existing;
         }
 
-        $gateway = $this->payments->driverForChannel($channel);
         $provider = (string) config("payments.channels.{$channel}");
-
         $requestPayload = ['order_id' => $order->id, 'order_number' => $order->order_number, 'amount' => $order->grand_total, 'channel' => $channel];
-        $result = $gateway->initiate($order, $channel);
+
+        try {
+            $gateway = $this->payments->driverForChannel($channel);
+            $result = $gateway->initiate($order, $channel);
+
+            $responsePayload = $result->rawResponse;
+            $statusCode = $result->success ? 200 : 422;
+            $providerReference = $result->providerReference;
+            $paymentStatus = $result->success ? PaymentStatus::Pending : PaymentStatus::Failed;
+            $redirectUrl = $result->redirectUrl;
+            $errorMessage = $result->errorMessage;
+        } catch (Throwable $e) {
+            Log::error('Payment initiation failed', [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'channel' => $channel,
+                'provider' => $provider,
+                'exception' => $e->getMessage(),
+            ]);
+
+            $responsePayload = ['error' => $e->getMessage()];
+            $statusCode = 500;
+            $providerReference = null;
+            $paymentStatus = PaymentStatus::Failed;
+            $redirectUrl = null;
+            $errorMessage = 'Payment could not be started. Please try again or choose a different payment method.';
+        }
 
         PaymentApiLog::query()->create([
             'order_id' => $order->id,
             'provider' => $provider,
             'action' => 'initiate',
             'request_payload' => $requestPayload,
-            'response_payload' => $result->rawResponse,
-            'status_code' => $result->success ? 200 : 422,
+            'response_payload' => $responsePayload,
+            'status_code' => $statusCode,
         ]);
 
         return Payment::query()->create([
             'order_id' => $order->id,
             'provider' => $provider,
-            'provider_reference' => $result->providerReference,
+            'provider_reference' => $providerReference,
             'channel' => $channel,
             'amount' => $order->grand_total,
             'currency' => 'GHS',
-            'status' => $result->success ? PaymentStatus::Pending : PaymentStatus::Failed,
+            'status' => $paymentStatus,
             'metadata' => [
-                'redirect_url' => $result->redirectUrl,
-                'error' => $result->errorMessage,
+                'redirect_url' => $redirectUrl,
+                'error' => $errorMessage,
             ],
         ]);
     }

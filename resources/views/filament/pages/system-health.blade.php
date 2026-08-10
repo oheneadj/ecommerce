@@ -16,6 +16,18 @@
         <x-filament::button wire:click="rerunChecks" icon="heroicon-o-arrow-path" outlined>
             Re-run checks
         </x-filament::button>
+
+        @if ($criticalCount > 0)
+            @if ($alertsSnoozedUntil && $alertsSnoozedUntil->isFuture())
+                <x-filament::button wire:click="resumeAlerts" color="gray" outlined>
+                    Resume daily alerts (snoozed until {{ $alertsSnoozedUntil->format('d M, H:i') }})
+                </x-filament::button>
+            @else
+                <x-filament::button wire:click="snoozeAlerts" color="gray" outlined>
+                    Snooze daily alerts for 24 hours
+                </x-filament::button>
+            @endif
+        @endif
     </div>
 
     @foreach (['Infrastructure', 'Operations', 'Configuration', 'Data Integrity'] as $category)

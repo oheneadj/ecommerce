@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Health\SendCriticalHealthAlert;
 use App\Actions\Inventory\CheckLowStockLevels;
 use App\Actions\Inventory\ReleaseExpiredReservations;
 use App\Actions\Payment\VerifyPendingPayments;
@@ -44,3 +45,9 @@ Schedule::command('health:queue-check-heartbeat')
 Schedule::command('health:run-integrity-checks')
     ->daily()
     ->name('run-nightly-integrity-checks');
+
+// Reminds Super Admin once a day for as long as a critical check is
+// failing — snoozable for 24 hours from the System Health page.
+Schedule::call(fn () => SendCriticalHealthAlert::run())
+    ->daily()
+    ->name('send-critical-health-alert');

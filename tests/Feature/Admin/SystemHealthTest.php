@@ -14,6 +14,7 @@ use App\Actions\Health\RunIntegrityChecks;
 use App\Enums\UserRole;
 use App\Filament\Pages\SystemHealth;
 use App\Models\HealthAttestation;
+use App\Models\StoreSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -108,5 +109,36 @@ class SystemHealthTest extends TestCase
 
         Livewire::test(SystemHealth::class)
             ->assertSet('criticalCount', fn (int $count) => $count > 0);
+    }
+
+    public function test_snoozing_alerts_sets_a_24_hour_timestamp(): void
+    {
+        $this->actingAs($this->superAdmin());
+
+        Livewire::test(SystemHealth::class)->call('snoozeAlerts');
+
+        $snoozedUntil = StoreSetting::current()->health_alerts_snoozed_until;
+        $this->assertNotNull($snoozedUntil);
+        $this->assertTrue($snoozedUntil->isFuture());
+        $this->assertTrue($snoozedUntil->lessThanOrEqualTo(now()->addDay()->addMinute()));
+    }
+
+    public function test_resuming_alerts_clears_the_snooze(): void
+    {
+        StoreSetting::current()->update(['health_alerts_snoozed_until' => now()->addDay()]);
+        $this->actingAs($this->superAdmin());
+
+        Livewire::test(SystemHealth::class)->call('resumeAlerts');
+
+        $this->assertNull(StoreSetting::current()->health_alerts_snoozed_until);
+    }
+
+    public function test_snooze_button_only_shows_when_something_is_critical(): void
+    {
+        $this->actingAs($this->superAdmin());
+
+        Livewire::test(SystemHealth::class)
+            ->assertSet('criticalCount', fn (int $count) => $count > 0)
+            ->assertSeeHtml('wire:click="snoozeAlerts"');
     }
 }

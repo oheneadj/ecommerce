@@ -35,6 +35,8 @@ class DetermineCriticalHealthFailureTest extends TestCase
 
     public function test_it_is_critical_when_no_super_admin_exists(): void
     {
+        Role::findOrCreate(UserRole::SuperAdmin->value, 'web');
+
         $this->assertTrue(DetermineCriticalHealthFailure::run());
     }
 
@@ -67,9 +69,10 @@ class DetermineCriticalHealthFailureTest extends TestCase
 
     public function test_the_result_is_cached_for_subsequent_calls(): void
     {
+        Role::findOrCreate(UserRole::SuperAdmin->value, 'web');
+
         DetermineCriticalHealthFailure::run();
 
-        Role::findOrCreate(UserRole::SuperAdmin->value, 'web');
         $user = User::factory()->create();
         $user->assignRole(UserRole::SuperAdmin->value);
 

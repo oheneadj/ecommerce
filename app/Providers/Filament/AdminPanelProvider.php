@@ -74,10 +74,6 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::BODY_START,
                 fn (): string => view('partials.admin-bar')->render(),
             )
-            ->renderHook(
-                PanelsRenderHook::BODY_START,
-                fn (): string => view('partials.health-critical-banner')->render(),
-            )
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

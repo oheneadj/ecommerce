@@ -20,6 +20,8 @@
     $isSuperAdminOrAdmin = $adminBarUser?->hasAnyRole([\App\Enums\UserRole::SuperAdmin->value, \App\Enums\UserRole::Admin->value]) ?? false;
 
     if ($isSuperAdminOrAdmin) {
+        $isSuperAdmin = $adminBarUser->hasRole(\App\Enums\UserRole::SuperAdmin->value);
+        $criticalHealthFailing = \App\Actions\Health\DetermineCriticalHealthFailure::run();
         $canViewOrders = $adminBarUser->can('viewAny', \App\Models\Order::class);
         $canManageCache = $adminBarUser->hasAnyRole([\App\Enums\UserRole::SuperAdmin->value, \App\Enums\UserRole::Admin->value]);
 
@@ -187,6 +189,22 @@
                     <x-app-icon name="cog" style="width: 14px; height: 14px; flex-shrink: 0;" />
                     Admin Dashboard
                 </a>
+            @endif
+
+            @if ($criticalHealthFailing)
+                <span class="wp-admin-bar-sep"></span>
+
+                @if ($isSuperAdmin)
+                    <a href="{{ \App\Filament\Pages\SystemHealth::getUrl() }}" style="display: inline-flex; align-items: center; gap: 6px; color: #ff6b6b;">
+                        <x-app-icon name="x-circle" style="width: 14px; height: 14px; flex-shrink: 0;" />
+                        Critical issue — view system health
+                    </a>
+                @else
+                    <span style="display: inline-flex; align-items: center; gap: 6px; color: #ff6b6b; padding: 0 8px; height: 32px;">
+                        <x-app-icon name="x-circle" style="width: 14px; height: 14px; flex-shrink: 0;" />
+                        Critical system issue — contact your Super Admin
+                    </span>
+                @endif
             @endif
 
             @if ($newItems->isNotEmpty())

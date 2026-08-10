@@ -114,6 +114,15 @@ class HealthChecksTest extends TestCase
         $this->assertSame(Status::failed(), SuperAdminExists::new()->run()->status);
     }
 
+    public function test_super_admin_exists_fails_gracefully_when_the_role_has_never_been_seeded(): void
+    {
+        // No Role::findOrCreate call at all — this must report "failed",
+        // not throw. This check runs on every admin page load via the
+        // admin bar's critical-alert item, so an uncaught exception here
+        // would take down the whole panel, not just report a status.
+        $this->assertSame(Status::failed(), SuperAdminExists::new()->run()->status);
+    }
+
     public function test_super_admin_exists_passes_once_one_is_assigned(): void
     {
         Role::findOrCreate(UserRole::SuperAdmin->value, 'web');

@@ -12,6 +12,7 @@ use App\Concerns\LogsAdminActivity;
 use App\Http\Controllers\Storefront\ThemeCssController;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
@@ -36,6 +37,7 @@ use Illuminate\Support\Facades\Storage;
  * @property int $tax_rate
  * @property int $stock_reservation_minutes
  * @property int $low_stock_threshold
+ * @property Carbon|null $health_alerts_snoozed_until
  */
 #[Fillable([
     'business_name',
@@ -49,10 +51,21 @@ use Illuminate\Support\Facades\Storage;
     'tax_rate',
     'stock_reservation_minutes',
     'low_stock_threshold',
+    'health_alerts_snoozed_until',
 ])]
 class StoreSetting extends Model
 {
     use LogsAdminActivity;
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'health_alerts_snoozed_until' => 'datetime',
+        ];
+    }
 
     /**
      * /theme.css is cached forever, not on a TTL — it must never serve a

@@ -11,7 +11,9 @@ namespace App\Filament\Pages;
 use App\Enums\UserRole;
 use App\Models\HealthAttestation;
 use App\Models\IntegrityCheckResult;
+use App\Models\StoreSetting;
 use BackedEnum;
+use Carbon\CarbonInterface;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -23,6 +25,7 @@ use Illuminate\Support\Facades\Auth;
 use Spatie\Health\Checks\Check;
 use Spatie\Health\Enums\Status;
 use Spatie\Health\Facades\Health;
+use Throwable;
 use UnitEnum;
 
 /**
@@ -58,6 +61,8 @@ class SystemHealth extends Page implements HasForms
     public int $passingCount = 0;
 
     public float $weightedPercentage = 0;
+
+    public ?CarbonInterface $alertsSnoozedUntil = null;
 
     private const CATEGORY_MAP = [
         // Built-in Spatie checks (getName() strips the trailing "Check").
@@ -98,6 +103,24 @@ class SystemHealth extends Page implements HasForms
         Notification::make()->title('Checks re-run')->success()->send();
     }
 
+    public function snoozeAlerts(): void
+    {
+        StoreSetting::current()->update(['health_alerts_snoozed_until' => now()->addDay()]);
+
+        $this->runChecks();
+
+        Notification::make()->title('Alerts snoozed for 24 hours')->success()->send();
+    }
+
+    public function resumeAlerts(): void
+    {
+        StoreSetting::current()->update(['health_alerts_snoozed_until' => null]);
+
+        $this->runChecks();
+
+        Notification::make()->title('Alerts resumed')->success()->send();
+    }
+
     public function recordAttestationAction(): Action
     {
         return Action::make('recordAttestation')
@@ -135,13 +158,21 @@ class SystemHealth extends Page implements HasForms
                 continue;
             }
 
-            $result = $check->run();
+            try {
+                $result = $check->run();
+                $status = $result->status->value;
+                $message = $result->getNotificationMessage();
+            } catch (Throwable $e) {
+                $status = 'failed';
+                $message = $e->getMessage();
+            }
+
             $category = self::CATEGORY_MAP[$check->getName()] ?? 'Configuration';
 
             $groups[$category][] = [
                 'name' => $check->getLabel(),
-                'status' => $result->status->value,
-                'message' => $result->getNotificationMessage(),
+                'status' => $status,
+                'message' => $message,
             ];
         }
 
@@ -157,6 +188,7 @@ class SystemHealth extends Page implements HasForms
 
         $this->groupedResults = $groups;
         $this->attestationRows = $this->buildAttestationRows();
+        $this->alertsSnoozedUntil = StoreSetting::current()->health_alerts_snoozed_until;
         $this->calculateSummary();
     }
 

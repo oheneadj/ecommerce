@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Post-add-to-cart UX (mini-cart auto-opens, temporary "View Checkout" button)
+- Adding an item to the cart (from the product page or the wishlist) previously only showed a toast and silently updated the nav's cart badge — the customer had to notice and click the cart icon to see it or move toward checkout. Both `ProductDetailPage::addToCart()` and `WishlistPage::addToCart()` now also dispatch a `cart-item-added` browser event alongside the existing `cart-updated`.
+- `CartIndicator`'s mini-cart dropdown (already existed, click-to-open only) now also auto-opens on `cart-item-added` and auto-closes itself after 4s if left untouched, reusing its existing "View cart"/"Checkout" buttons — no new component.
+- The product page additionally shows a temporary "View Checkout" button (new `arrow-right` icon added to `<x-app-icon>`) next to "Add to cart" for the same 4s window, giving a direct path to checkout without requiring the nav click.
+- 2 new tests asserting `cart-item-added` is dispatched (`ProductDetailPageTest`, `WishlistPageTest`).
+
 ### Fixed — Duplicate attribute assignment on product variants
 - The "Generate variants" bulk action's attribute Repeater let two rows both select the same attribute (e.g. two "Color" rows with different values), which `GenerateProductVariants` then cartesian-produced against itself into nonsensical variants. Its dropdown now hides an attribute once picked in another row (`disableOptionsWhenSelectedInSiblingRepeaterItems`), backed by a `distinct()` rule and a server-side check in the action itself that rejects the submission (no variants created) if two rows share an `attribute_id` — closes the gap for any submission that bypasses the UI.
 - A single variant's own "Attribute values" picker (the flat multi-select bound to `attributeTerms`) could be given two different terms of the same attribute (e.g. both Red and Blue) — added a validation rule rejecting more than one selected term per attribute.

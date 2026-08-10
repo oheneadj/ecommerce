@@ -1,10 +1,13 @@
 <?php
 
 /**
- * The header cart icon — item count badge plus a click-to-open preview of
- * the cart's contents. Lives in the storefront layout on every page, and
- * refreshes itself whenever anything dispatches a `cart-updated` event
- * (add/update/remove, from any other component on the page).
+ * The header cart icon — item count badge plus a preview of the cart's
+ * contents, opened by clicking it or automatically whenever any component
+ * dispatches `cart-item-added` (see the Alpine listener in the view), so a
+ * customer isn't forced to hunt for the nav after adding something. Lives
+ * in the storefront layout on every page, and refreshes its item count
+ * whenever anything dispatches a `cart-updated` event (add/update/remove,
+ * from any other component on the page).
  */
 
 declare(strict_types=1);

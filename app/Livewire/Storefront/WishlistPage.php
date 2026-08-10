@@ -61,6 +61,7 @@ class WishlistPage extends Component
         }
 
         $this->dispatch('cart-updated');
+        $this->dispatch('cart-item-added');
         $this->dispatch('toast', variant: 'success', message: 'Added to cart.');
     }
 

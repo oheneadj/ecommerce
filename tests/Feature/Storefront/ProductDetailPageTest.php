@@ -197,6 +197,16 @@ class ProductDetailPageTest extends TestCase
         $this->assertSame(1, $guestCart->items()->where('product_variant_id', $variant->id)->count());
     }
 
+    public function test_adding_to_cart_dispatches_the_cart_item_added_event_so_the_mini_cart_can_auto_open(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        ProductVariant::factory()->create(['product_id' => $product->id, 'stock' => 5]);
+
+        Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->call('addToCart')
+            ->assertDispatched('cart-item-added');
+    }
+
     public function test_adding_to_cart_when_already_at_stock_shows_an_error_toast_instead_of_overselling(): void
     {
         $user = User::factory()->create();

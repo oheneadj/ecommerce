@@ -1,4 +1,13 @@
-<div class="relative" x-data x-on:click.outside="$wire.open = false">
+<div
+    class="relative"
+    x-data="{ autoCloseTimer: null }"
+    x-on:click.outside="$wire.open = false"
+    x-on:cart-item-added.window="
+        $wire.open = true;
+        clearTimeout(autoCloseTimer);
+        autoCloseTimer = setTimeout(() => $wire.open = false, 4000);
+    "
+>
     <button
         type="button"
         wire:click="toggle"

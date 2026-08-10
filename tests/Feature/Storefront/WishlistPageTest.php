@@ -74,6 +74,18 @@ class WishlistPageTest extends TestCase
         $this->assertSame(1, $cart->items()->where('product_variant_id', $variant->id)->sole()->quantity);
     }
 
+    public function test_adding_a_wishlisted_variant_to_the_cart_dispatches_the_cart_item_added_event(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
+        AddToWishlist::run($user, $variant);
+
+        Livewire::test(WishlistPage::class)
+            ->call('addToCart', $variant->id)
+            ->assertDispatched('cart-item-added');
+    }
+
     public function test_adding_a_wishlisted_variant_that_is_out_of_stock_shows_an_error_toast(): void
     {
         $user = User::factory()->create();

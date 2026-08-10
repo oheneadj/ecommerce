@@ -85,22 +85,37 @@
                 </div>
             @endif
 
-            <div class="flex gap-3 pt-2">
-                <x-button wire:click="addToCart" wire:loading.attr="disabled" wire:target="addToCart" icon="shopping-bag" variant="primary" :disabled="! $variant || $variant->stock <= 0">
-                    <span wire:loading.remove wire:target="addToCart">{{ __('Add to cart') }}</span>
-                    <span wire:loading wire:target="addToCart">{{ __('Adding…') }}</span>
-                </x-button>
-                <x-button
-                    wire:click="toggleWishlist"
-                    wire:loading.attr="disabled"
-                    wire:target="toggleWishlist"
-                    icon="heart"
-                    :icon-filled="$this->isWishlisted"
-                    :variant="$this->isWishlisted ? 'filled' : 'outline'"
-                    :disabled="! $variant"
-                >
-                    {{ $this->isWishlisted ? __('In wishlist') : __('Add to wishlist') }}
-                </x-button>
+            <div
+                x-data="{ justAdded: false, autoHideTimer: null }"
+                x-on:cart-item-added.window="
+                    justAdded = true;
+                    clearTimeout(autoHideTimer);
+                    autoHideTimer = setTimeout(() => justAdded = false, 4000);
+                "
+            >
+                <div class="flex gap-3 pt-2">
+                    <x-button wire:click="addToCart" wire:loading.attr="disabled" wire:target="addToCart" icon="shopping-bag" variant="primary" :disabled="! $variant || $variant->stock <= 0">
+                        <span wire:loading.remove wire:target="addToCart">{{ __('Add to cart') }}</span>
+                        <span wire:loading wire:target="addToCart">{{ __('Adding…') }}</span>
+                    </x-button>
+                    <x-button
+                        wire:click="toggleWishlist"
+                        wire:loading.attr="disabled"
+                        wire:target="toggleWishlist"
+                        icon="heart"
+                        :icon-filled="$this->isWishlisted"
+                        :variant="$this->isWishlisted ? 'filled' : 'outline'"
+                        :disabled="! $variant"
+                    >
+                        {{ $this->isWishlisted ? __('In wishlist') : __('Add to wishlist') }}
+                    </x-button>
+                </div>
+
+                <div x-show="justAdded" x-transition x-cloak class="pt-3">
+                    <x-button href="{{ route('checkout.show') }}" wire:navigate variant="primary" icon="arrow-right" class="w-full justify-center">
+                        {{ __('View Checkout') }}
+                    </x-button>
+                </div>
             </div>
 
             @if ($product->description)

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Clickable product gallery thumbnails + lightbox carousel
+- The product detail page's thumbnails were purely decorative — clicking one did nothing, and the main image wasn't clickable at all. Clicking a thumbnail now swaps the main image to it (client-side Alpine state, `selected` index, no server round-trip), and clicking the main image opens a full-screen lightbox with a carousel across every one of the product's images (prev/next buttons, arrow-key navigation, image counter, click-outside/Escape to close) — same visual conventions as the existing `<x-modal>` (backdrop, `x-cloak`, Escape-to-close).
+- Gallery state is keyed to the selected variant (`wire:key="gallery-{variant id}"`) so switching variants (which can change the image set entirely) resets the selection instead of pointing at a stale index.
+- 1 new test (`ProductDetailPageTest`); 1 existing test's assertion updated since the main image's `src` is now Alpine-driven rather than a plain server-rendered attribute.
+
 ### Fixed — Flaky checkout/cart tests caused by unseeded variant stock
 - `ProductVariantFactory` randomizes `stock` between 0–100 by default; several tests that call `AddItemToCart::run()` without overriding `stock` had a ~1% chance per run of rolling 0 and failing with "Only 0 left in stock." — `CheckoutTest` (2 tests), `CartIndicatorTest`, `CheckoutPageTest`. Each now explicitly sets `stock` on the factory call.
 

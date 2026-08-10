@@ -5,10 +5,27 @@
 
 <div class="space-y-8">
     <div class="grid gap-8 lg:grid-cols-2">
-        <div class="space-y-3">
+        <div
+            wire:key="gallery-{{ $variant?->id }}"
+            class="space-y-3"
+            x-data="{
+                images: {{ \Illuminate\Support\Js::from($galleryImages->map(fn ($image) => \Illuminate\Support\Facades\Storage::disk('public')->url($image->path))->all()) }},
+                selected: 0,
+                lightboxOpen: false,
+                next() { this.selected = (this.selected + 1) % this.images.length; },
+                prev() { this.selected = (this.selected - 1 + this.images.length) % this.images.length; },
+            }"
+        >
             <div class="flex aspect-square items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
                 @if ($galleryImages->isNotEmpty())
-                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($galleryImages->first()->path) }}" alt="{{ $product->name }}" loading="eager" fetchpriority="high" class="h-full w-full rounded-lg object-cover">
+                    <img
+                        :src="images[selected]"
+                        @click="lightboxOpen = true"
+                        alt="{{ $product->name }}"
+                        loading="eager"
+                        fetchpriority="high"
+                        class="h-full w-full cursor-zoom-in rounded-lg object-cover"
+                    >
                 @else
                     <x-app-icon name="folder" class="size-16 text-zinc-400" />
                 @endif
@@ -16,11 +33,56 @@
 
             @if ($galleryImages->count() > 1)
                 <div class="grid grid-cols-5 gap-2">
-                    @foreach ($galleryImages as $image)
-                        <div class="flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                    @foreach ($galleryImages as $index => $image)
+                        <button
+                            type="button"
+                            @click="selected = {{ $index }}"
+                            class="flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-zinc-100 ring-2 ring-offset-2 ring-offset-white dark:bg-zinc-800 dark:ring-offset-zinc-900"
+                            :class="selected === {{ $index }} ? 'ring-brand-primary' : 'ring-transparent'"
+                        >
                             <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($image->path) }}" alt="{{ $product->name }}" loading="lazy" class="h-full w-full object-cover">
-                        </div>
+                        </button>
                     @endforeach
+                </div>
+            @endif
+
+            @if ($galleryImages->isNotEmpty())
+                <div
+                    x-show="lightboxOpen"
+                    x-cloak
+                    x-on:keydown.escape.window="lightboxOpen = false"
+                    x-on:keydown.arrow-right.window="lightboxOpen && next()"
+                    x-on:keydown.arrow-left.window="lightboxOpen && prev()"
+                    class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                >
+                    <div x-show="lightboxOpen" x-transition.opacity x-on:click="lightboxOpen = false" class="fixed inset-0 bg-black/90"></div>
+
+                    <button
+                        type="button"
+                        @click="lightboxOpen = false"
+                        class="absolute top-4 right-4 z-10 text-white/80 hover:text-white"
+                        aria-label="{{ __('Close') }}"
+                    >
+                        <x-app-icon name="x-circle" class="size-8" />
+                    </button>
+
+                    <div x-show="lightboxOpen" x-transition class="relative flex max-h-full max-w-4xl items-center">
+                        @if ($galleryImages->count() > 1)
+                            <button type="button" @click.stop="prev()" class="absolute left-2 z-10 rounded-full bg-white/10 p-2 text-white hover:bg-white/20" aria-label="{{ __('Previous image') }}">
+                                <x-app-icon name="chevron-up" class="size-6 -rotate-90" />
+                            </button>
+                        @endif
+
+                        <img :src="images[selected]" alt="{{ $product->name }}" class="max-h-[85vh] w-full rounded-lg object-contain" @click.stop>
+
+                        @if ($galleryImages->count() > 1)
+                            <button type="button" @click.stop="next()" class="absolute right-2 z-10 rounded-full bg-white/10 p-2 text-white hover:bg-white/20" aria-label="{{ __('Next image') }}">
+                                <x-app-icon name="chevron-up" class="size-6 rotate-90" />
+                            </button>
+
+                            <p class="absolute -bottom-8 left-1/2 -translate-x-1/2 text-sm text-white/70" x-text="`${selected + 1} / ${images.length}`"></p>
+                        @endif
+                    </div>
                 </div>
             @endif
         </div>

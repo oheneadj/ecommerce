@@ -173,7 +173,7 @@ class ProductDetailPageTest extends TestCase
         $size39 = AttributeTerm::factory()->create(['attribute_id' => $size->id, 'value' => '39']);
         $size40 = AttributeTerm::factory()->create(['attribute_id' => $size->id, 'value' => '40']);
 
-        $greenImage = ProductImage::factory()->create(['product_id' => $product->id, 'attribute_term_id' => $green->id, 'path' => 'product-images/green.jpg']);
+        ProductImage::factory()->create(['product_id' => $product->id, 'attribute_term_id' => $green->id, 'path' => 'product-images/green.jpg']);
         ProductImage::factory()->create(['product_id' => $product->id, 'attribute_term_id' => $white->id, 'path' => 'product-images/white.jpg']);
 
         $green40 = ProductVariant::factory()->create(['product_id' => $product->id]);
@@ -185,7 +185,7 @@ class ProductDetailPageTest extends TestCase
             ->call('selectTerm', $color->id, $green->id)
             ->call('selectTerm', $size->id, $size39->id)
             ->assertSet('selectedVariant.id', $green39->id)
-            ->assertSee($greenImage->path);
+            ->assertSee('green.jpg');
     }
 
     /**
@@ -208,6 +208,24 @@ class ProductDetailPageTest extends TestCase
         Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
             ->assertSee('own.jpg')
             ->assertDontSee('shared-green.jpg');
+    }
+
+    /**
+     * The gallery's lightbox (opened by clicking the main image, with a
+     * carousel across every image) must list every one of the product's
+     * images as candidates, not just the one shown initially.
+     */
+    public function test_the_gallery_lists_every_image_as_a_lightbox_candidate(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        ProductVariant::factory()->create(['product_id' => $product->id]);
+        ProductImage::factory()->create(['product_id' => $product->id, 'path' => 'product-images/one.jpg']);
+        ProductImage::factory()->create(['product_id' => $product->id, 'path' => 'product-images/two.jpg']);
+
+        Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->assertSee('one.jpg')
+            ->assertSee('two.jpg')
+            ->assertSeeHtml('lightboxOpen');
     }
 
     /**

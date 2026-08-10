@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Cart;
 
+use App\Exceptions\CartQuantityExceedsStockException;
 use App\Models\Cart;
 use App\Models\ProductVariant;
 use Lorisleiva\Actions\Concerns\AsAction;
@@ -18,6 +19,9 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * would have no way to verify the item actually belongs to the acting
  * cart. A quantity of zero or less removes the line entirely, matching
  * what a "0" in a quantity stepper means to a customer.
+ *
+ * @throws CartQuantityExceedsStockException when $quantity exceeds the
+ *                                           variant's stock — same cap AddItemToCart enforces, for the same reason.
  */
 class UpdateCartItemQuantity
 {
@@ -29,6 +33,10 @@ class UpdateCartItemQuantity
             RemoveItemFromCart::run($cart, $variant);
 
             return;
+        }
+
+        if ($quantity > $variant->stock) {
+            throw new CartQuantityExceedsStockException($variant->stock);
         }
 
         $cart->items()->where('product_variant_id', $variant->id)->update(['quantity' => $quantity]);

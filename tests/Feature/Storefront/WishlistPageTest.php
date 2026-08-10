@@ -63,7 +63,7 @@ class WishlistPageTest extends TestCase
     {
         $user = User::factory()->create();
         $this->actingAs($user);
-        $variant = ProductVariant::factory()->create();
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
         AddToWishlist::run($user, $variant);
 
         Livewire::test(WishlistPage::class)
@@ -72,6 +72,20 @@ class WishlistPageTest extends TestCase
         $this->assertSame(1, $user->wishlistItems()->count());
         $cart = Cart::query()->where('user_id', $user->id)->sole();
         $this->assertSame(1, $cart->items()->where('product_variant_id', $variant->id)->sole()->quantity);
+    }
+
+    public function test_adding_a_wishlisted_variant_that_is_out_of_stock_shows_an_error_toast(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $variant = ProductVariant::factory()->create(['stock' => 0]);
+        AddToWishlist::run($user, $variant);
+
+        Livewire::test(WishlistPage::class)
+            ->call('addToCart', $variant->id)
+            ->assertDispatched('toast', variant: 'error', message: 'Only 0 left in stock.');
+
+        $this->assertSame(0, Cart::query()->where('user_id', $user->id)->sole()->items()->count());
     }
 
     public function test_a_customers_wishlist_page_never_shows_another_customers_items(): void

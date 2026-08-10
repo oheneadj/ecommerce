@@ -76,7 +76,7 @@ class CartPageTest extends TestCase
     {
         $user = User::factory()->create();
         $this->actingAs($user);
-        $variant = ProductVariant::factory()->create(['price' => 1500]);
+        $variant = ProductVariant::factory()->create(['price' => 1500, 'stock' => 10]);
         $cart = GetCurrentCart::run($user);
         AddItemToCart::run($cart, $variant, 2);
 
@@ -89,7 +89,7 @@ class CartPageTest extends TestCase
     {
         $user = User::factory()->create();
         $this->actingAs($user);
-        $variant = ProductVariant::factory()->create(['price' => 1000]);
+        $variant = ProductVariant::factory()->create(['price' => 1000, 'stock' => 10]);
         $cart = GetCurrentCart::run($user);
         AddItemToCart::run($cart, $variant, 1);
 
@@ -98,6 +98,21 @@ class CartPageTest extends TestCase
             ->assertSee('GH₵30.00');
 
         $this->assertSame(3, $cart->items()->sole()->quantity);
+    }
+
+    public function test_updating_quantity_above_stock_shows_an_error_and_does_not_change_the_line(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $variant = ProductVariant::factory()->create(['stock' => 2]);
+        $cart = GetCurrentCart::run($user);
+        AddItemToCart::run($cart, $variant, 2);
+
+        Livewire::test(CartPage::class)
+            ->call('updateQuantity', $variant->id, 3)
+            ->assertDispatched('toast', variant: 'error', message: 'Only 2 left in stock.');
+
+        $this->assertSame(2, $cart->items()->sole()->quantity);
     }
 
     public function test_setting_quantity_to_zero_removes_the_item(): void

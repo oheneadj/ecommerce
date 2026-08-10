@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Storefront;
 
+use App\Actions\Cart\AddItemToCart;
+use App\Actions\Cart\ResolveCurrentCart;
 use App\Enums\ProductStatus;
 use App\Enums\ReviewStatus;
 use App\Livewire\Storefront\ProductDetailPage;
@@ -90,6 +92,46 @@ class ProductDetailPageTest extends TestCase
             ->assertSee('GH₵20.00');
     }
 
+    /**
+     * Regression: selecting a variant (via the fallback list) previously
+     * lived only in Livewire component state — a reload always went back
+     * to `variants->first()`, discarding the customer's choice. It must
+     * round-trip through the URL (`?variant=id`).
+     */
+    public function test_the_selected_variant_survives_a_full_page_reload_via_the_url(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        ProductVariant::factory()->create(['product_id' => $product->id, 'price' => 1000]);
+        $large = ProductVariant::factory()->create(['product_id' => $product->id, 'price' => 2000]);
+
+        $this->get("/products/{$product->slug}?variant={$large->id}")
+            ->assertOk()
+            ->assertSee('GH₵20.00')
+            ->assertDontSee('GH₵10.00');
+    }
+
+    /**
+     * Same regression, for the attribute-term-based selector.
+     */
+    public function test_the_selected_attribute_term_survives_a_full_page_reload_via_the_url(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        $attribute = Attribute::factory()->create(['name' => 'Size']);
+        $product->attributes()->attach($attribute->id);
+        $small = AttributeTerm::factory()->create(['attribute_id' => $attribute->id, 'value' => 'Small']);
+        $large = AttributeTerm::factory()->create(['attribute_id' => $attribute->id, 'value' => 'Large']);
+
+        $smallVariant = ProductVariant::factory()->create(['product_id' => $product->id, 'price' => 1000]);
+        $smallVariant->attributeTerms()->attach($small->id);
+        $largeVariant = ProductVariant::factory()->create(['product_id' => $product->id, 'price' => 2000]);
+        $largeVariant->attributeTerms()->attach($large->id);
+
+        $this->get("/products/{$product->slug}?options[{$attribute->id}]={$large->id}")
+            ->assertOk()
+            ->assertSee('GH₵20.00')
+            ->assertDontSee('GH₵10.00');
+    }
+
     public function test_a_single_variant_product_shows_no_options_list(): void
     {
         $product = Product::factory()->create(['status' => ProductStatus::Active]);
@@ -122,6 +164,21 @@ class ProductDetailPageTest extends TestCase
 
         $guestCart = Cart::query()->whereNull('user_id')->sole();
         $this->assertSame(1, $guestCart->items()->where('product_variant_id', $variant->id)->count());
+    }
+
+    public function test_adding_to_cart_when_already_at_stock_shows_an_error_toast_instead_of_overselling(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id, 'stock' => 1]);
+        AddItemToCart::run(ResolveCurrentCart::run($user, ResolveCurrentCart::guestSessionId()), $variant, 1);
+
+        Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->call('addToCart')
+            ->assertDispatched('toast', variant: 'error', message: 'Only 1 left in stock.');
+
+        $this->assertSame(1, Cart::query()->where('user_id', $user->id)->sole()->items()->sole()->quantity);
     }
 
     public function test_only_approved_reviews_are_shown(): void

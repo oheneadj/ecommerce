@@ -7,6 +7,8 @@ namespace Tests\Feature\Cart;
 use App\Actions\Cart\AddItemToCart;
 use App\Actions\Cart\MergeGuestCartIntoUser;
 use App\Actions\Cart\RemoveItemFromCart;
+use App\Actions\Cart\UpdateCartItemQuantity;
+use App\Exceptions\CartQuantityExceedsStockException;
 use App\Models\Cart;
 use App\Models\ProductVariant;
 use App\Models\User;
@@ -105,5 +107,58 @@ class CartManagementTest extends TestCase
 
         $this->assertSame($guestCart->id, $result->id);
         $this->assertSame($user->id, $result->fresh()->user_id);
+    }
+
+    public function test_adding_more_than_available_stock_is_rejected(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 3]);
+        $cart = Cart::factory()->create();
+
+        $this->expectException(CartQuantityExceedsStockException::class);
+
+        AddItemToCart::run($cart, $variant, 4);
+    }
+
+    public function test_adding_to_cart_twice_cannot_exceed_stock_in_total(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
+        $cart = Cart::factory()->create();
+        AddItemToCart::run($cart, $variant, 3);
+
+        $this->expectException(CartQuantityExceedsStockException::class);
+
+        AddItemToCart::run($cart, $variant, 3);
+    }
+
+    public function test_adding_exactly_the_remaining_stock_succeeds(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
+        $cart = Cart::factory()->create();
+
+        AddItemToCart::run($cart, $variant, 5);
+
+        $this->assertSame(5, $cart->items()->first()->quantity);
+    }
+
+    public function test_updating_quantity_above_available_stock_is_rejected(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 2]);
+        $cart = Cart::factory()->create();
+        AddItemToCart::run($cart, $variant, 1);
+
+        $this->expectException(CartQuantityExceedsStockException::class);
+
+        UpdateCartItemQuantity::run($cart, $variant, 3);
+    }
+
+    public function test_updating_quantity_to_the_exact_stock_amount_succeeds(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 2]);
+        $cart = Cart::factory()->create();
+        AddItemToCart::run($cart, $variant, 1);
+
+        UpdateCartItemQuantity::run($cart, $variant, 2);
+
+        $this->assertSame(2, $cart->items()->first()->quantity);
     }
 }

@@ -11,6 +11,7 @@ namespace App\Livewire\Storefront;
 use App\Actions\Cart\RemoveItemFromCart;
 use App\Actions\Cart\ResolveCurrentCart;
 use App\Actions\Cart\UpdateCartItemQuantity;
+use App\Exceptions\CartQuantityExceedsStockException;
 use App\Models\Cart;
 use App\Models\ProductVariant;
 use Illuminate\Contracts\View\View;
@@ -45,7 +46,13 @@ class CartPage extends Component
     {
         $variant = ProductVariant::query()->findOrFail($variantId);
 
-        UpdateCartItemQuantity::run($this->cart, $variant, $quantity);
+        try {
+            UpdateCartItemQuantity::run($this->cart, $variant, $quantity);
+        } catch (CartQuantityExceedsStockException $e) {
+            $this->dispatch('toast', variant: 'error', message: $e->getMessage());
+
+            return;
+        }
 
         unset($this->cart, $this->subtotal);
         $this->dispatch('cart-updated');

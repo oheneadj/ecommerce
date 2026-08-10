@@ -16,6 +16,7 @@ use App\Actions\Wishlist\RemoveFromWishlist;
 use App\Enums\ProductStatus;
 use App\Enums\ReviewStatus;
 use App\Enums\VariantStatus;
+use App\Exceptions\CartQuantityExceedsStockException;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Review;
@@ -157,7 +158,15 @@ class ProductDetailPage extends Component
         }
 
         $cart = ResolveCurrentCart::run(Auth::user(), ResolveCurrentCart::guestSessionId());
-        AddItemToCart::run($cart, $variant, 1);
+
+        try {
+            AddItemToCart::run($cart, $variant, 1);
+        } catch (CartQuantityExceedsStockException $e) {
+            $this->dispatch('toast', variant: 'error', message: $e->getMessage());
+
+            return;
+        }
+
         $this->dispatch('cart-updated');
         $this->dispatch('toast', variant: 'success', message: 'Added to cart.');
     }

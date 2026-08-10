@@ -12,6 +12,7 @@ namespace App\Livewire\Storefront;
 use App\Actions\Cart\AddItemToCart;
 use App\Actions\Cart\GetCurrentCart;
 use App\Actions\Wishlist\RemoveFromWishlist;
+use App\Exceptions\CartQuantityExceedsStockException;
 use App\Models\ProductVariant;
 use App\Models\WishlistItem;
 use Illuminate\Contracts\View\View;
@@ -50,7 +51,15 @@ class WishlistPage extends Component
     {
         $variant = ProductVariant::query()->findOrFail($variantId);
         $cart = GetCurrentCart::run(Auth::user());
-        AddItemToCart::run($cart, $variant, 1);
+
+        try {
+            AddItemToCart::run($cart, $variant, 1);
+        } catch (CartQuantityExceedsStockException $e) {
+            $this->dispatch('toast', variant: 'error', message: $e->getMessage());
+
+            return;
+        }
+
         $this->dispatch('cart-updated');
         $this->dispatch('toast', variant: 'success', message: 'Added to cart.');
     }

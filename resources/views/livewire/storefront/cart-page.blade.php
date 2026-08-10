@@ -36,11 +36,15 @@
                                 type="button"
                                 wire:click="updateQuantity({{ $variant->id }}, {{ $item->quantity + 1 }})"
                                 aria-label="{{ __('Increase quantity') }}"
-                                class="flex size-8 items-center justify-center rounded-lg border border-zinc-300 transition-colors hover:bg-zinc-50 active:scale-95 dark:border-zinc-600 dark:hover:bg-zinc-800"
+                                @disabled($item->quantity >= $variant->stock)
+                                class="flex size-8 items-center justify-center rounded-lg border border-zinc-300 transition-colors hover:bg-zinc-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-zinc-600 dark:hover:bg-zinc-800"
                             >
                                 <x-app-icon name="plus" class="size-4" />
                             </button>
                         </div>
+                        @if ($item->quantity >= $variant->stock)
+                            <p class="text-xs text-amber-600 dark:text-amber-400">{{ __('Max stock reached') }}</p>
+                        @endif
 
                         <div class="w-24 text-right font-medium">
                             <x-money :amount="$variant->price * $item->quantity" />

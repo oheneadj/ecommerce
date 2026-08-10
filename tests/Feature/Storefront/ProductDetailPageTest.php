@@ -69,6 +69,57 @@ class ProductDetailPageTest extends TestCase
     }
 
     /**
+     * `Attribute::terms()` lists every term ever created for that
+     * attribute across the whole catalog (e.g. every color used by any
+     * product), not just the ones this product's own variants carry. A
+     * term with no variant of THIS product attached to it (e.g. a "Blue"
+     * term that only some other product uses) must not render as a
+     * selectable option here — it would be a dead end.
+     */
+    public function test_an_attribute_term_no_variant_of_this_product_uses_is_not_shown(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $product->attributes()->attach($color->id);
+        $green = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Green']);
+        $blue = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Blue']);
+
+        $greenVariant = ProductVariant::factory()->create(['product_id' => $product->id]);
+        $greenVariant->attributeTerms()->attach($green->id);
+        // Blue exists as a term on the shared Color attribute (perhaps used
+        // by a different product), but no variant of THIS product has it.
+
+        Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->assertSee('Green')
+            ->assertDontSee('Blue');
+    }
+
+    /**
+     * If every term of an attribute turns out unused by this product's
+     * variants (all filtered out), the whole attribute group — including
+     * its header/label — must not render either.
+     */
+    public function test_an_attribute_with_no_used_terms_is_not_shown_at_all(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        // Not "Color" — every page renders an SVG icon with
+        // stroke="currentColor", which would make an assertDontSee('Color')
+        // check falsely fail on an unrelated substring match.
+        $material = Attribute::factory()->create(['name' => 'Material']);
+        $product->attributes()->attach($material->id);
+        AttributeTerm::factory()->create(['attribute_id' => $material->id, 'value' => 'Suede']);
+
+        ProductVariant::factory()->create(['product_id' => $product->id]);
+        // No variant carries the Suede term, so nothing under Material is
+        // actually usable for this product.
+
+        Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->assertDontSee('Material')
+            ->assertDontSee('Suede')
+            ->assertSet('hasAttributeSelector', false);
+    }
+
+    /**
      * Regression: a product with more than one variant but no global
      * Attribute attached (e.g. variants distinguished only by SKU/price —
      * the common case, per real catalog data) previously had no UI at all

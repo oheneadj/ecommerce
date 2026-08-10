@@ -14,6 +14,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed — Flaky checkout/cart tests caused by unseeded variant stock
 - `ProductVariantFactory` randomizes `stock` between 0–100 by default; several tests that call `AddItemToCart::run()` without overriding `stock` had a ~1% chance per run of rolling 0 and failing with "Only 0 left in stock." — `CheckoutTest` (2 tests), `CartIndicatorTest`, `CheckoutPageTest`. Each now explicitly sets `stock` on the factory call.
 
+### Fixed — Product detail page listed catalog-wide attribute terms the product itself doesn't use
+- `Attribute::terms()` lists every term ever created for that attribute across the whole catalog (e.g. every color used by any product), not just the ones this specific product's variants actually carry — so a term like "Blue" could show as a clickable Color option even though no variant of the current product was ever Blue, a dead end for the customer. `ProductDetailPage::mount()` now filters each attribute's terms down to only the ones at least one of the product's own variants uses, and drops the whole attribute group (header included) if that leaves it with none.
+- 2 new tests (`ProductDetailPageTest`): an unused term is hidden while a used one on the same attribute still shows, and an attribute left with zero used terms doesn't render at all.
+
 ### Fixed — Store's primary/secondary colors reach the main call-to-action buttons
 - `<x-button variant="primary">` — used by every prominent storefront CTA (Add to cart, Checkout, View Checkout, etc.) — was hardcoded to `bg-zinc-900`/`text-white` instead of the store's brand color, so changing the primary color in Store Settings never touched its own main buttons. Now `bg-brand-primary text-white hover:bg-brand-secondary`.
 - This also gives the previously-unused `secondary_color` field (defined on `StoreSetting`, served by `ThemeCssController`, but referenced nowhere) real, visible meaning — the primary button's hover shade.

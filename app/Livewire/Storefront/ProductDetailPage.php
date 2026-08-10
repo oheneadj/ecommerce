@@ -86,6 +86,30 @@ class ProductDetailPage extends Component
                 $this->product->variants->filter(fn (ProductVariant $variant): bool => $variant->attributeTerms->isNotEmpty())->values(),
             );
         }
+
+        // `Attribute::terms()` lists every term ever created for that
+        // attribute across the whole catalog (e.g. every color used by
+        // any product), not just the ones this product's own variants
+        // carry — so a term with no variant of this product attached to
+        // it (e.g. "Blue" on a product that only ever stocked Green and
+        // White) would still render as a clickable, but dead-ended,
+        // option. Filter each attribute's terms down to only the ones at
+        // least one of this product's variants actually uses, and drop
+        // the whole attribute group if that leaves it with none.
+        $usedTermIds = $this->product->variants
+            ->flatMap(fn (ProductVariant $variant) => $variant->attributeTerms->pluck('id'))
+            ->unique()
+            ->all();
+
+        $this->product->setRelation(
+            'attributes',
+            $this->product->attributes
+                ->each(function ($attribute) use ($usedTermIds): void {
+                    $attribute->setRelation('terms', $attribute->terms->whereIn('id', $usedTermIds)->values());
+                })
+                ->filter(fn ($attribute) => $attribute->terms->isNotEmpty())
+                ->values(),
+        );
     }
 
     /**

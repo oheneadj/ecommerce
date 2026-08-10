@@ -17,6 +17,7 @@ use App\Enums\ProductStatus;
 use App\Enums\ReviewStatus;
 use App\Enums\VariantStatus;
 use App\Exceptions\CartQuantityExceedsStockException;
+use App\Models\Attribute;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Review;
@@ -29,6 +30,11 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
+ * @property-read Collection<int, ProductVariant> $usableVariants
+ * @property-read Collection<int, Attribute> $usableAttributes
+ * @property-read array<int, array<int, int>> $availableTermIdsByAttribute
+ * @property-read Collection<int, Attribute> $missingAttributes
+ * @property-read bool $hasAttributeSelector
  * @property-read ProductVariant|null $selectedVariant
  * @property-read Collection<int, Review> $reviews
  * @property-read float $averageRating
@@ -75,41 +81,166 @@ class ProductDetailPage extends Component
             ])
             ->firstOrFail();
 
-        // When the product uses the global attribute selector, a variant
-        // with no attribute term set at all is incomplete catalog data —
-        // it can never be reached through the selector (its combination
-        // matches nothing) and would only ever surface as an unlabelled
-        // default. Drop it rather than let it silently show/sell.
-        if ($this->product->attributes->isNotEmpty()) {
-            $this->product->setRelation(
-                'variants',
-                $this->product->variants->filter(fn (ProductVariant $variant): bool => $variant->attributeTerms->isNotEmpty())->values(),
-            );
+        // The page must always load with a real variant selected (price/
+        // stock visible, Add to cart usable) rather than silently picking
+        // one internally while every Color/Size button looks unselected.
+        // Only seed this on a genuinely fresh visit — a URL carrying its
+        // own `?options[...]`/`?variant=` state (a reload or shared link)
+        // must keep exactly what the customer/link specified, including a
+        // deliberately partial selection.
+        if ($this->usableAttributes->isNotEmpty() && $this->selectedTermIds === [] && $this->selectedVariantId === null) {
+            $default = $this->usableVariants->first();
+
+            if ($default !== null) {
+                $this->selectedTermIds = $default->attributeTerms
+                    ->mapWithKeys(fn ($term) => [$term->attribute_id => $term->id])
+                    ->all();
+            }
+        }
+    }
+
+    /**
+     * `$selectedTermIds` restored from the URL query string (a reload or
+     * shared link) comes back with string values, which would never
+     * strictly-equal the integer term ids read from `attributeTerms`
+     * elsewhere in this class — normalize once and reuse everywhere
+     * selections are compared against real data.
+     *
+     * @return array<int, int>
+     */
+    private function normalizedSelections(): array
+    {
+        return collect($this->selectedTermIds)->map(fn ($id): int => (int) $id)->all();
+    }
+
+    /**
+     * `$this->product`'s own `variants`/`attributes` relations are the raw
+     * eager-loaded data as originally queried — filtering them via
+     * `setRelation()` in `mount()` does NOT survive Livewire's
+     * serialize/rehydrate cycle between separate requests (each
+     * `wire:click` action call rehydrates the component from a fresh
+     * snapshot, which re-derives relations from the snapshot's own record
+     * of what was loaded, not from ad-hoc post-load mutations). These
+     * `#[Computed]` properties recompute the same filtering fresh on
+     * every request instead, so it's never stale.
+     */
+
+    /**
+     * A variant with no attribute term set at all, on a product that uses
+     * the global attribute selector, is incomplete catalog data — it can
+     * never be reached through the selector (its combination matches
+     * nothing) and would only ever surface as an unlabelled default.
+     *
+     * @return Collection<int, ProductVariant>
+     */
+    #[Computed]
+    public function usableVariants(): Collection
+    {
+        if ($this->product->attributes->isEmpty()) {
+            return $this->product->variants;
         }
 
-        // `Attribute::terms()` lists every term ever created for that
-        // attribute across the whole catalog (e.g. every color used by
-        // any product), not just the ones this product's own variants
-        // carry — so a term with no variant of this product attached to
-        // it (e.g. "Blue" on a product that only ever stocked Green and
-        // White) would still render as a clickable, but dead-ended,
-        // option. Filter each attribute's terms down to only the ones at
-        // least one of this product's variants actually uses, and drop
-        // the whole attribute group if that leaves it with none.
-        $usedTermIds = $this->product->variants
+        return $this->product->variants
+            ->filter(fn (ProductVariant $variant): bool => $variant->attributeTerms->isNotEmpty())
+            ->values();
+    }
+
+    /**
+     * `Attribute::terms()` lists every term ever created for that
+     * attribute across the whole catalog (e.g. every color used by any
+     * product), not just the ones this product's own variants carry — so
+     * a term with no variant of this product attached to it (e.g. "Blue"
+     * on a product that only ever stocked Green and White) would still
+     * render as a clickable, but dead-ended, option. Filters each
+     * attribute's terms down to only the ones at least one of this
+     * product's (usable) variants actually uses, and drops the whole
+     * attribute group if that leaves it with none.
+     *
+     * @return Collection<int, Attribute>
+     */
+    #[Computed]
+    public function usableAttributes(): Collection
+    {
+        $usedTermIds = $this->usableVariants
             ->flatMap(fn (ProductVariant $variant) => $variant->attributeTerms->pluck('id'))
             ->unique()
             ->all();
 
-        $this->product->setRelation(
-            'attributes',
-            $this->product->attributes
-                ->each(function ($attribute) use ($usedTermIds): void {
-                    $attribute->setRelation('terms', $attribute->terms->whereIn('id', $usedTermIds)->values());
-                })
-                ->filter(fn ($attribute) => $attribute->terms->isNotEmpty())
-                ->values(),
-        );
+        return $this->product->attributes
+            ->map(function (Attribute $attribute) use ($usedTermIds): Attribute {
+                $attribute = clone $attribute;
+                $attribute->setRelation('terms', $attribute->terms->whereIn('id', $usedTermIds)->values());
+
+                return $attribute;
+            })
+            ->filter(fn (Attribute $attribute) => $attribute->terms->isNotEmpty())
+            ->values();
+    }
+
+    /**
+     * Every variant of this product whose own selected terms match
+     * `$selections` on the attributes present as keys — attributes absent
+     * from `$selections` are unconstrained, so this doubles as "what's
+     * possible so far" for a still-incomplete pick and "the one exact
+     * match" for a complete one.
+     *
+     * @param  array<int, int>  $selections  attribute id => term id
+     * @return Collection<int, ProductVariant>
+     */
+    private function variantsMatching(array $selections): Collection
+    {
+        return $this->usableVariants->filter(function (ProductVariant $variant) use ($selections): bool {
+            $variantTermIdsByAttribute = $variant->attributeTerms->mapWithKeys(fn ($term) => [$term->attribute_id => $term->id]);
+
+            foreach ($selections as $attributeId => $termId) {
+                if (($variantTermIdsByAttribute[$attributeId] ?? null) !== $termId) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    }
+
+    /**
+     * For every attribute, which of its terms remain reachable given
+     * whatever's currently selected on the OTHER attributes — used to
+     * gray out combinations that don't exist (e.g. no Red in size 42)
+     * before the customer clicks into a dead end.
+     *
+     * @return array<int, array<int, int>> attribute id => term ids
+     */
+    #[Computed]
+    public function availableTermIdsByAttribute(): array
+    {
+        $available = [];
+
+        foreach ($this->usableAttributes as $attribute) {
+            $otherSelections = collect($this->normalizedSelections())->except([$attribute->id])->all();
+
+            $available[$attribute->id] = $this->variantsMatching($otherSelections)
+                ->flatMap(fn (ProductVariant $variant) => $variant->attributeTerms->where('attribute_id', $attribute->id)->pluck('id'))
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        return $available;
+    }
+
+    /**
+     * Attributes the customer hasn't picked a value for yet — while this
+     * is non-empty, "no variant found" means "selection incomplete," not
+     * "unavailable," and the two must be shown differently.
+     *
+     * @return Collection<int, Attribute>
+     */
+    #[Computed]
+    public function missingAttributes(): Collection
+    {
+        return $this->usableAttributes->reject(
+            fn ($attribute) => array_key_exists($attribute->id, $this->selectedTermIds),
+        )->values();
     }
 
     /**
@@ -124,38 +255,38 @@ class ProductDetailPage extends Component
     #[Computed]
     public function hasAttributeSelector(): bool
     {
-        return $this->product->attributes->isNotEmpty();
+        return $this->usableAttributes->isNotEmpty();
     }
 
     #[Computed]
     public function selectedVariant(): ?ProductVariant
     {
         if ($this->selectedVariantId !== null) {
-            $direct = $this->product->variants->firstWhere('id', $this->selectedVariantId);
+            $direct = $this->usableVariants->firstWhere('id', $this->selectedVariantId);
 
             if ($direct !== null) {
                 return $direct;
             }
         }
 
-        if ($this->selectedTermIds === []) {
-            return $this->product->variants->first();
+        if (! $this->hasAttributeSelector) {
+            return $this->usableVariants->first();
         }
 
-        // Cast to int explicitly — values restored from the URL query
-        // string (a page reload/shared link) come back as strings, which
-        // would otherwise never strictly-equal the integer ids from
-        // attributeTerms->pluck('id') below and silently fall through to
-        // the default variant.
-        $selected = collect($this->selectedTermIds)->map(fn ($id): int => (int) $id)->values()->sort()->values()->all();
+        // Incomplete selection (e.g. Color picked, Size not yet) is not
+        // the same thing as "this combination doesn't exist" — the view
+        // shows a "pick a Size" prompt for this, not "Currently
+        // unavailable" (see `missingAttributes`). No fallback to
+        // `variants->first()` either way — silently substituting an
+        // unrelated variant (e.g. the cheapest one, in a different color)
+        // would misrepresent what's shown/added to cart.
+        if ($this->missingAttributes->isNotEmpty()) {
+            return null;
+        }
 
-        // No `?? $this->product->variants->first()` fallback here — unlike
-        // the "nothing selected yet" branch above, reaching this point
-        // means the customer picked a specific combination. Silently
-        // substituting an unrelated variant (e.g. the cheapest one, in a
-        // different color) would misrepresent what's shown/added to cart;
-        // a combination that doesn't exist should just be unavailable.
-        return $this->product->variants->first(function (ProductVariant $variant) use ($selected): bool {
+        $selected = collect($this->normalizedSelections())->sort()->values()->all();
+
+        return $this->usableVariants->first(function (ProductVariant $variant) use ($selected): bool {
             $variantTermIds = $variant->attributeTerms->pluck('id')->map(fn ($id): int => (int) $id)->sort()->values()->all();
 
             return $variantTermIds === $selected;
@@ -192,8 +323,46 @@ class ProductDetailPage extends Component
 
     public function selectTerm(int $attributeId, int $termId): void
     {
+        // Swatches stay clickable even when greyed out in the view (not
+        // compatible with the current OTHER picks) — that's a visual
+        // hint, not a lock, so switching Color away from a Size that only
+        // the old Color had still works in one click rather than forcing
+        // the customer to clear Size first. The only pick that's truly
+        // rejected here is one that doesn't correspond to ANY variant of
+        // this product at all — not reachable through the real UI
+        // (`usableAttributes` already filters terms down to used-only
+        // ones), so only a forced/synthetic call could hit it — recorded
+        // as-is rather than cascading a prune that would blame an
+        // unrelated, perfectly valid selection instead.
+        $attribute = $this->usableAttributes->firstWhere('id', $attributeId);
+        $isRealTermForThisProduct = $attribute !== null && $attribute->terms->contains('id', $termId);
+
         $this->selectedVariantId = null;
         $this->selectedTermIds[$attributeId] = $termId;
+
+        // Picking a term can make an already-chosen value on ANOTHER
+        // attribute unreachable (e.g. Size 42 doesn't exist in Red) —
+        // drop it rather than leave the customer in a silently-impossible
+        // combination. Single pass is enough for this app's actual
+        // attribute count (Color + Size); a product with 3+ interacting
+        // attributes would need this repeated to a fixed point.
+        if ($isRealTermForThisProduct) {
+            unset($this->availableTermIdsByAttribute);
+
+            foreach ($this->usableAttributes as $otherAttribute) {
+                if ($otherAttribute->id === $attributeId) {
+                    continue;
+                }
+
+                $currentlySelected = $this->selectedTermIds[$otherAttribute->id] ?? null;
+
+                if ($currentlySelected !== null && ! in_array((int) $currentlySelected, $this->availableTermIdsByAttribute[$otherAttribute->id] ?? [], true)) {
+                    unset($this->selectedTermIds[$otherAttribute->id]);
+                }
+            }
+        }
+
+        unset($this->availableTermIdsByAttribute, $this->missingAttributes, $this->selectedVariant, $this->isWishlisted);
     }
 
     /**

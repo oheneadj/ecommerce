@@ -306,6 +306,131 @@ class ProductDetailPageTest extends TestCase
             ->assertSee('Currently unavailable');
     }
 
+    /**
+     * The page must never load with every Color/Size button looking
+     * unselected while a variant is nonetheless silently shown — the
+     * default variant's own terms should be visibly highlighted too.
+     */
+    public function test_the_page_loads_with_a_default_variant_selected_and_its_terms_highlighted(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $size = Attribute::factory()->create(['name' => 'Size']);
+        $product->attributes()->attach([$color->id, $size->id]);
+        $green = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Green']);
+        $size40 = AttributeTerm::factory()->create(['attribute_id' => $size->id, 'value' => '40']);
+
+        $cheapest = ProductVariant::factory()->create(['product_id' => $product->id, 'price' => 1000]);
+        $cheapest->attributeTerms()->attach([$green->id, $size40->id]);
+
+        Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->assertSet('selectedVariant.id', $cheapest->id)
+            ->assertSet('selectedTermIds', [$color->id => $green->id, $size->id => $size40->id]);
+    }
+
+    /**
+     * Core UX fix: a customer who's only picked Color (not Size yet) must
+     * be prompted to finish choosing, not told the product is
+     * "unavailable" — those are different things, and the old wording
+     * misrepresented perfectly-in-stock variants as gone.
+     */
+    public function test_a_partial_selection_prompts_for_the_missing_attribute_instead_of_showing_unavailable(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $size = Attribute::factory()->create(['name' => 'Size']);
+        $product->attributes()->attach([$color->id, $size->id]);
+        $green = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Green']);
+        $size40 = AttributeTerm::factory()->create(['attribute_id' => $size->id, 'value' => '40']);
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id]);
+        $variant->attributeTerms()->attach([$green->id, $size40->id]);
+
+        // Arriving via a URL that only specifies Color — not a fresh visit
+        // (which would auto-seed a full default selection) — genuinely
+        // leaves Size unselected.
+        $this->get("/products/{$product->slug}?options[{$color->id}]={$green->id}")
+            ->assertOk()
+            ->assertSee('Select a Size to see price and availability.')
+            ->assertDontSee('Currently unavailable');
+    }
+
+    /**
+     * Switching Color to one that doesn't have the currently-selected Size
+     * must drop that now-impossible Size pick and re-prompt, rather than
+     * leaving the customer looking at "Currently unavailable" with no
+     * clear reason.
+     */
+    public function test_changing_color_prunes_a_now_unreachable_size_and_re_prompts(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $size = Attribute::factory()->create(['name' => 'Size']);
+        $product->attributes()->attach([$color->id, $size->id]);
+        $green = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Green']);
+        $white = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'White']);
+        $size40 = AttributeTerm::factory()->create(['attribute_id' => $size->id, 'value' => '40']);
+        $size42 = AttributeTerm::factory()->create(['attribute_id' => $size->id, 'value' => '42']);
+
+        // Green only ever comes in 40; White only ever comes in 42 — no
+        // overlap, so a Size chosen under Green can never carry over.
+        $green40 = ProductVariant::factory()->create(['product_id' => $product->id]);
+        $green40->attributeTerms()->attach([$green->id, $size40->id]);
+        $white42 = ProductVariant::factory()->create(['product_id' => $product->id]);
+        $white42->attributeTerms()->attach([$white->id, $size42->id]);
+
+        Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->call('selectTerm', $color->id, $green->id)
+            ->call('selectTerm', $size->id, $size40->id)
+            ->assertSet('selectedVariant.id', $green40->id)
+            ->call('selectTerm', $color->id, $white->id)
+            ->assertSet('selectedTermIds', [$color->id => $white->id])
+            ->assertSet('selectedVariant', null)
+            ->assertSee('Select a Size to see price and availability.')
+            ->assertDontSee('Currently unavailable');
+    }
+
+    /**
+     * A Size that doesn't exist for the currently-selected Color must be
+     * shown disabled rather than a normal clickable option — the customer
+     * shouldn't be able to click into a combination that's already known
+     * to be a dead end.
+     */
+    public function test_a_term_unreachable_under_the_current_selection_is_shown_greyed_out_but_still_clickable(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $size = Attribute::factory()->create(['name' => 'Size']);
+        $product->attributes()->attach([$color->id, $size->id]);
+        $green = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Green']);
+        $white = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'White']);
+        $size40 = AttributeTerm::factory()->create(['attribute_id' => $size->id, 'value' => '40']);
+        $size42 = AttributeTerm::factory()->create(['attribute_id' => $size->id, 'value' => '42']);
+
+        $green40 = ProductVariant::factory()->create(['product_id' => $product->id]);
+        $green40->attributeTerms()->attach([$green->id, $size40->id]);
+        $white42 = ProductVariant::factory()->create(['product_id' => $product->id]);
+        $white42->attributeTerms()->attach([$white->id, $size42->id]);
+
+        // Fresh visits auto-seed a full default selection (see
+        // test_the_page_loads_with_a_default_variant_selected...) — clear
+        // it first so this genuinely starts from "only Color picked."
+        $component = Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->set('selectedTermIds', [])
+            ->call('selectTerm', $color->id, $green->id);
+
+        $available = $component->instance()->availableTermIdsByAttribute();
+
+        $this->assertSame([$size40->id], $available[$size->id]);
+        $this->assertSame([$green->id, $white->id], $available[$color->id]);
+        // Greyed styling, not an HTML `disabled` attribute on the term
+        // button itself — still clickable, per
+        // test_changing_color_prunes_a_now_unreachable_size_and_re_prompts.
+        // ("disabled" does legitimately appear elsewhere on the page right
+        // now, on Add to Cart/Wishlist, since Size isn't picked yet.)
+        $component->assertSeeHtml('line-through');
+        $component->assertSeeHtml("selectTerm({$size->id}, {$size42->id})");
+    }
+
     public function test_the_stock_count_is_shown_for_the_selected_variant(): void
     {
         $product = Product::factory()->create(['status' => ProductStatus::Active]);

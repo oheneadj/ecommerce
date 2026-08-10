@@ -105,20 +105,43 @@
                 <p class="text-sm {{ $variant->stock > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
                     {{ $variant->stock > 0 ? __(':count in stock', ['count' => $variant->stock]) : __('Out of stock') }}
                 </p>
+            @elseif ($this->hasAttributeSelector && $this->missingAttributes->isNotEmpty())
+                {{-- Selection isn't finished yet — this is not the same as
+                     "unavailable," so it gets its own, less alarming message. --}}
+                <p class="text-sm text-zinc-500 dark:text-zinc-400">
+                    {{ __('Select a :attributes to see price and availability.', ['attributes' => $this->missingAttributes->pluck('name')->implode(' / ')]) }}
+                </p>
             @else
                 <p class="text-sm text-red-600 dark:text-red-400">{{ __('Currently unavailable') }}</p>
             @endif
 
             @if ($this->hasAttributeSelector)
-                @foreach ($product->attributes as $attribute)
+                @foreach ($this->usableAttributes as $attribute)
                     <div wire:key="attribute-{{ $attribute->id }}">
                         <p class="text-sm font-medium">{{ $attribute->name }}</p>
                         <div class="mt-2 flex flex-wrap gap-2">
                             @foreach ($attribute->terms as $term)
+                                @php
+                                    // Cast before comparing — a value restored from the
+                                    // URL query string is a string, which would never
+                                    // strictly-equal the integer term id below.
+                                    $isSelected = (int) ($selectedTermIds[$attribute->id] ?? 0) === $term->id;
+                                    $isAvailable = in_array($term->id, $this->availableTermIdsByAttribute[$attribute->id] ?? [], true);
+                                @endphp
+                                {{-- Not `disabled` when unavailable — greyed styling is a
+                                     hint, not a lock. Clicking a term that doesn't match
+                                     the current OTHER picks still switches to it and
+                                     resets whichever pick is now incompatible, so the
+                                     customer is never stuck unable to reach a real option. --}}
                                 <button
                                     type="button"
                                     wire:click="selectTerm({{ $attribute->id }}, {{ $term->id }})"
-                                    class="rounded-lg border px-3 py-1.5 text-sm {{ ($selectedTermIds[$attribute->id] ?? null) === $term->id ? 'border-brand-primary text-brand-primary' : 'border-zinc-300 dark:border-zinc-600' }}"
+                                    @class([
+                                        'rounded-lg border px-3 py-1.5 text-sm',
+                                        'border-brand-primary text-brand-primary' => $isSelected,
+                                        'border-zinc-300 dark:border-zinc-600' => ! $isSelected && $isAvailable,
+                                        'border-zinc-200 text-zinc-400 line-through cursor-not-allowed dark:border-zinc-700 dark:text-zinc-600' => ! $isSelected && ! $isAvailable,
+                                    ])
                                 >
                                     {{ $term->value }}
                                 </button>
@@ -126,14 +149,14 @@
                         </div>
                     </div>
                 @endforeach
-            @elseif ($product->variants->count() > 1)
+            @elseif ($this->usableVariants->count() > 1)
                 {{-- No global Attribute is attached to this product, so there's
                      nothing for the loop above to render — without this, every
                      variant past the first would be permanently unreachable. --}}
                 <div>
                     <p class="text-sm font-medium">{{ __('Options') }}</p>
                     <div class="mt-2 flex flex-wrap gap-2">
-                        @foreach ($product->variants as $productVariant)
+                        @foreach ($this->usableVariants as $productVariant)
                             <button
                                 type="button"
                                 wire:key="variant-option-{{ $productVariant->id }}"

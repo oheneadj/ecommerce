@@ -1,3 +1,5 @@
 <x-layouts::storefront :title="__('My Addresses')">
-    <livewire:storefront.address-book />
+    <x-account.layout>
+        <livewire:storefront.address-book />
+    </x-account.layout>
 </x-layouts::storefront>

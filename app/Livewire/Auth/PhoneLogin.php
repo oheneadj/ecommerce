@@ -65,7 +65,7 @@ class PhoneLogin extends Component
             return;
         }
 
-        $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
+        $this->redirectIntended(default: route('account.show', absolute: false), navigate: true);
     }
 
     public function render(): View

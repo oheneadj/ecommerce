@@ -1,9 +1,7 @@
 <section class="w-full">
-    @include('partials.settings-heading')
-
     <h2 class="sr-only">{{ __('Security settings') }}</h2>
 
-    <x-settings.layout :heading="__('Update password')" :subheading="__('Ensure your account is using a long, random password to stay secure')">
+    <x-account.layout :heading="__('Update password')" :subheading="__('Ensure your account is using a long, random password to stay secure')">
         <form method="POST" wire:submit="updatePassword" class="mt-6 space-y-6">
             <x-input
                 wire:model="current_password"
@@ -288,7 +286,7 @@
                 </div>
             </section>
         @endif
-    </x-settings.layout>
+    </x-account.layout>
 
     <x-modal
         name="delete-passkey-modal"

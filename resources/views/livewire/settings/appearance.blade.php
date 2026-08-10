@@ -1,9 +1,7 @@
 <section class="w-full">
-    @include('partials.settings-heading')
-
     <h2 class="sr-only">{{ __('Appearance settings') }}</h2>
 
-    <x-settings.layout :heading="__('Appearance')" :subheading=" __('Update the appearance settings for your account')">
+    <x-account.layout :heading="__('Appearance')" :subheading=" __('Update the appearance settings for your account')">
         <div
             x-data="{
                 appearance: localStorage.getItem('appearance') ?? 'system',
@@ -29,5 +27,5 @@
                 </button>
             @endforeach
         </div>
-    </x-settings.layout>
+    </x-account.layout>
 </section>

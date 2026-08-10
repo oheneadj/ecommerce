@@ -42,11 +42,11 @@ class GoogleAuthController extends Controller
         if (Auth::check()) {
             LinkAccountIdentifier::run(Auth::user(), $googleUser->getId(), $googleUser->getEmail());
 
-            return redirect()->intended(route('dashboard', absolute: false));
+            return redirect()->intended(route('account.show', absolute: false));
         }
 
         LoginWithGoogle::run($googleUser);
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->intended(route('account.show', absolute: false));
     }
 }

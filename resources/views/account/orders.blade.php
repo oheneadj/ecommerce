@@ -1,3 +1,5 @@
 <x-layouts::storefront :title="__('My Orders')">
-    <livewire:storefront.order-history-page />
+    <x-account.layout>
+        <livewire:storefront.order-history-page />
+    </x-account.layout>
 </x-layouts::storefront>

@@ -1,3 +1,5 @@
 <x-layouts::storefront :title="__('My Wishlist')">
-    <livewire:storefront.wishlist-page />
+    <x-account.layout>
+        <livewire:storefront.wishlist-page />
+    </x-account.layout>
 </x-layouts::storefront>

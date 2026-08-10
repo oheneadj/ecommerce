@@ -13,12 +13,14 @@ use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 use Laravel\Passkeys\Actions\DeletePasskey;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
 
 #[Title('Security settings')]
+#[Layout('layouts.storefront')]
 class Security extends Component
 {
     use PasswordValidationRules;

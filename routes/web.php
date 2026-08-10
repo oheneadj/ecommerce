@@ -31,8 +31,6 @@ Route::get('/login/google', [GoogleAuthController::class, 'redirect'])->name('lo
 Route::get('/login/google/callback', [GoogleAuthController::class, 'callback'])->name('login.google.callback');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::view('dashboard', 'dashboard')->name('dashboard');
-
     Route::get('account', [AccountController::class, 'show'])->name('account.show');
 
     Route::view('account/addresses', 'account.addresses')->name('account.addresses');

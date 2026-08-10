@@ -1,3 +1,5 @@
 <x-layouts::storefront :title="__('Order detail')">
-    <livewire:storefront.order-detail-page :order-ulid="$order" />
+    <x-account.layout>
+        <livewire:storefront.order-detail-page :order-ulid="$order" />
+    </x-account.layout>
 </x-layouts::storefront>

@@ -6,8 +6,11 @@
 
         <x-card>
             <div class="flex items-center justify-between">
-                <h2 class="text-lg font-medium">{{ __('Recent orders') }}</h2>
-                <a href="{{ route('account.orders') }}" wire:navigate class="text-sm font-medium text-brand-primary hover:underline">{{ __('View all') }}</a>
+                <h2 class="flex items-center gap-2 text-lg font-medium">
+                    <x-app-icon name="shopping-bag" class="size-5 text-zinc-400" />
+                    {{ __('Recent orders') }}
+                </h2>
+                <x-button href="{{ route('account.orders') }}" wire:navigate variant="ghost">{{ __('View all') }}</x-button>
             </div>
 
             @if ($orders->isEmpty())
@@ -15,7 +18,7 @@
             @else
                 <div class="mt-4 divide-y divide-zinc-200 dark:divide-zinc-700">
                     @foreach ($orders as $order)
-                        <a href="{{ route('account.orders.show', $order) }}" wire:navigate class="flex items-center justify-between gap-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                        <a href="{{ route('account.orders.show', $order) }}" wire:navigate class="-mx-2 flex items-center justify-between gap-4 rounded-lg px-2 py-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-700/50">
                             <div>
                                 <p class="font-medium">{{ $order->order_number }}</p>
                                 <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ $order->created_at->format('d M Y') }}</p>
@@ -31,19 +34,25 @@
         </x-card>
 
         <x-card>
-            <h2 class="text-lg font-medium">{{ __('Addresses') }}</h2>
+            <h2 class="flex items-center gap-2 text-lg font-medium">
+                <x-app-icon name="home" class="size-5 text-zinc-400" />
+                {{ __('Addresses') }}
+            </h2>
             <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{{ __('Manage the addresses used at checkout.') }}</p>
-            <a href="{{ route('account.addresses') }}" wire:navigate class="mt-4 inline-block text-sm font-medium text-brand-primary hover:underline">
-                {{ __('Manage addresses') }} &rarr;
-            </a>
+            <x-button href="{{ route('account.addresses') }}" wire:navigate variant="outline" class="mt-4">
+                {{ __('Manage addresses') }}
+            </x-button>
         </x-card>
 
         <x-card>
-            <h2 class="text-lg font-medium">{{ __('Account settings') }}</h2>
+            <h2 class="flex items-center gap-2 text-lg font-medium">
+                <x-app-icon name="cog" class="size-5 text-zinc-400" />
+                {{ __('Account settings') }}
+            </h2>
             <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{{ __('Update your name, email, password, and two-factor authentication.') }}</p>
-            <a href="{{ route('profile.edit') }}" wire:navigate class="mt-4 inline-block text-sm font-medium text-brand-primary hover:underline">
-                {{ __('Manage account settings') }} &rarr;
-            </a>
+            <x-button href="{{ route('profile.edit') }}" wire:navigate variant="outline" class="mt-4">
+                {{ __('Manage account settings') }}
+            </x-button>
         </x-card>
     </div>
 </x-layouts::storefront>

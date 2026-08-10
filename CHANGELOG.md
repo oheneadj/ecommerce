@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed — Customer dashboard now matches the storefront's design system
+- `/account` predated the design conventions established across the rest of the storefront (`<x-button>` for actions, section icons) — its CTAs were still plain `text-brand-primary hover:underline` links with a `→` glyph, unlike the address book / wishlist pages' `<x-button variant="outline/ghost">` pattern. Updated "Recent orders" (View all), "Addresses" (Manage addresses), and "Account settings" (Manage account settings) to use `<x-button>`, and added a section icon (`shopping-bag`/`home`/`cog`) to each card header, matching how other pages label their sections.
+- No behavioral change — same routes, same content, same tests.
+
 ### Fixed — Lightbox carousel arrows moved outside the image
 - The prev/next arrows were absolutely positioned on top of the image's edges, overlapping it. Now laid out as flex siblings beside the image (with a gap) so they sit in the backdrop area instead of over the photo itself.
 

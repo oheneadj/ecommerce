@@ -388,4 +388,42 @@ class CheckoutPageTest extends TestCase
 
         $this->assertSame(0, Order::query()->count());
     }
+
+    /**
+     * Regression test for a bug where every <x-input> on the page showed
+     * the *first* validation error in the whole bag (MessageBag::has(null)
+     * / first(null) match any/all errors) instead of its own field's
+     * error, because the component had no way to know which field it was
+     * bound to. Fixed by deriving the error-bag key from the wire:model
+     * attribute in resources/views/components/input.blade.php.
+     */
+    public function test_guest_checkout_errors_are_scoped_to_their_own_field_only(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+        $shippingMethod = ShippingMethod::factory()->create(['active' => true]);
+
+        $component = Livewire::test(CheckoutPage::class);
+        AddItemToCart::run(
+            ResolveCurrentCart::run(null, ResolveCurrentCart::guestSessionId()),
+            $variant,
+            1,
+        );
+
+        $component
+            ->set('selectedShippingMethodId', $shippingMethod->id)
+            ->call('placeOrder');
+
+        $html = $component->html();
+
+        // guestName's error legitimately appears twice: <x-input>'s own
+        // (now correctly-scoped) @error block, plus the page's separate
+        // hand-rolled @error('guestName') block right below it. Before the
+        // fix, every OTHER <x-input> on the page — including fields that
+        // are never validated, like the optional line 2/region inputs,
+        // and entirely unrelated fields like the coupon code — also
+        // rendered this same message, because $attributes->get('name')
+        // was always null and @error(null) matches the first error in
+        // the whole bag. Assert it's exactly these two, not more.
+        $this->assertSame(2, substr_count($html, 'Please enter your name.'));
+    }
 }

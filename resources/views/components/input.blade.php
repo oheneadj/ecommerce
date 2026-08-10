@@ -4,6 +4,24 @@
     'viewable' => false,
 ])
 
+@php
+    // Callers bind via wire:model (plain, .live, .live.debounce.400ms,
+    // etc.), never a plain `name` attribute — derive the error-bag key
+    // from whichever wire:model* attribute is actually present. Without
+    // this, $attributes->get('name') is always null, and @error(null)
+    // matches *any* error anywhere on the page (MessageBag::has(null)
+    // is defined as "has any error at all") — every <x-input> on the
+    // page would show the first error in the whole bag, not its own.
+    $fieldName = null;
+
+    foreach ($attributes->getAttributes() as $attributeName => $attributeValue) {
+        if ($attributeName === 'wire:model' || str_starts_with($attributeName, 'wire:model.')) {
+            $fieldName = $attributeValue;
+            break;
+        }
+    }
+@endphp
+
 <div class="w-full" @if($viewable) x-data="{ show: false }" @endif>
     @if($label)
         <label class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ $label }}</label>
@@ -27,7 +45,7 @@
         @endif
     </div>
 
-    @error($attributes->get('name'))
+    @error($fieldName)
         <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
     @enderror
 </div>

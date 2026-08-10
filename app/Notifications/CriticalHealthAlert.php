@@ -13,6 +13,8 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Sent daily by `SendCriticalHealthAlert` for as long as any critical check
@@ -24,6 +26,15 @@ use Illuminate\Notifications\Notification;
 class CriticalHealthAlert extends Notification implements ShouldQueue
 {
     use Queueable;
+
+    public int $tries = 3;
+
+    public int $timeout = 30;
+
+    /**
+     * @var array<int, int>
+     */
+    public array $backoff = [10, 30, 60];
 
     /**
      * @param  array<int, string>  $failures
@@ -72,5 +83,13 @@ class CriticalHealthAlert extends Notification implements ShouldQueue
                 ? "Critical check failing: {$this->failures[0]}"
                 : count($this->failures).' critical checks are failing.',
         ];
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        Log::error('CriticalHealthAlert failed permanently', [
+            'failures' => $this->failures,
+            'exception' => $exception->getMessage(),
+        ]);
     }
 }

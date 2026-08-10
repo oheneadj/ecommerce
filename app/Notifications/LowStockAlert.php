@@ -13,6 +13,8 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Sent to every Store Keeper (BRD/agile-docs E10.2 — low-stock alerts go
@@ -23,6 +25,15 @@ use Illuminate\Notifications\Notification;
 class LowStockAlert extends Notification implements ShouldQueue
 {
     use Queueable;
+
+    public int $tries = 3;
+
+    public int $timeout = 30;
+
+    /**
+     * @var array<int, int>
+     */
+    public array $backoff = [10, 30, 60];
 
     public function __construct(
         private readonly ProductVariant $variant,
@@ -59,5 +70,13 @@ class LowStockAlert extends Notification implements ShouldQueue
             'threshold' => $this->variant->effectiveLowStockThreshold(),
             'message' => "Low stock: {$this->variant->sku} has {$this->variant->stock} unit(s) left.",
         ];
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        Log::error('LowStockAlert failed permanently', [
+            'product_variant_id' => $this->variant->id,
+            'exception' => $exception->getMessage(),
+        ]);
     }
 }

@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed — Customer dashboard now matches the storefront's design system
 - `/account` predated the design conventions established across the rest of the storefront (`<x-button>` for actions, section icons) — its CTAs were still plain `text-brand-primary hover:underline` links with a `→` glyph, unlike the address book / wishlist pages' `<x-button variant="outline/ghost">` pattern. Updated "Recent orders" (View all), "Addresses" (Manage addresses), and "Account settings" (Manage account settings) to use `<x-button>`, and added a section icon (`shopping-bag`/`home`/`cog`) to each card header, matching how other pages label their sections.
+
+### Fixed — Order/health/stock notifications had no job-resilience config (CLAUDE.md §15 bug hunt)
+- `OrderNotification` (the shared base for `OrderPlaced`, `OrderShipped`, `PaymentSucceeded`, `PaymentFailed`), `LowStockAlert`, `ReservationsAtRiskAlert`, and `CriticalHealthAlert` all `implement ShouldQueue` but declared none of `$tries`/`$timeout`/`$backoff`/`failed()` — a transient delivery failure (bad mail config, transport outage) exhausted Laravel's default retry behavior and vanished with zero record, no operator alert, and — for order notifications — the customer never finding out their order was placed or their payment failed.
+- All four now declare `$tries = 3`, `$timeout = 30`, `$backoff = [10, 30, 60]` (matching the existing convention in `SendCustomerEmail`/`SendCustomerSms`), and a `failed()` method that logs via `Log::error()` with enough context (order id, variant id, failure list) to actually investigate.
+- New `tests/Feature/Notifications/NotificationResilienceTest.php` (5 tests) covering the declared config and the `failed()` log call for all four classes.
 - No behavioral change — same routes, same content, same tests.
 
 ### Fixed — Lightbox carousel arrows moved outside the image

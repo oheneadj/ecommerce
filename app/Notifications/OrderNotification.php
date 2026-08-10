@@ -13,6 +13,8 @@ use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Whichever identifiers the recipient actually has determine delivery:
@@ -36,6 +38,15 @@ use Illuminate\Notifications\Notification;
 abstract class OrderNotification extends Notification implements ShouldQueue
 {
     use Queueable;
+
+    public int $tries = 3;
+
+    public int $timeout = 30;
+
+    /**
+     * @var array<int, int>
+     */
+    public array $backoff = [10, 30, 60];
 
     public function __construct(
         protected readonly Order $order,
@@ -63,5 +74,19 @@ abstract class OrderNotification extends Notification implements ShouldQueue
         }
 
         return $channels;
+    }
+
+    /**
+     * Every retry attempt has been exhausted — the customer never received
+     * this order update through any channel. Logged, not silently dropped,
+     * so a delivery outage is at least visible to whoever's watching
+     * laravel.log, even though there's no per-order "retry this" UI yet.
+     */
+    public function failed(Throwable $exception): void
+    {
+        Log::error(static::class.' failed permanently', [
+            'order_id' => $this->order->id,
+            'exception' => $exception->getMessage(),
+        ]);
     }
 }

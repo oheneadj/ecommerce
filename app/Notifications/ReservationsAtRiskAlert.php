@@ -13,6 +13,8 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Sent to every Admin/Super Admin (BRD FR-2.2a) after
@@ -24,6 +26,15 @@ use Illuminate\Notifications\Notification;
 class ReservationsAtRiskAlert extends Notification implements ShouldQueue
 {
     use Queueable;
+
+    public int $tries = 3;
+
+    public int $timeout = 30;
+
+    /**
+     * @var array<int, int>
+     */
+    public array $backoff = [10, 30, 60];
 
     /**
      * @param  array<int, int>  $reservationIds
@@ -65,5 +76,14 @@ class ReservationsAtRiskAlert extends Notification implements ShouldQueue
             'reservation_ids' => $this->reservationIds,
             'message' => "Stock adjustment on {$this->variant->sku} left ".count($this->reservationIds).' reservation(s) at risk.',
         ];
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        Log::error('ReservationsAtRiskAlert failed permanently', [
+            'product_variant_id' => $this->variant->id,
+            'reservation_ids' => $this->reservationIds,
+            'exception' => $exception->getMessage(),
+        ]);
     }
 }

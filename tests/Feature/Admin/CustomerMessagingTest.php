@@ -283,4 +283,24 @@ class CustomerMessagingTest extends TestCase
             ->callTableBulkAction('bulkSendSms', [$withPhone, $withoutPhone], data: ['message' => 'Sale!'])
             ->assertHasNoTableBulkActionErrors();
     }
+
+    /**
+     * Emails/SMS are routed to their own dedicated queues, not shared with
+     * order-lifecycle notifications — a burst of staff bulk-messaging must
+     * never back up order-confirmation/payment-status delivery, or vice
+     * versa (CLAUDE.md §15's queue segmentation requirement).
+     */
+    public function test_send_customer_email_job_is_routed_to_its_own_queue(): void
+    {
+        $job = new SendCustomerEmail(1, 'Subject', 'Body');
+
+        $this->assertSame('emails', $job->queue);
+    }
+
+    public function test_send_customer_sms_job_is_routed_to_its_own_queue(): void
+    {
+        $job = new SendCustomerSms(1, 'Message');
+
+        $this->assertSame('sms', $job->queue);
+    }
 }

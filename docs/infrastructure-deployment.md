@@ -75,13 +75,13 @@ Defining a schedule in `routes/console.php` or `Kernel.php` does nothing without
 
 **Queue worker:** must run under a process supervisor (Supervisor or systemd) with automatic restart. A dead queue worker means order confirmations and SMS notifications silently stop sending, **and payment verification/refunds stop resolving** (they're queued jobs too — `VerifyPaymentWithGateway`, `IssueProviderRefund`), while the site otherwise appears healthy.
 
-Queues are segmented by nature — run a worker covering both, or two separate workers if you want independent scaling/restart:
+Queues are segmented by nature — run a worker covering all four, or separate workers per queue if you want independent scaling/restart:
 
 ```
-php artisan queue:work database --queue=external-api,notifications
+php artisan queue:work database --queue=external-api,emails,sms,notifications
 ```
 
-`external-api` (payment gateway verify/refund calls) and `notifications` (order/payment emails and SMS) are kept separate from Laravel's `default` queue so a slow/flaky provider call never delays a transactional notification, or vice versa.
+`external-api` (payment gateway verify/refund calls), `emails`/`sms` (staff-composed ad-hoc customer messages), and `notifications` (order-lifecycle and system alert notifications — mail+SMS+database together per notification, since a single notification send can span multiple channels) are kept separate from Laravel's `default` queue so a slow/flaky provider call never delays a transactional notification, or vice versa. `emails`/`sms` are split from `notifications` specifically so a burst of staff bulk-messaging never backs up order-confirmation/payment-status delivery, or vice versa.
 
 **Monitoring:** add an uptime/heartbeat check for both the scheduler and the queue worker. Both fail quietly; neither produces a user-visible error until a customer complains. The System Health dashboard's `ScheduleCheck`/`QueueCheck` cover "is the scheduler/worker alive at all," and `ExpiredReservationsAreBeingReleased`/`PendingPaymentsAreBeingVerified` cover the subtler failure of the scheduler being alive while one specific job errors or is unregistered — see `docs/TASK-system-health-checks.md`.
 

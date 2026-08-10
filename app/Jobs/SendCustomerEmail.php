@@ -42,7 +42,7 @@ class SendCustomerEmail implements ShouldQueue
         private readonly string $subject,
         private readonly string $body,
     ) {
-        $this->onQueue('notifications');
+        $this->onQueue('emails');
     }
 
     public function handle(): void

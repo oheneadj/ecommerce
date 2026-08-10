@@ -41,7 +41,7 @@ class SendCustomerSms implements ShouldQueue
         private readonly int $customerId,
         private readonly string $message,
     ) {
-        $this->onQueue('notifications');
+        $this->onQueue('sms');
     }
 
     public function handle(SmsGateway $sms): void

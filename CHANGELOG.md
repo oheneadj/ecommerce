@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — Emails/SMS shared a queue with order-lifecycle notifications (CLAUDE.md §15 bug hunt)
+- `SendCustomerEmail` and `SendCustomerSms` (staff bulk-messaging jobs) were both routed to the `notifications` queue alongside every order/health/stock notification — a burst of staff-composed bulk email/SMS could back up worker capacity needed for order confirmations and payment-status updates, or vice versa. Moved to their own dedicated `emails`/`sms` queues; `OrderNotification`/`LowStockAlert`/`ReservationsAtRiskAlert`/`CriticalHealthAlert` stay on `notifications` (a single notification send can span mail+SMS+database together, so it isn't cleanly splittable per channel without restructuring the Notification base class — out of scope for this fix).
+- Updated `docs/infrastructure-deployment.md`'s documented worker command to cover all four queues.
+- 2 new tests in `CustomerMessagingTest` asserting each job's `->queue`.
+
 ### Fixed — Homepage 500: lazy loading violation on ProductVariant images
 - `HomeController::show()` eager-loaded `images` and `variants` for its "new arrivals" query but not `variants.images` — `<x-product-card>` falls back to a variant's own images when the product has none of its own, which lazy-loaded `ProductVariant::images` and crashed with `LazyLoadingViolationException` on any real page load with more than one product/variant in the batch. `ProductListingPage` already eager-loads this correctly; `HomeController` now matches it.
 - Root cause of why this passed every existing test: Eloquent's lazy-loading guard (`Builder::hydrate()`) only marks a model as loaded-with-protection when its relation batch-hydrates **more than one row** — a fixture with a single product/variant silently skips the guard. The regression test therefore seeds two products so the violation is actually reachable, matching how the real homepage (8 products) triggered it.

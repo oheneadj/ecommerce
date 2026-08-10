@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — Store's primary/secondary colors reach the main call-to-action buttons
+- `<x-button variant="primary">` — used by every prominent storefront CTA (Add to cart, Checkout, View Checkout, etc.) — was hardcoded to `bg-zinc-900`/`text-white` instead of the store's brand color, so changing the primary color in Store Settings never touched its own main buttons. Now `bg-brand-primary text-white hover:bg-brand-secondary`.
+- This also gives the previously-unused `secondary_color` field (defined on `StoreSetting`, served by `ThemeCssController`, but referenced nowhere) real, visible meaning — the primary button's hover shade.
+- 1 new test (`ButtonComponentTest`).
+
 ### Added — Post-add-to-cart UX (mini-cart auto-opens, temporary "View Checkout" button)
 - Adding an item to the cart (from the product page or the wishlist) previously only showed a toast and silently updated the nav's cart badge — the customer had to notice and click the cart icon to see it or move toward checkout. Both `ProductDetailPage::addToCart()` and `WishlistPage::addToCart()` now also dispatch a `cart-item-added` browser event alongside the existing `cart-updated`.
 - `CartIndicator`'s mini-cart dropdown (already existed, click-to-open only) now also auto-opens on `cart-item-added` and auto-closes itself after 4s if left untouched, reusing its existing "View cart"/"Checkout" buttons — no new component.

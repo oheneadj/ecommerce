@@ -8,7 +8,7 @@
 
 @php
     $variants = [
-        'primary' => 'bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200',
+        'primary' => 'bg-brand-primary text-white hover:bg-brand-secondary',
         'danger' => 'bg-red-600 text-white hover:bg-red-500',
         'outline' => 'border border-zinc-300 text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-100 dark:hover:bg-zinc-800',
         'filled' => 'bg-zinc-200 text-zinc-800 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600',

@@ -46,7 +46,7 @@ class CartIndicatorTest extends TestCase
     {
         $user = User::factory()->create();
         $this->actingAs($user);
-        $variant = ProductVariant::factory()->create(['price' => 1500]);
+        $variant = ProductVariant::factory()->create(['price' => 1500, 'stock' => 5]);
         $cart = GetCurrentCart::run($user);
         AddItemToCart::run($cart, $variant, 2);
 

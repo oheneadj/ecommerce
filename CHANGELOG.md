@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — Flaky checkout/cart tests caused by unseeded variant stock
+- `ProductVariantFactory` randomizes `stock` between 0–100 by default; several tests that call `AddItemToCart::run()` without overriding `stock` had a ~1% chance per run of rolling 0 and failing with "Only 0 left in stock." — `CheckoutTest` (2 tests), `CartIndicatorTest`, `CheckoutPageTest`. Each now explicitly sets `stock` on the factory call.
+
 ### Fixed — Store's primary/secondary colors reach the main call-to-action buttons
 - `<x-button variant="primary">` — used by every prominent storefront CTA (Add to cart, Checkout, View Checkout, etc.) — was hardcoded to `bg-zinc-900`/`text-white` instead of the store's brand color, so changing the primary color in Store Settings never touched its own main buttons. Now `bg-brand-primary text-white hover:bg-brand-secondary`.
 - This also gives the previously-unused `secondary_color` field (defined on `StoreSetting`, served by `ThemeCssController`, but referenced nowhere) real, visible meaning — the primary button's hover shade.

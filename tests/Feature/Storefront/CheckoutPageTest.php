@@ -99,7 +99,7 @@ class CheckoutPageTest extends TestCase
     {
         $user = User::factory()->create();
         $this->actingAs($user);
-        $variant = ProductVariant::factory()->create(['price' => 1000]);
+        $variant = ProductVariant::factory()->create(['price' => 1000, 'stock' => 5]);
         $cart = GetCurrentCart::run($user);
         AddItemToCart::run($cart, $variant, 1);
 

@@ -55,7 +55,7 @@ class CheckoutTest extends TestCase
 
     public function test_order_item_price_snapshot_is_taken_at_order_creation_not_cart_add_time(): void
     {
-        $variant = ProductVariant::factory()->create(['price' => 1000, 'sku' => 'ORIG-SKU']);
+        $variant = ProductVariant::factory()->create(['price' => 1000, 'sku' => 'ORIG-SKU', 'stock' => 5]);
         $cart = Cart::factory()->create();
         AddItemToCart::run($cart, $variant, 1);
         $address = Address::factory()->create(['user_id' => $cart->user_id]);
@@ -72,7 +72,7 @@ class CheckoutTest extends TestCase
     public function test_past_order_is_unaffected_by_a_later_product_edit(): void
     {
         $product = Product::factory()->create(['name' => 'Original Name']);
-        $variant = ProductVariant::factory()->create(['product_id' => $product->id, 'sku' => 'SKU-1']);
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id, 'sku' => 'SKU-1', 'stock' => 5]);
         $cart = Cart::factory()->create();
         AddItemToCart::run($cart, $variant, 1);
         $address = Address::factory()->create(['user_id' => $cart->user_id]);

@@ -16,6 +16,7 @@ use Database\Factories\ProductVariantFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -100,6 +101,72 @@ class ProductVariant extends Model
     public function images(): HasMany
     {
         return $this->hasMany(ProductImage::class);
+    }
+
+    /**
+     * The images to show for this variant, in priority order:
+     *
+     *   1. Images uploaded directly to this variant (`images()`) — an
+     *      explicit override, e.g. a specific size photographed on its
+     *      own.
+     *   2. Images scoped to one of this variant's attribute terms (e.g.
+     *      "Color: Green") — uploaded once on the product and shared by
+     *      every variant carrying that term, so an admin doesn't have to
+     *      re-upload the same photos for every size of a color.
+     *   3. The product's general images (`product->images()` with no
+     *      variant/term scope) — the final fallback.
+     *
+     * When a variant's terms match more than one term-scoped image set
+     * (rare — e.g. images were mistakenly attached to a Size term too),
+     * ties are broken by the product's attribute order, so the result is
+     * deterministic rather than dependent on collection iteration order.
+     *
+     * Requires `product.images` and `attributeTerms` to already be
+     * loaded (as the storefront product detail page does) — falls back
+     * to querying otherwise.
+     *
+     * @return Collection<int, ProductImage>
+     */
+    public function galleryImages(): Collection
+    {
+        if ($this->images->isNotEmpty()) {
+            return $this->images->values();
+        }
+
+        $productImages = $this->product->images;
+        $variantTermIds = $this->attributeTerms->pluck('id')->all();
+
+        // Deliberately not `$this->product->attributes` — accessed from
+        // inside another Eloquent model's method, that property access
+        // resolves to Model's own protected `$attributes` array (both
+        // classes share Model as a common ancestor, so PHP allows the
+        // protected access directly and never reaches the magic
+        // __get()/relation resolution that a call from outside a Model
+        // subclass would go through). `getRelation()`/the relation method
+        // itself sidestep the collision entirely.
+        $productAttributes = $this->product->relationLoaded('attributes')
+            ? $this->product->getRelation('attributes')
+            : $this->product->attributes()->with('terms')->get();
+
+        foreach ($productAttributes as $attribute) {
+            $attributeTermIds = $attribute->terms->pluck('id')->all();
+            $matchingTermId = collect($variantTermIds)->first(fn ($id) => in_array($id, $attributeTermIds, true));
+
+            if ($matchingTermId === null) {
+                continue;
+            }
+
+            $termImages = $productImages->where('attribute_term_id', $matchingTermId);
+
+            if ($termImages->isNotEmpty()) {
+                return $termImages->values();
+            }
+        }
+
+        return $productImages
+            ->whereNull('attribute_term_id')
+            ->whereNull('product_variant_id')
+            ->values();
     }
 
     /**

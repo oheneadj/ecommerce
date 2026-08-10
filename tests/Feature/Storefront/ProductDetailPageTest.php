@@ -18,6 +18,7 @@ use App\Models\Attribute;
 use App\Models\AttributeTerm;
 use App\Models\Cart;
 use App\Models\Product;
+use App\Models\ProductImage;
 use App\Models\ProductVariant;
 use App\Models\Review;
 use App\Models\User;
@@ -152,6 +153,88 @@ class ProductDetailPageTest extends TestCase
         Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
             ->assertSet('selectedVariant.id', $smallVariant->id)
             ->assertDontSee('SHOE-BARE');
+    }
+
+    /**
+     * The original reported bug: with Color × Size variants, a size that
+     * was never individually photographed used to fall back to the
+     * product's generic image pool — which could easily belong to the
+     * wrong color. Images scoped to the Color term (`attribute_term_id`)
+     * are now shared by every size of that color instead.
+     */
+    public function test_a_variant_with_no_images_of_its_own_uses_its_color_terms_shared_images(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $size = Attribute::factory()->create(['name' => 'Size']);
+        $product->attributes()->attach([$color->id, $size->id]);
+        $green = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Green']);
+        $white = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'White']);
+        $size39 = AttributeTerm::factory()->create(['attribute_id' => $size->id, 'value' => '39']);
+        $size40 = AttributeTerm::factory()->create(['attribute_id' => $size->id, 'value' => '40']);
+
+        $greenImage = ProductImage::factory()->create(['product_id' => $product->id, 'attribute_term_id' => $green->id, 'path' => 'product-images/green.jpg']);
+        ProductImage::factory()->create(['product_id' => $product->id, 'attribute_term_id' => $white->id, 'path' => 'product-images/white.jpg']);
+
+        $green40 = ProductVariant::factory()->create(['product_id' => $product->id]);
+        $green40->attributeTerms()->attach([$green->id, $size40->id]);
+        $green39 = ProductVariant::factory()->create(['product_id' => $product->id]);
+        $green39->attributeTerms()->attach([$green->id, $size39->id]);
+
+        Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->call('selectTerm', $color->id, $green->id)
+            ->call('selectTerm', $size->id, $size39->id)
+            ->assertSet('selectedVariant.id', $green39->id)
+            ->assertSee($greenImage->path);
+    }
+
+    /**
+     * A variant with its own uploaded images must keep showing those,
+     * even when a term-scoped image set also exists for its color — a
+     * per-variant override always wins.
+     */
+    public function test_a_variants_own_images_take_priority_over_its_color_terms_shared_images(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $product->attributes()->attach($color->id);
+        $green = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Green']);
+        ProductImage::factory()->create(['product_id' => $product->id, 'attribute_term_id' => $green->id, 'path' => 'product-images/shared-green.jpg']);
+
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id]);
+        $variant->attributeTerms()->attach($green->id);
+        ProductImage::factory()->create(['product_id' => $product->id, 'product_variant_id' => $variant->id, 'path' => 'product-images/own.jpg']);
+
+        Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->assertSee('own.jpg')
+            ->assertDontSee('shared-green.jpg');
+    }
+
+    /**
+     * Regression: previously, selecting a term combination with no
+     * matching variant silently fell back to `variants->first()` — the
+     * cheapest-priced variant overall, regardless of color — misrepresenting
+     * what was actually selected. It must show "unavailable" instead.
+     */
+    public function test_selecting_a_combination_with_no_matching_variant_shows_unavailable(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $size = Attribute::factory()->create(['name' => 'Size']);
+        $product->attributes()->attach([$color->id, $size->id]);
+        $green = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Green']);
+        $size42 = AttributeTerm::factory()->create(['attribute_id' => $size->id, 'value' => '42']);
+        $size40 = AttributeTerm::factory()->create(['attribute_id' => $size->id, 'value' => '40']);
+
+        // Only Green-40 exists as an actual variant — Green-42 was never stocked.
+        $green40 = ProductVariant::factory()->create(['product_id' => $product->id, 'price' => 1000]);
+        $green40->attributeTerms()->attach([$green->id, $size40->id]);
+
+        Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->call('selectTerm', $color->id, $green->id)
+            ->call('selectTerm', $size->id, $size42->id)
+            ->assertSet('selectedVariant', null)
+            ->assertSee('Currently unavailable');
     }
 
     public function test_the_stock_count_is_shown_for_the_selected_variant(): void

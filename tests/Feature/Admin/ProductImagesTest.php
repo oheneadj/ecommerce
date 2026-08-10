@@ -13,6 +13,8 @@ use App\Enums\UserRole;
 use App\Filament\Resources\Products\Pages\EditProduct;
 use App\Filament\Resources\Products\RelationManagers\ImagesRelationManager;
 use App\Filament\Resources\Products\RelationManagers\VariantsRelationManager;
+use App\Models\Attribute;
+use App\Models\AttributeTerm;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
@@ -78,6 +80,7 @@ class ProductImagesTest extends TestCase
         Livewire::test(ImagesRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
             ->callTableAction('create', data: [
                 'path' => UploadedFile::fake()->image('red-variant.jpg'),
+                'scope_type' => 'variant',
                 'product_variant_id' => $variant->id,
                 'sort_order' => 1,
                 'is_primary' => false,
@@ -86,6 +89,64 @@ class ProductImagesTest extends TestCase
 
         $image = $product->images()->sole();
         $this->assertSame($variant->id, $image->product_variant_id);
+    }
+
+    public function test_uploading_an_attribute_value_scoped_image_records_the_term_and_leaves_the_variant_scope_blank(): void
+    {
+        Storage::fake('public');
+        $this->actingAs($this->admin());
+
+        $product = Product::factory()->create();
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $product->attributes()->attach($color->id);
+        $green = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Green']);
+
+        Livewire::test(ImagesRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
+            ->callTableAction('create', data: [
+                'path' => UploadedFile::fake()->image('green.jpg'),
+                'scope_type' => 'attribute_term',
+                'attribute_term_id' => $green->id,
+                'sort_order' => 0,
+                'is_primary' => false,
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $image = $product->images()->sole();
+        $this->assertSame($green->id, $image->attribute_term_id);
+        $this->assertNull($image->product_variant_id);
+    }
+
+    /**
+     * Regression: submitting with a leftover `product_variant_id` from a
+     * previous scope choice (e.g. switching from "variant" to "attribute
+     * value" in the form) must not silently persist both scopes at once —
+     * the inactive column is always cleared based on `scope_type`.
+     */
+    public function test_switching_scope_to_attribute_value_clears_a_stale_variant_id(): void
+    {
+        Storage::fake('public');
+        $this->actingAs($this->admin());
+
+        $product = Product::factory()->create();
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id]);
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $product->attributes()->attach($color->id);
+        $green = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Green']);
+
+        Livewire::test(ImagesRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
+            ->callTableAction('create', data: [
+                'path' => UploadedFile::fake()->image('green.jpg'),
+                'scope_type' => 'attribute_term',
+                'attribute_term_id' => $green->id,
+                'product_variant_id' => $variant->id,
+                'sort_order' => 0,
+                'is_primary' => false,
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $image = $product->images()->sole();
+        $this->assertSame($green->id, $image->attribute_term_id);
+        $this->assertNull($image->product_variant_id);
     }
 
     public function test_an_upload_over_the_configured_size_limit_is_rejected(): void

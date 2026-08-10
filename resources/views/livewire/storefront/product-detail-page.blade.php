@@ -1,6 +1,6 @@
 @php
     $variant = $this->selectedVariant;
-    $galleryImages = $variant?->images->isNotEmpty() ? $variant->images : $product->images;
+    $galleryImages = $variant?->galleryImages() ?? $product->images;
 @endphp
 
 <div class="space-y-8">

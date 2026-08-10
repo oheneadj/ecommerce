@@ -125,11 +125,17 @@ class ProductDetailPage extends Component
         // the default variant.
         $selected = collect($this->selectedTermIds)->map(fn ($id): int => (int) $id)->values()->sort()->values()->all();
 
+        // No `?? $this->product->variants->first()` fallback here — unlike
+        // the "nothing selected yet" branch above, reaching this point
+        // means the customer picked a specific combination. Silently
+        // substituting an unrelated variant (e.g. the cheapest one, in a
+        // different color) would misrepresent what's shown/added to cart;
+        // a combination that doesn't exist should just be unavailable.
         return $this->product->variants->first(function (ProductVariant $variant) use ($selected): bool {
             $variantTermIds = $variant->attributeTerms->pluck('id')->map(fn ($id): int => (int) $id)->sort()->values()->all();
 
             return $variantTermIds === $selected;
-        }) ?? $this->product->variants->first();
+        });
     }
 
     /**

@@ -20,11 +20,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $product_id
  * @property int|null $product_variant_id
+ * @property int|null $attribute_term_id
  * @property string $path
  * @property int $sort_order
  * @property bool $is_primary
  */
-#[Fillable(['product_id', 'product_variant_id', 'path', 'sort_order', 'is_primary'])]
+#[Fillable(['product_id', 'product_variant_id', 'attribute_term_id', 'path', 'sort_order', 'is_primary'])]
 #[ObservedBy(ProductImageObserver::class)]
 class ProductImage extends Model
 {
@@ -61,5 +62,17 @@ class ProductImage extends Model
     public function productVariant(): BelongsTo
     {
         return $this->belongsTo(ProductVariant::class);
+    }
+
+    /**
+     * The attribute value (e.g. Color: Green) this image is for, if any —
+     * shared by every variant of this product carrying that term, unless
+     * a variant has its own `productVariant`-scoped override.
+     *
+     * @return BelongsTo<AttributeTerm, $this>
+     */
+    public function attributeTerm(): BelongsTo
+    {
+        return $this->belongsTo(AttributeTerm::class);
     }
 }

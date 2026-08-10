@@ -42,6 +42,9 @@ class CriticalHealthAlert extends Notification implements ShouldQueue
         return ['mail', 'database'];
     }
 
+    /**
+     * Lists every currently-failing check and links to the System Health page.
+     */
     public function toMail(mixed $notifiable): MailMessage
     {
         $message = (new MailMessage)

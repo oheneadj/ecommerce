@@ -26,6 +26,10 @@ use Spatie\Health\Checks\Result;
  */
 class SuperAdminExists extends Check
 {
+    /**
+     * Fails if no account holds the Super Admin role (or the role hasn't
+     * been seeded at all yet — both cases are treated as "none exist").
+     */
     public function run(): Result
     {
         $result = Result::make();

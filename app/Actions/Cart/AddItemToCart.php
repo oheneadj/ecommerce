@@ -40,6 +40,9 @@ class AddItemToCart
 {
     use AsAction;
 
+    /**
+     * Adds `$quantity` of `$variant` to `$cart`, capped at available stock.
+     */
     public function handle(Cart $cart, ProductVariant $variant, int $quantity): CartItem
     {
         return DB::transaction(function () use ($cart, $variant, $quantity): CartItem {

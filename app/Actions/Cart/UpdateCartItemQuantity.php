@@ -27,6 +27,9 @@ class UpdateCartItemQuantity
 {
     use AsAction;
 
+    /**
+     * Sets the line's quantity, or removes it entirely if `$quantity <= 0`.
+     */
     public function handle(Cart $cart, ProductVariant $variant, int $quantity): void
     {
         if ($quantity <= 0) {

@@ -28,6 +28,10 @@ class SendCriticalHealthAlert
 {
     use AsAction;
 
+    /**
+     * Sends the alert to every Super Admin, unless nothing is failing or
+     * alerts are currently snoozed.
+     */
     public function handle(): void
     {
         $failures = ListCriticalHealthFailures::run();

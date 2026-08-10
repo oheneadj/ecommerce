@@ -19,6 +19,9 @@ class DetermineCriticalHealthFailure
 {
     use AsAction;
 
+    /**
+     * True if any check in ListCriticalHealthFailures is currently failing.
+     */
     public function handle(): bool
     {
         return ListCriticalHealthFailures::run() !== [];

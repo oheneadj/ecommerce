@@ -91,11 +91,18 @@ class SystemHealth extends Page implements HasForms
 
     private const CATEGORY_ORDER = ['Infrastructure', 'Operations', 'Configuration', 'Data Integrity', 'Attestations'];
 
+    /**
+     * Runs every check once, on first page load.
+     */
     public function mount(): void
     {
         $this->runChecks();
     }
 
+    /**
+     * Re-runs every Tier 1/2 check on demand and re-reads the stored Tier
+     * 3/attestation state, refreshing the whole page's results in place.
+     */
     public function rerunChecks(): void
     {
         $this->runChecks();
@@ -103,6 +110,9 @@ class SystemHealth extends Page implements HasForms
         Notification::make()->title('Checks re-run')->success()->send();
     }
 
+    /**
+     * Mutes the daily critical-alert notification for 24 hours.
+     */
     public function snoozeAlerts(): void
     {
         StoreSetting::current()->update(['health_alerts_snoozed_until' => now()->addDay()]);
@@ -112,6 +122,9 @@ class SystemHealth extends Page implements HasForms
         Notification::make()->title('Alerts snoozed for 24 hours')->success()->send();
     }
 
+    /**
+     * Clears an active snooze so the daily critical-alert notification resumes immediately.
+     */
     public function resumeAlerts(): void
     {
         StoreSetting::current()->update(['health_alerts_snoozed_until' => null]);
@@ -121,6 +134,10 @@ class SystemHealth extends Page implements HasForms
         Notification::make()->title('Alerts resumed')->success()->send();
     }
 
+    /**
+     * The modal action a Super Admin uses to record a new attestation for
+     * a given key (passed as a mounted argument from the Blade view).
+     */
     public function recordAttestationAction(): Action
     {
         return Action::make('recordAttestation')
@@ -144,6 +161,11 @@ class SystemHealth extends Page implements HasForms
             });
     }
 
+    /**
+     * Rebuilds every piece of state the view reads: live Tier 1/2 results
+     * grouped by category, the stored Tier 3 results, attestation rows,
+     * the snooze timestamp, and the summary counts.
+     */
     private function runChecks(): void
     {
         $groups = [];
@@ -209,6 +231,11 @@ class SystemHealth extends Page implements HasForms
         })->values()->all();
     }
 
+    /**
+     * Tallies critical/warning/passing counts across both the grouped
+     * check results and the attestation rows, and derives the
+     * severity-weighted percentage shown in the summary badge.
+     */
     private function calculateSummary(): void
     {
         $critical = 0;

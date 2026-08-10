@@ -19,6 +19,9 @@ use Exception;
  */
 class CartQuantityExceedsStockException extends Exception
 {
+    /**
+     * @param  int  $available  the variant's current stock, shown to the customer.
+     */
     public function __construct(public readonly int $available)
     {
         parent::__construct("Only {$available} left in stock.");

@@ -45,6 +45,27 @@ class HomePageTest extends TestCase
         $this->get('/')->assertOk()->assertDontSee('Out Of Stock Item');
     }
 
+    /**
+     * Regression: Eloquent's lazy-loading guard only activates when a
+     * relation batch-hydrates more than one row at once (`Builder::hydrate()`
+     * skips it for a single row) — so this needs at least two products,
+     * each with a variant and no images of its own, to actually reproduce
+     * the "Attempted to lazy load [images] on model [ProductVariant]"
+     * violation that a single-product/single-variant fixture would miss.
+     */
+    public function test_the_homepage_does_not_lazy_load_variant_images_when_a_product_has_no_images_of_its_own(): void
+    {
+        foreach (['First Item', 'Second Item'] as $name) {
+            $product = Product::factory()->create(['name' => $name, 'status' => ProductStatus::Active]);
+            ProductVariant::factory()->create(['product_id' => $product->id, 'status' => VariantStatus::Active, 'stock' => 5]);
+        }
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('First Item')
+            ->assertSee('Second Item');
+    }
+
     public function test_the_homepage_never_shows_a_draft_product(): void
     {
         $product = Product::factory()->create(['name' => 'Draft Item', 'status' => ProductStatus::Draft]);

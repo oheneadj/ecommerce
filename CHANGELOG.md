@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — Homepage 500: lazy loading violation on ProductVariant images
+- `HomeController::show()` eager-loaded `images` and `variants` for its "new arrivals" query but not `variants.images` — `<x-product-card>` falls back to a variant's own images when the product has none of its own, which lazy-loaded `ProductVariant::images` and crashed with `LazyLoadingViolationException` on any real page load with more than one product/variant in the batch. `ProductListingPage` already eager-loads this correctly; `HomeController` now matches it.
+- Root cause of why this passed every existing test: Eloquent's lazy-loading guard (`Builder::hydrate()`) only marks a model as loaded-with-protection when its relation batch-hydrates **more than one row** — a fixture with a single product/variant silently skips the guard. The regression test therefore seeds two products so the violation is actually reachable, matching how the real homepage (8 products) triggered it.
+- 1 new test (`HomePageTest`).
+
+### Fixed — More flaky cart/checkout tests from unseeded variant stock
+- Same root cause as the earlier `CheckoutTest`/`CartIndicatorTest`/`CheckoutPageTest` fix: `ProductVariantFactory` randomizes `stock` 0–100, and several more tests calling `AddItemToCart::run()` never overrode it — `CartManagementTest` (4 tests), `CartPageTest` (3 tests), `CartIndicatorTest` (1 more), `GuestCartMergeOnLoginTest` (2 tests). Each now pins `stock`.
+
 ### Changed — Customer dashboard now matches the storefront's design system
 - `/account` predated the design conventions established across the rest of the storefront (`<x-button>` for actions, section icons) — its CTAs were still plain `text-brand-primary hover:underline` links with a `→` glyph, unlike the address book / wishlist pages' `<x-button variant="outline/ghost">` pattern. Updated "Recent orders" (View all), "Addresses" (Manage addresses), and "Account settings" (Manage account settings) to use `<x-button>`, and added a section icon (`shopping-bag`/`home`/`cog`) to each card header, matching how other pages label their sections.
 

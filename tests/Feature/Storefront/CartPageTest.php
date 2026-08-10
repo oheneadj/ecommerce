@@ -135,7 +135,7 @@ class CartPageTest extends TestCase
     {
         $user = User::factory()->create();
         $this->actingAs($user);
-        $variant = ProductVariant::factory()->create();
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
         $cart = GetCurrentCart::run($user);
         AddItemToCart::run($cart, $variant, 1);
 
@@ -149,7 +149,7 @@ class CartPageTest extends TestCase
     {
         $user = User::factory()->create();
         $this->actingAs($user);
-        $variant = ProductVariant::factory()->create();
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
         $cart = GetCurrentCart::run($user);
         AddItemToCart::run($cart, $variant, 1);
 
@@ -164,7 +164,7 @@ class CartPageTest extends TestCase
     {
         $user = User::factory()->create();
         $otherUser = User::factory()->create();
-        $otherVariant = ProductVariant::factory()->create();
+        $otherVariant = ProductVariant::factory()->create(['stock' => 5]);
         $otherCart = Cart::factory()->create(['user_id' => $otherUser->id]);
         AddItemToCart::run($otherCart, $otherVariant, 1);
 

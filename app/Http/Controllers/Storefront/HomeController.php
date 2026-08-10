@@ -23,7 +23,11 @@ class HomeController extends Controller
         $newProducts = Product::query()
             ->active()
             ->whereHas('variants', fn ($query) => $query->where('status', VariantStatus::Active)->where('stock', '>', 0))
-            ->with(['images', 'variants' => fn ($query) => $query->where('status', VariantStatus::Active)->orderBy('price')])
+            ->with([
+                'images',
+                'variants' => fn ($query) => $query->where('status', VariantStatus::Active)->orderBy('price'),
+                'variants.images',
+            ])
             ->latest()
             ->limit(8)
             ->get();

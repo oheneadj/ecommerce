@@ -29,7 +29,7 @@ class GuestCartMergeOnLoginTest extends TestCase
         $sessionId = 'guest-session-1';
         Request::instance()->cookies->set(config('session.cookie'), $sessionId);
 
-        $variant = ProductVariant::factory()->create();
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
         $guestCart = Cart::factory()->create(['user_id' => null, 'session_id' => $sessionId]);
         AddItemToCart::run($guestCart, $variant, 2);
 
@@ -48,7 +48,7 @@ class GuestCartMergeOnLoginTest extends TestCase
         $sessionId = 'guest-session-2';
         Request::instance()->cookies->set(config('session.cookie'), $sessionId);
 
-        $variant = ProductVariant::factory()->create();
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
         $guestCart = Cart::factory()->create(['user_id' => null, 'session_id' => $sessionId]);
         AddItemToCart::run($guestCart, $variant, 2);
 

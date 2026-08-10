@@ -33,8 +33,8 @@ class CartIndicatorTest extends TestCase
     {
         $user = User::factory()->create();
         $this->actingAs($user);
-        $variantA = ProductVariant::factory()->create();
-        $variantB = ProductVariant::factory()->create();
+        $variantA = ProductVariant::factory()->create(['stock' => 5]);
+        $variantB = ProductVariant::factory()->create(['stock' => 5]);
         $cart = GetCurrentCart::run($user);
         AddItemToCart::run($cart, $variantA, 2);
         AddItemToCart::run($cart, $variantB, 3);
@@ -60,7 +60,7 @@ class CartIndicatorTest extends TestCase
     {
         $user = User::factory()->create();
         $this->actingAs($user);
-        $variant = ProductVariant::factory()->create();
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
         $cart = GetCurrentCart::run($user);
 
         $component = Livewire::test(CartIndicator::class);

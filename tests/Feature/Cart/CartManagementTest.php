@@ -31,7 +31,7 @@ class CartManagementTest extends TestCase
 
     public function test_adding_the_same_variant_twice_increases_quantity_instead_of_duplicating(): void
     {
-        $variant = ProductVariant::factory()->create();
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
         $cart = Cart::factory()->create();
 
         AddItemToCart::run($cart, $variant, 2);
@@ -43,7 +43,7 @@ class CartManagementTest extends TestCase
 
     public function test_removing_an_item_deletes_it_from_the_cart(): void
     {
-        $variant = ProductVariant::factory()->create();
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
         $cart = Cart::factory()->create();
         AddItemToCart::run($cart, $variant, 1);
 
@@ -54,8 +54,8 @@ class CartManagementTest extends TestCase
 
     public function test_removing_an_item_from_a_cart_the_variant_is_not_in_does_nothing(): void
     {
-        $variant = ProductVariant::factory()->create();
-        $otherVariant = ProductVariant::factory()->create();
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
+        $otherVariant = ProductVariant::factory()->create(['stock' => 5]);
         $cart = Cart::factory()->create();
         AddItemToCart::run($cart, $variant, 1);
 
@@ -69,7 +69,7 @@ class CartManagementTest extends TestCase
         // RemoveItemFromCart takes the owning Cart and scopes the delete
         // through it — it has no way to be pointed at a CartItem row from
         // an unrelated cart, unlike a bare-CartItem signature would.
-        $variant = ProductVariant::factory()->create();
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
         $ownCart = Cart::factory()->create();
         $otherCart = Cart::factory()->create();
         AddItemToCart::run($otherCart, $variant, 1);
@@ -100,7 +100,7 @@ class CartManagementTest extends TestCase
     {
         $user = User::factory()->create();
         $guestCart = Cart::factory()->create(['user_id' => null, 'session_id' => 'guest-session']);
-        $variant = ProductVariant::factory()->create();
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
         AddItemToCart::run($guestCart, $variant, 1);
 
         $result = MergeGuestCartIntoUser::run($guestCart, $user);

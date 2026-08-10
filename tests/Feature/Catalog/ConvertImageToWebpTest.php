@@ -74,9 +74,7 @@ class ConvertImageToWebpTest extends TestCase
 
         Livewire::test(ImagesRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
             ->callTableAction('create', data: [
-                'path' => UploadedFile::fake()->image('front.jpg'),
-                'sort_order' => 0,
-                'is_primary' => false,
+                'images' => [UploadedFile::fake()->image('front.jpg')],
             ])
             ->assertHasNoTableActionErrors();
 
@@ -93,9 +91,7 @@ class ConvertImageToWebpTest extends TestCase
 
         Livewire::test(VariantsRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
             ->callTableAction('addImage', $variant, data: [
-                'path' => UploadedFile::fake()->image('variant.png'),
-                'sort_order' => 0,
-                'is_primary' => false,
+                'images' => [UploadedFile::fake()->image('variant.png')],
             ])
             ->assertHasNoTableActionErrors();
 

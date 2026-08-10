@@ -28,6 +28,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Storage;
 
@@ -54,15 +55,20 @@ class ImagesRelationManager extends RelationManager
     public function form(Schema $schema): Schema
     {
         return $schema
+            // Two separate fields, not one FileUpload toggling `multiple()`
+            // by operation — that turned out fragile (Filament's own
+            // hydration of an existing record's single `path` column got
+            // confused switching modes on the same component) and the
+            // schema-level `components(Closure)` doesn't receive an
+            // `operation` argument (only individual field-level closures
+            // do), so the fields can't be swapped in/out that way either.
+            // Distinct names (`path` vs `images`) avoid a state-binding
+            // collision between the two; each is hidden AND not required
+            // on the operation it doesn't apply to, so only one is ever
+            // active/validated at a time.
             ->components([
-                FileUpload::make('path')
-                    ->label('Image')
-                    ->image()
-                    ->maxSize(config('media.max_upload_size_kb'))
-                    ->disk('public')
-                    ->directory('product-images')
-                    ->saveUploadedFileUsing(ConvertImageToWebp::forFileUpload())
-                    ->required(),
+                $this->singleImageUploadField(),
+                $this->multiImageUploadField(),
 
                 Select::make('scope_type')
                     ->label('Scope')
@@ -117,15 +123,61 @@ class ImagesRelationManager extends RelationManager
                     })
                     ->required(fn (Get $get): bool => $get('scope_type') === 'variant'),
 
+                // Hidden on create — with possibly-multiple files in one
+                // submission, asking the admin to reason about a single
+                // "starting position"/"is this the primary one" up front
+                // isn't worth the friction. Order is auto-assigned and no
+                // upload auto-becomes primary; both stay adjustable per
+                // row afterward via Edit, where they're unambiguous.
                 TextInput::make('sort_order')
                     ->label('Display order')
                     ->numeric()
                     ->default(0)
-                    ->required(),
+                    ->required()
+                    ->hiddenOn('create'),
 
                 Toggle::make('is_primary')
-                    ->label('Primary image'),
+                    ->label('Primary image')
+                    ->hiddenOn('create'),
             ]);
+    }
+
+    private function singleImageUploadField(): FileUpload
+    {
+        return FileUpload::make('path')
+            ->label('Image')
+            ->image()
+            ->maxSize(config('media.max_upload_size_kb'))
+            ->disk('public')
+            ->directory('product-images')
+            ->saveUploadedFileUsing(ConvertImageToWebp::forFileUpload())
+            ->hiddenOn('create')
+            ->required(fn (string $operation): bool => $operation !== 'create')
+            // Default record-hydration wasn't picking up the existing
+            // scalar `path` value on edit (came through empty) once a
+            // second FileUpload component was added to this schema —
+            // set it explicitly, same pattern already used for
+            // `scope_type` above.
+            ->afterStateHydrated(function (FileUpload $component, ?ProductImage $record): void {
+                if ($record !== null) {
+                    $component->state($record->path);
+                }
+            });
+    }
+
+    private function multiImageUploadField(): FileUpload
+    {
+        return FileUpload::make('images')
+            ->label('Image(s)')
+            ->image()
+            ->multiple()
+            ->maxFiles(10)
+            ->maxSize(config('media.max_upload_size_kb'))
+            ->disk('public')
+            ->directory('product-images')
+            ->saveUploadedFileUsing(ConvertImageToWebp::forFileUpload())
+            ->visibleOn('create')
+            ->required(fn (string $operation): bool => $operation === 'create');
     }
 
     /**
@@ -152,10 +204,55 @@ class ImagesRelationManager extends RelationManager
         return $data;
     }
 
+    /**
+     * Overrides Filament's default `CreateAction` behavior (which only
+     * ever creates one record) — `path` arrives as an array of already-
+     * converted-to-webp paths when multiple files were uploaded, so this
+     * creates one `ProductImage` row per file, all sharing the same scope
+     * (`clearInactiveScopeColumn` has already run via `mutateDataUsing`),
+     * auto-assigned `sort_order` continuing on from this product's
+     * existing images, never auto-primary. Returns the first created
+     * record — Filament only needs *a* record back to close out its own
+     * create lifecycle (notification, modal close, table refresh); which
+     * one is irrelevant here since there's nothing else to do with it.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function createImagesFromUpload(array $data): ProductImage
+    {
+        /** @var Product $product */
+        $product = $this->getOwnerRecord();
+
+        $paths = array_values((array) $data['images']);
+        unset($data['images'], $data['path']);
+
+        $nextSortOrder = $product->images()->max('sort_order');
+        $nextSortOrder = $nextSortOrder === null ? 0 : $nextSortOrder + 1;
+
+        $created = [];
+
+        foreach ($paths as $index => $path) {
+            $created[] = $product->images()->create([
+                ...$data,
+                'path' => $path,
+                'sort_order' => $nextSortOrder + $index,
+                'is_primary' => false,
+            ]);
+        }
+
+        return $created[0];
+    }
+
     public function table(Table $table): Table
     {
         return $table
             ->recordTitleAttribute('path')
+            // The "Scope" column below reads productVariant/attributeTerm.
+            // attribute per row — without eager loading here, that's an
+            // N+1 (previously silent; only surfaced once 2+ rows shared
+            // the same scope, since Eloquent's lazy-loading guard skips a
+            // relation that only ever batch-hydrates a single row).
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['productVariant', 'attributeTerm.attribute']))
             ->columns([
                 ImageColumn::make('path')
                     ->label('Image')
@@ -185,8 +282,7 @@ class ImagesRelationManager extends RelationManager
             ])
             ->defaultSort('sort_order')
             ->headerActions([
-                CreateAction::make()
-                    ->mutateDataUsing(fn (array $data): array => $this->clearInactiveScopeColumn($data)),
+                $this->createAction(),
             ])
             ->recordActions([
                 EditAction::make()
@@ -204,8 +300,15 @@ class ImagesRelationManager extends RelationManager
             ->emptyStateDescription('Upload a general product photo, or scope one to a specific variant.')
             ->emptyStateIcon(Heroicon::OutlinedPhoto)
             ->emptyStateActions([
-                CreateAction::make(),
+                $this->createAction(),
             ]);
+    }
+
+    private function createAction(): CreateAction
+    {
+        return CreateAction::make()
+            ->mutateDataUsing(fn (array $data): array => $this->clearInactiveScopeColumn($data))
+            ->using(fn (array $data): ProductImage => $this->createImagesFromUpload($data));
     }
 
     /**

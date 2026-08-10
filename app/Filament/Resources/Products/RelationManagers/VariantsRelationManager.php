@@ -29,7 +29,6 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Grid;
@@ -373,8 +372,15 @@ class VariantsRelationManager extends RelationManager
     }
 
     /**
-     * Attaches an image directly to the variant its row belongs to — no
-     * "which variant?" selector needed, since the row itself is the context.
+     * Attaches one or more images directly to the variant its row belongs
+     * to — no "which variant?" selector needed, since the row itself is
+     * the context. Each uploaded file becomes its own ProductImage row
+     * (visible individually on the product's Images tab), auto-ordered
+     * after whatever images the variant already has. No sort_order/
+     * is_primary inputs here — reasoning about a "starting position"
+     * across a batch of files isn't worth the friction on a quick-add
+     * action; both are still adjustable afterward via the Images tab,
+     * where each row is edited individually and unambiguous.
      */
     private static function addImageAction(): Action
     {
@@ -383,37 +389,39 @@ class VariantsRelationManager extends RelationManager
             ->icon(Heroicon::OutlinedPhoto)
             ->authorize(fn (): bool => Auth::user()?->can('create', ProductImage::class) ?? false)
             ->schema([
-                FileUpload::make('path')
-                    ->label('Image')
+                FileUpload::make('images')
+                    ->label('Images')
                     ->image()
+                    ->multiple()
+                    ->maxFiles(10)
+                    ->reorderable()
                     ->maxSize(config('media.max_upload_size_kb'))
                     ->disk('public')
                     ->directory('product-images')
                     ->saveUploadedFileUsing(ConvertImageToWebp::forFileUpload())
                     ->required(),
-
-                TextInput::make('sort_order')
-                    ->label('Display order')
-                    ->numeric()
-                    ->default(0)
-                    ->required(),
-
-                Toggle::make('is_primary')
-                    ->label('Primary image'),
             ])
             ->action(function (ProductVariant $record, array $data): void {
                 /** @var Product $product */
                 $product = $record->product;
+                $paths = array_values($data['images']);
+                $nextSortOrder = $record->images()->max('sort_order');
+                $nextSortOrder = $nextSortOrder === null ? 0 : $nextSortOrder + 1;
 
-                AttachProductImage::run(
-                    $product,
-                    $data['path'],
-                    $record,
-                    (int) ($data['sort_order'] ?? 0),
-                    (bool) ($data['is_primary'] ?? false),
-                );
+                foreach ($paths as $index => $path) {
+                    AttachProductImage::run(
+                        $product,
+                        $path,
+                        $record,
+                        $nextSortOrder + $index,
+                        isPrimary: false,
+                    );
+                }
 
-                Notification::make()->title('Image added')->success()->send();
+                Notification::make()
+                    ->title(count($paths) === 1 ? 'Image added' : count($paths).' images added')
+                    ->success()
+                    ->send();
             });
     }
 

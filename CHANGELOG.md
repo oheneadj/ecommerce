@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — Lightbox carousel arrows invisible against light/white product images
+- The prev/next arrow buttons used a translucent `bg-white/10` background, relying on the lightbox's dark backdrop for contrast — but they sit flush against the image edge, so a light or white product photo showing through made the white icon nearly invisible. Now a solid `bg-zinc-900/70` (`/90` on hover), guaranteeing contrast regardless of what's behind them.
+
 ### Added — Clickable product gallery thumbnails + lightbox carousel
 - The product detail page's thumbnails were purely decorative — clicking one did nothing, and the main image wasn't clickable at all. Clicking a thumbnail now swaps the main image to it (client-side Alpine state, `selected` index, no server round-trip), and clicking the main image opens a full-screen lightbox with a carousel across every one of the product's images (prev/next buttons, arrow-key navigation, image counter, click-outside/Escape to close) — same visual conventions as the existing `<x-modal>` (backdrop, `x-cloak`, Escape-to-close).
 - Gallery state is keyed to the selected variant (`wire:key="gallery-{variant id}"`) so switching variants (which can change the image set entirely) resets the selection instead of pointing at a stale index.

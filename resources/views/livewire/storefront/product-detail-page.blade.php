@@ -68,7 +68,7 @@
 
                     <div x-show="lightboxOpen" x-transition class="relative flex max-h-full max-w-4xl items-center">
                         @if ($galleryImages->count() > 1)
-                            <button type="button" @click.stop="prev()" class="absolute left-2 z-10 rounded-full bg-white/10 p-2 text-white hover:bg-white/20" aria-label="{{ __('Previous image') }}">
+                            <button type="button" @click.stop="prev()" class="absolute left-2 z-10 rounded-full bg-zinc-900/70 p-2 text-white hover:bg-zinc-900/90" aria-label="{{ __('Previous image') }}">
                                 <x-app-icon name="chevron-up" class="size-6 -rotate-90" />
                             </button>
                         @endif
@@ -76,7 +76,7 @@
                         <img :src="images[selected]" alt="{{ $product->name }}" class="max-h-[85vh] w-full rounded-lg object-contain" @click.stop>
 
                         @if ($galleryImages->count() > 1)
-                            <button type="button" @click.stop="next()" class="absolute right-2 z-10 rounded-full bg-white/10 p-2 text-white hover:bg-white/20" aria-label="{{ __('Next image') }}">
+                            <button type="button" @click.stop="next()" class="absolute right-2 z-10 rounded-full bg-zinc-900/70 p-2 text-white hover:bg-zinc-900/90" aria-label="{{ __('Next image') }}">
                                 <x-app-icon name="chevron-up" class="size-6 rotate-90" />
                             </button>
 

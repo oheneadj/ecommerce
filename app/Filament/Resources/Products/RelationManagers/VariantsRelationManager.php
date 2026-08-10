@@ -94,6 +94,13 @@ class VariantsRelationManager extends RelationManager
                     ->multiple()
                     ->preload()
                     ->searchable()
+                    ->rule(fn (): \Closure => function (string $attribute, mixed $value, \Closure $fail): void {
+                        $attributeIds = AttributeTerm::query()->whereIn('id', $value ?? [])->pluck('attribute_id');
+
+                        if ($attributeIds->count() !== $attributeIds->unique()->count()) {
+                            $fail('Only one value per attribute can be selected (e.g. pick one Color, not two).');
+                        }
+                    })
                     ->helperText('Pick from the values enabled on this product\'s Attributes — no retyping needed.')
                     ->columnSpanFull(),
 
@@ -216,6 +223,8 @@ class VariantsRelationManager extends RelationManager
                                 return $product->attributes()->pluck('attributes.name', 'attributes.id')->all();
                             })
                             ->live()
+                            ->distinct()
+                            ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                             ->required(),
 
                         Select::make('term_ids')
@@ -271,6 +280,18 @@ class VariantsRelationManager extends RelationManager
 
                 /** @var array<int, array{attribute_id: int, term_ids: array<int, int>}> $attributeGroupInputs */
                 $attributeGroupInputs = $data['attributeGroups'];
+
+                $attributeIds = collect($attributeGroupInputs)->pluck('attribute_id');
+
+                if ($attributeIds->count() !== $attributeIds->unique()->count()) {
+                    Notification::make()
+                        ->title('Each attribute can only be added once')
+                        ->body('Combine its values into a single row instead of adding the same attribute twice.')
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
 
                 $termGroups = collect($attributeGroupInputs)
                     ->map(fn (array $group): array => array_map('intval', $group['term_ids']))

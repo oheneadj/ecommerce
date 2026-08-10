@@ -117,4 +117,28 @@ class ProductVariantGlobalAttributesTest extends TestCase
         $this->assertSame(['Large'], $variant->attributeTerms->pluck('value')->all());
         $this->assertFalse($variant->attributeTerms->contains($red));
     }
+
+    public function test_a_variant_cannot_be_assigned_two_terms_of_the_same_attribute(): void
+    {
+        $this->actingAs($this->admin());
+
+        $product = Product::factory()->create();
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $product->attributes()->attach($color->id);
+
+        $red = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Red']);
+        $blue = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Blue']);
+
+        Livewire::test(VariantsRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
+            ->callTableAction('create', data: [
+                'sku' => 'SKU-1',
+                'price' => 10,
+                'stock' => 5,
+                'status' => VariantStatus::Active->value,
+                'attributeTerms' => [$red->id, $blue->id],
+            ])
+            ->assertHasTableActionErrors(['attributeTerms']);
+
+        $this->assertSame(0, $product->variants()->count());
+    }
 }

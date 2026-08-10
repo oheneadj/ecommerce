@@ -62,4 +62,29 @@ class GenerateVariantsActionTest extends TestCase
 
         $this->assertSame(4, $product->variants()->count());
     }
+
+    public function test_generating_variants_with_the_same_attribute_in_two_rows_creates_no_variants(): void
+    {
+        $this->actingAs($this->admin());
+
+        $product = Product::factory()->create(['slug' => 'colorful-tee']);
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $product->attributes()->attach($color->id);
+
+        $red = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Red']);
+        $blue = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Blue']);
+
+        Livewire::test(VariantsRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
+            ->callTableAction('generateVariants', data: [
+                'attributeGroups' => [
+                    ['attribute_id' => $color->id, 'term_ids' => [$red->id]],
+                    ['attribute_id' => $color->id, 'term_ids' => [$blue->id]],
+                ],
+                'sku_prefix' => 'COLORFUL-TEE',
+                'price' => 25,
+                'stock' => 5,
+            ]);
+
+        $this->assertSame(0, $product->variants()->count());
+    }
 }

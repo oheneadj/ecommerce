@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — Duplicate attribute assignment on product variants
+- The "Generate variants" bulk action's attribute Repeater let two rows both select the same attribute (e.g. two "Color" rows with different values), which `GenerateProductVariants` then cartesian-produced against itself into nonsensical variants. Its dropdown now hides an attribute once picked in another row (`disableOptionsWhenSelectedInSiblingRepeaterItems`), backed by a `distinct()` rule and a server-side check in the action itself that rejects the submission (no variants created) if two rows share an `attribute_id` — closes the gap for any submission that bypasses the UI.
+- A single variant's own "Attribute values" picker (the flat multi-select bound to `attributeTerms`) could be given two different terms of the same attribute (e.g. both Red and Blue) — added a validation rule rejecting more than one selected term per attribute.
+- 2 new tests (`GenerateVariantsActionTest`, `ProductVariantGlobalAttributesTest`).
+
 ### Fixed — PHPStan errors across Cart, Filament Breezy profile, health migration, and the historical data seeder
 - `Cart::scopeOpen()` was missing its `Builder<Cart>` generic type annotations (matches the existing `@param`/`@return Builder<Model>` convention used by `ProductVariant::scopeLowStock()`).
 - `App\Filament\Breezy\PersonalInfo` (the admin profile form extension adding a `phone` field) had an untyped `$only` array and an untyped `getProfileFormComponents()` return — added proper `array<int, string>`/`array<int, Component>` annotations.

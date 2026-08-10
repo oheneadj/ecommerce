@@ -25,6 +25,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
@@ -37,14 +38,23 @@ class ProductDetailPage extends Component
 {
     public Product $product;
 
-    /** @var array<int, int> */
+    /**
+     * Reflected in the URL (?options[attributeId]=termId) so a reload, or
+     * sharing the link, keeps whichever combination the customer picked
+     * instead of silently reverting to the default variant.
+     *
+     * @var array<int, int>
+     */
+    #[Url(as: 'options')]
     public array $selectedTermIds = [];
 
     /**
      * Set only when a variant is picked directly (the fallback list shown
      * for products with no global Attribute selector — see
      * `hasAttributeSelector`). Takes precedence over `$selectedTermIds`.
+     * Also reflected in the URL (?variant=id) for the same reason.
      */
+    #[Url(as: 'variant')]
     public ?int $selectedVariantId = null;
 
     public function mount(string $productSlug): void
@@ -96,10 +106,15 @@ class ProductDetailPage extends Component
             return $this->product->variants->first();
         }
 
-        $selected = collect($this->selectedTermIds)->values()->sort()->values()->all();
+        // Cast to int explicitly — values restored from the URL query
+        // string (a page reload/shared link) come back as strings, which
+        // would otherwise never strictly-equal the integer ids from
+        // attributeTerms->pluck('id') below and silently fall through to
+        // the default variant.
+        $selected = collect($this->selectedTermIds)->map(fn ($id): int => (int) $id)->values()->sort()->values()->all();
 
         return $this->product->variants->first(function (ProductVariant $variant) use ($selected): bool {
-            $variantTermIds = $variant->attributeTerms->pluck('id')->sort()->values()->all();
+            $variantTermIds = $variant->attributeTerms->pluck('id')->map(fn ($id): int => (int) $id)->sort()->values()->all();
 
             return $variantTermIds === $selected;
         }) ?? $this->product->variants->first();

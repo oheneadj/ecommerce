@@ -47,26 +47,21 @@
                     <div class="mt-4 grid gap-4 sm:grid-cols-2">
                         <div>
                             <x-input wire:model="guestName" :placeholder="__('Full name')" />
-                            @error('guestName') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <x-input wire:model="guestPhone" type="tel" :placeholder="__('Phone number')" />
-                            @error('guestPhone') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                         </div>
                         <div class="sm:col-span-2">
                             <x-input wire:model="guestEmail" type="email" :placeholder="__('Email address')" />
-                            @error('guestEmail') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                         </div>
                         <div class="sm:col-span-2">
                             <x-input wire:model="guestLine1" :placeholder="__('Address line 1')" />
-                            @error('guestLine1') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                         </div>
                         <div class="sm:col-span-2">
                             <x-input wire:model="guestLine2" :placeholder="__('Address line 2 (optional)')" />
                         </div>
                         <div>
                             <x-input wire:model="guestCity" :placeholder="__('City')" />
-                            @error('guestCity') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <x-input wire:model="guestRegion" :placeholder="__('Region (optional)')" />

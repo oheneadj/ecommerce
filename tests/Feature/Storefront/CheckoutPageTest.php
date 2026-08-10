@@ -415,15 +415,13 @@ class CheckoutPageTest extends TestCase
 
         $html = $component->html();
 
-        // guestName's error legitimately appears twice: <x-input>'s own
-        // (now correctly-scoped) @error block, plus the page's separate
-        // hand-rolled @error('guestName') block right below it. Before the
-        // fix, every OTHER <x-input> on the page — including fields that
-        // are never validated, like the optional line 2/region inputs,
-        // and entirely unrelated fields like the coupon code — also
-        // rendered this same message, because $attributes->get('name')
-        // was always null and @error(null) matches the first error in
-        // the whole bag. Assert it's exactly these two, not more.
-        $this->assertSame(2, substr_count($html, 'Please enter your name.'));
+        // guestName's error should appear exactly once, from <x-input>'s
+        // own now-correctly-scoped @error block. Before the fix, every
+        // OTHER <x-input> on the page — including fields that are never
+        // validated, like the optional line 2/region inputs, and entirely
+        // unrelated fields like the coupon code — also rendered this same
+        // message, because $attributes->get('name') was always null and
+        // @error(null) matches the first error in the whole bag.
+        $this->assertSame(1, substr_count($html, 'Please enter your name.'));
     }
 }

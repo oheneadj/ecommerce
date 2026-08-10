@@ -8,6 +8,7 @@ use App\Actions\Auth\RequestOtp;
 use App\Actions\Auth\VerifyOtp;
 use App\Exceptions\InvalidOtpException;
 use App\Exceptions\OtpRateLimitedException;
+use App\Exceptions\TooManyOtpVerificationAttemptsException;
 use App\Models\OtpCode;
 use App\Models\SmsApiLog;
 use App\Models\User;
@@ -205,6 +206,34 @@ class PhoneOtpLoginTest extends TestCase
         $otp->forceFill(['consumed_at' => now()])->save();
 
         $this->expectException(InvalidOtpException::class);
+
+        VerifyOtp::run('+233201234567', '123456');
+    }
+
+    /**
+     * The per-code 5-attempt lock (OtpCode::isUsable()) resets the moment
+     * a fresh code is requested — this caps verification attempts across
+     * an entire rolling window instead, regardless of how many codes were
+     * requested in between.
+     */
+    public function test_too_many_verification_attempts_for_a_phone_is_rate_limited_even_across_codes(): void
+    {
+        OtpCode::query()->create([
+            'identifier' => '+233201234567',
+            'code_hash' => Hash::make('123456'),
+            'purpose' => 'login',
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        for ($i = 0; $i < 10; $i++) {
+            try {
+                VerifyOtp::run('+233201234567', '000000');
+            } catch (InvalidOtpException) {
+                // Expected — wrong code, but still counts toward the limit.
+            }
+        }
+
+        $this->expectException(TooManyOtpVerificationAttemptsException::class);
 
         VerifyOtp::run('+233201234567', '123456');
     }

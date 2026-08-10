@@ -33,10 +33,16 @@ class LinkAccountIdentifier
             throw new AccountIdentifierAlreadyLinkedException;
         }
 
-        $user->forceFill(['google_id' => $googleId])->save();
+        // One save, not two sequential ones — both fields belong to the
+        // same row, so there's no reason to risk a partial update
+        // (google_id set, email not) if something failed in between.
+        $changes = ['google_id' => $googleId];
 
         if ($user->email === null) {
-            $user->forceFill(['email' => $googleEmail, 'email_verified_at' => now()])->save();
+            $changes['email'] = $googleEmail;
+            $changes['email_verified_at'] = now();
         }
+
+        $user->forceFill($changes)->save();
     }
 }

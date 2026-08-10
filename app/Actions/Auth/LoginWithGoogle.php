@@ -38,12 +38,22 @@ class LoginWithGoogle
         }
 
         if ($user) {
+            // One save, not two sequential ones — both fields belong to
+            // the same row, so there's no reason to risk a partial update
+            // (google_id set, email_verified_at not) if something failed
+            // between separate calls.
+            $changes = [];
+
             if ($user->google_id === null) {
-                $user->forceFill(['google_id' => $googleUser->getId()])->save();
+                $changes['google_id'] = $googleUser->getId();
             }
 
             if ($user->email_verified_at === null && $emailVerifiedByGoogle) {
-                $user->forceFill(['email_verified_at' => now()])->save();
+                $changes['email_verified_at'] = now();
+            }
+
+            if ($changes !== []) {
+                $user->forceFill($changes)->save();
             }
         } else {
             // An unverified claim can't be trusted to auto-link, but the

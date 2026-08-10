@@ -87,4 +87,23 @@ class SystemCacheActionsTest extends TestCase
 
         $response->assertNotFound();
     }
+
+    /**
+     * Not externally exploitable (Admin/SuperAdmin-only), but a
+     * compromised or CSRF-adjacent admin session had no cap on repeated
+     * Artisan commands before this.
+     */
+    public function test_repeated_requests_past_the_rate_limit_are_rejected(): void
+    {
+        $superAdmin = $this->userWithRole(UserRole::SuperAdmin);
+        $this->actingAs($superAdmin);
+
+        for ($i = 0; $i < 20; $i++) {
+            $this->post(route('system.cache.run', ['action' => 'config']));
+        }
+
+        $response = $this->post(route('system.cache.run', ['action' => 'config']));
+
+        $response->assertStatus(429);
+    }
 }

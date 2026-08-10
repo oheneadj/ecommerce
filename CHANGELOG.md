@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — Remaining Low-severity findings from the CLAUDE.md bug hunt
+- **No rate limit on the admin cache-management endpoint** (`SystemCacheController`) — not externally exploitable (Admin/SuperAdmin-only), but a compromised or CSRF-adjacent admin session had no cap on repeated Artisan commands. Added `throttle:20,1`.
+- **No dedicated rate limiter on OTP verification** — only the send side (`RequestOtp`) was limited; the per-code 5-attempt lock (`OtpCode::isUsable()`) resets the moment a fresh code is requested, so repeated request-then-guess cycles had no broader cap. Added a new `TooManyOtpVerificationAttemptsException` and a 10-per-10-minutes per-phone limiter in `VerifyOtp`, surfaced in `PhoneLogin`'s existing error-display flow.
+- **Sequential same-row saves without a transaction** in `LoginWithGoogle`/`LinkAccountIdentifier` (setting `google_id` then `email_verified_at`/`email` in two separate `->save()` calls) — combined into one atomic save each, which is a better fix than wrapping two writes in a transaction: now there's only one write to begin with, so a failure between "steps" isn't possible.
+- **`VerifyOtp` writes to two different rows (the OTP code, then the User) with no transaction** — genuinely needed a transaction wrapper (unlike the same-row cases above): consuming the code without the user ending up created/verified, or vice versa, would leave either a burnt code with no account or a "verified" account whose code was never marked consumed. Wrapped in `DB::transaction()`.
+- New test in `SystemCacheActionsTest` for the rate limit, and in `PhoneOtpLoginTest` for the new OTP-verification limiter.
+
 ### Fixed — Emails/SMS shared a queue with order-lifecycle notifications (CLAUDE.md §15 bug hunt)
 - `SendCustomerEmail` and `SendCustomerSms` (staff bulk-messaging jobs) were both routed to the `notifications` queue alongside every order/health/stock notification — a burst of staff-composed bulk email/SMS could back up worker capacity needed for order confirmations and payment-status updates, or vice versa. Moved to their own dedicated `emails`/`sms` queues; `OrderNotification`/`LowStockAlert`/`ReservationsAtRiskAlert`/`CriticalHealthAlert` stay on `notifications` (a single notification send can span mail+SMS+database together, so it isn't cleanly splittable per channel without restructuring the Notification base class — out of scope for this fix).
 - Updated `docs/infrastructure-deployment.md`'s documented worker command to cover all four queues.

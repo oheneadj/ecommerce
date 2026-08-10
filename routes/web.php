@@ -45,6 +45,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('system/cache/{action}', [SystemCacheController::class, 'run'])
         ->whereIn('action', ['config', 'route', 'view', 'event', 'all', 'optimize'])
+        ->middleware('throttle:20,1')
         ->name('system.cache.run');
 });
 

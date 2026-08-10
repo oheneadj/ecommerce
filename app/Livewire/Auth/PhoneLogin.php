@@ -12,6 +12,7 @@ use App\Actions\Auth\RequestOtp;
 use App\Actions\Auth\VerifyOtp;
 use App\Exceptions\InvalidOtpException;
 use App\Exceptions\OtpRateLimitedException;
+use App\Exceptions\TooManyOtpVerificationAttemptsException;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 use Livewire\Attributes\Title;
@@ -58,7 +59,7 @@ class PhoneLogin extends Component
 
         try {
             VerifyOtp::run($this->phone, $this->code);
-        } catch (InvalidOtpException $e) {
+        } catch (InvalidOtpException|TooManyOtpVerificationAttemptsException $e) {
             $this->addError('code', $e->getMessage());
 
             return;

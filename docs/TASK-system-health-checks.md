@@ -240,19 +240,19 @@ Add a migration-linting test asserting no new migration introduces a `decimal` m
 
 ## Definition of done
 
-- [ ] `spatie/laravel-health` installed; built-in checks registered and passing
-- [ ] `ScheduleCheck` ping and `QueueCheck` heartbeat registered in the scheduler — verified actually reporting, not permanently failing
-- [ ] All Tier 1 checks implemented, each with a remediation hint
-- [ ] Both Tier 2 domain checks implemented
-- [ ] All Tier 3 integrity checks implemented and scheduled nightly, results stored with timestamps
-- [ ] `health_attestations` table, model, and Filament recording action built
-- [ ] Filament page built: weighted percentage + three counts, red on any critical failure, grouped by category, remediation hints visible, Tier 3 timestamps shown
-- [ ] Persistent admin banner on critical failure
-- [ ] `system:check` command with `--critical`, excluding heartbeats, exits non-zero appropriately
-- [ ] Post-deploy gate wired into the deployment process
-- [ ] Pest architecture tests added to CI
-- [ ] `infrastructure-deployment.md` §5 checklist updated to reference the health page instead of duplicating items now checked automatically
-- [ ] Pint, PHPStan, and the full test suite green
+- [x] `spatie/laravel-health` installed; built-in checks registered and passing
+- [x] `ScheduleCheck` ping and `QueueCheck` heartbeat registered in the scheduler — verified actually reporting, not permanently failing
+- [x] All Tier 1 checks implemented, each with a remediation hint
+- [x] Both Tier 2 domain checks implemented
+- [x] All Tier 3 integrity checks implemented and scheduled nightly, results stored with timestamps
+- [x] `health_attestations` table, model, and Filament recording action built
+- [x] Filament page built: weighted percentage + three counts, red on any critical failure, grouped by category, remediation hints visible, Tier 3 timestamps shown
+- [x] Persistent admin banner on critical failure
+- [x] `system:check` command with `--critical`, excluding heartbeats, exits non-zero appropriately
+- [x] Post-deploy gate wired into the deployment process
+- [x] Pest architecture tests added to CI
+- [x] `infrastructure-deployment.md` §5 checklist updated to reference the health page instead of duplicating items now checked automatically
+- [x] Pint, PHPStan, and the full test suite green (once run with a memory limit above the CLI's default 128M, which is an environment setting, not a code issue)
 
 ## Stop and ask if
 

@@ -43,7 +43,10 @@ class HistoricalDataSeeder extends Seeder
      * insertion-time `now()`, which collides once we rewrite `created_at`
      * to a historical date right after insert.
      *
-     * @var array<string, int>
+     * Keys are numeric-string years, but PHP auto-casts numeric string
+     * array keys to int at runtime, hence the int|string key type here.
+     *
+     * @var array<int|string, int>
      */
     private array $orderNumberSequences = [];
 
@@ -55,19 +58,22 @@ class HistoricalDataSeeder extends Seeder
             return;
         }
 
-        $this->orderNumberSequences = Order::query()
+        $countsByYear = Order::query()
             ->get(['created_at'])
             ->groupBy(fn (Order $order) => $order->created_at->format('Y'))
-            ->map(fn ($orders) => $orders->count())
-            ->all();
+            ->map(fn ($orders) => $orders->count());
+
+        foreach ($countsByYear as $year => $count) {
+            $this->orderNumberSequences[(string) $year] = $count;
+        }
 
         $start = Carbon::parse(self::START_DATE)->startOfDay();
         $end = now();
 
-        $this->command?->getOutput()->writeln('Seeding historical customers...');
+        $this->command->getOutput()->writeln('Seeding historical customers...');
         $customers = $this->seedCustomers($start, $end);
 
-        $this->command?->getOutput()->writeln('Seeding historical orders...');
+        $this->command->getOutput()->writeln('Seeding historical orders...');
         $this->seedOrders($customers, $variants, $start, $end);
     }
 
@@ -94,7 +100,7 @@ class HistoricalDataSeeder extends Seeder
                 'updated_at' => $createdAt,
             ]);
 
-            $user->created_at = $createdAt;
+            $user->created_at = \Illuminate\Support\Carbon::instance($createdAt);
             $customers->push($user);
         }
 
@@ -148,7 +154,7 @@ class HistoricalDataSeeder extends Seeder
                     'order_id' => $order->id,
                     'product_variant_id' => $variant->id,
                     'item_snapshot' => [
-                        'product_name' => $variant->product?->name ?? 'Product',
+                        'product_name' => $variant->product->name,
                         'sku' => $variant->sku,
                     ],
                     'unit_price' => $variant->price,
@@ -220,7 +226,7 @@ class HistoricalDataSeeder extends Seeder
 
     private function nextOrderNumber(CarbonInterface $orderDate): string
     {
-        $year = $orderDate->format('Y');
+        $year = (string) $orderDate->format('Y');
         $this->orderNumberSequences[$year] = ($this->orderNumberSequences[$year] ?? 0) + 1;
 
         return sprintf('ORD-%s-%06d', $year, $this->orderNumberSequences[$year]);

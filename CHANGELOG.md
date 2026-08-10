@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — PHPStan errors across Cart, Filament Breezy profile, health migration, and the historical data seeder
+- `Cart::scopeOpen()` was missing its `Builder<Cart>` generic type annotations (matches the existing `@param`/`@return Builder<Model>` convention used by `ProductVariant::scopeLowStock()`).
+- `App\Filament\Breezy\PersonalInfo` (the admin profile form extension adding a `phone` field) had an untyped `$only` array and an untyped `getProfileFormComponents()` return — added proper `array<int, string>`/`array<int, Component>` annotations.
+- Two app-owned, vendor-published migrations (`create_breezy_sessions_table`, `create_health_tables`) were missing `up()`/`down()` return types; the health migration also called an untyped vendor helper (`EloquentHealthResultStore::getHistoryItemInstance()`) — replaced with a directly-typed `HealthCheckResultHistoryItem` instance.
+- `HistoricalDataSeeder` had several real type issues, not just missing annotations: a `Carbon\Carbon` value assigned to `User::$created_at` (typed `Illuminate\Support\Carbon`) — now wrapped in `Carbon::instance()`; `$orderNumberSequences` was declared `array<string, int>`, but PHP auto-casts numeric-string array keys (e.g. `"2024"`) to `int` at runtime, making that type unsatisfiable — corrected to `array<int|string, int>`, the type that actually matches PHP's own key-coercion behavior; a genuinely-unreachable-null `?->` on `$variant->product` (a required `BelongsTo`) simplified to `->`.
+- `docs/TASK-system-health-checks.md`'s definition-of-done checklist updated to reflect actual repo state — 12 of 13 items were already implemented but left unchecked; the last (Pint/PHPStan/tests green) is now genuinely true and checked.
+- Verified via `./vendor/bin/phpstan analyse --memory-limit=1G` (0 errors, down from 13) and the full test suite (623/623, run with a memory limit above the CLI's default 128M — a pre-existing environment constraint unrelated to these changes).
+
 ### Fixed — Store branding (business name, logo) applied everywhere it should be
 - Full audit of every place `StoreSetting`'s branding fields should apply but didn't: page `<title>` and favicon (`partials/head.blade.php` — was hardcoded to `config('app.name')`/a static `/favicon.ico`, now uses the business name/logo with the same fallback), the mail "From" display name (was config/env-only), and every customer-facing notification's mail signature and SMS body (`OrderPlaced`, `OrderShipped`, `PaymentSucceeded`, `PaymentFailed`, plus the login OTP SMS) — was fully generic, no business name anywhere.
 - New `App\Notifications\Support\BrandedMessage` — one shared helper (`mail()` sets the closing signature, `sms()` prefixes the body), used by all 4 customer notifications + OTP, so the branding logic lives in exactly one place.

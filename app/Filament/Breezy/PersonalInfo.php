@@ -12,12 +12,15 @@ declare(strict_types=1);
 namespace App\Filament\Breezy;
 
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Component;
 use Jeffgreco13\FilamentBreezy\Livewire\PersonalInfo as BasePersonalInfo;
 
 class PersonalInfo extends BasePersonalInfo
 {
+    /** @var array<int, string> */
     public array $only = ['name', 'email', 'phone'];
 
+    /** @return array<int, Component> */
     protected function getProfileFormComponents(): array
     {
         return [

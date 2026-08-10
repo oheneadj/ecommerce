@@ -73,6 +73,9 @@ class Cart extends Model
      * settled — until then, retrying checkout should reuse the same
      * cart/order rather than silently starting a fresh, empty one and
      * orphaning the original order.
+     *
+     * @param  Builder<Cart>  $query
+     * @return Builder<Cart>
      */
     public function scopeOpen(Builder $query): Builder
     {

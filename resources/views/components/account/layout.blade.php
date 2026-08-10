@@ -24,13 +24,6 @@
     <hr class="w-full border-zinc-200 md:hidden dark:border-zinc-700" />
 
     <div class="flex-1 self-stretch max-md:pt-6">
-        @if (($heading ?? null) || ($subheading ?? null))
-            <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ $heading ?? '' }}</h2>
-            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ $subheading ?? '' }}</p>
-        @endif
-
-        <div class="mt-5 w-full">
-            {{ $slot }}
-        </div>
+        {{ $slot }}
     </div>
 </div>

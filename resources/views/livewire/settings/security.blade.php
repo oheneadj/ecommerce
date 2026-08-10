@@ -1,80 +1,94 @@
 <section class="w-full">
     <h2 class="sr-only">{{ __('Security settings') }}</h2>
 
-    <x-account.layout :heading="__('Update password')" :subheading="__('Ensure your account is using a long, random password to stay secure')">
-        <form method="POST" wire:submit="updatePassword" class="mt-6 space-y-6">
-            <x-input
-                wire:model="current_password"
-                :label="__('Current password')"
-                type="password"
-                required
-                autocomplete="current-password"
-                viewable
-            />
-            <x-input
-                wire:model="password"
-                :label="__('New password')"
-                type="password"
-                required
-                autocomplete="new-password"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                viewable
-            />
-            <x-input
-                wire:model="password_confirmation"
-                :label="__('Confirm password')"
-                type="password"
-                required
-                autocomplete="new-password"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                viewable
-            />
+    <x-account.layout>
+        <div class="space-y-6">
+            <h1 class="text-2xl font-semibold">{{ __('Security') }}</h1>
 
-            <div class="flex items-center gap-4">
-                <x-button variant="primary" type="submit" data-test="update-password-button">{{ __('Save') }}</x-button>
-            </div>
-        </form>
+            <x-card>
+                <h2 class="flex items-center gap-2 text-lg font-medium">
+                    <x-app-icon name="lock-closed" class="size-5 text-zinc-400" />
+                    {{ __('Update password') }}
+                </h2>
+                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ __('Ensure your account is using a long, random password to stay secure') }}</p>
 
-        @if ($canManageTwoFactor)
-            <section class="mt-12">
-                <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ __('Two-factor authentication') }}</h2>
-                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Manage your two-factor authentication settings') }}</p>
+                <form method="POST" wire:submit="updatePassword" class="mt-6 space-y-6">
+                    <x-input
+                        wire:model="current_password"
+                        :label="__('Current password')"
+                        type="password"
+                        required
+                        autocomplete="current-password"
+                        viewable
+                    />
+                    <x-input
+                        wire:model="password"
+                        :label="__('New password')"
+                        type="password"
+                        required
+                        autocomplete="new-password"
+                        passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
+                        viewable
+                    />
+                    <x-input
+                        wire:model="password_confirmation"
+                        :label="__('Confirm password')"
+                        type="password"
+                        required
+                        autocomplete="new-password"
+                        passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
+                        viewable
+                    />
 
-                <div class="flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
-                    @if ($twoFactorEnabled)
-                        <div class="space-y-4">
-                            <p class="text-sm text-zinc-500 dark:text-zinc-400">
-                                {{ __('You will be prompted for a secure, random pin during login, which you can retrieve from the TOTP-supported application on your phone.') }}
-                            </p>
+                    <div class="flex items-center gap-4">
+                        <x-button variant="primary" type="submit" data-test="update-password-button">{{ __('Save') }}</x-button>
+                    </div>
+                </form>
+            </x-card>
 
-                            <div class="flex justify-start">
+            @if ($canManageTwoFactor)
+                <x-card>
+                    <h2 class="flex items-center gap-2 text-lg font-medium">
+                        <x-app-icon name="finger-print" class="size-5 text-zinc-400" />
+                        {{ __('Two-factor authentication') }}
+                    </h2>
+                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ __('Manage your two-factor authentication settings') }}</p>
+
+                    <div class="mt-4 flex flex-col w-full space-y-6 text-sm" wire:cloak>
+                        @if ($twoFactorEnabled)
+                            <div class="space-y-4">
+                                <p class="text-sm text-zinc-500 dark:text-zinc-400">
+                                    {{ __('You will be prompted for a secure, random pin during login, which you can retrieve from the TOTP-supported application on your phone.') }}
+                                </p>
+
+                                <div class="flex justify-start">
+                                    <x-button
+                                        variant="danger"
+                                        wire:click="disable"
+                                    >
+                                        {{ __('Disable 2FA') }}
+                                    </x-button>
+                                </div>
+
+                                <livewire:settings.two-factor.recovery-codes :$requiresConfirmation />
+                            </div>
+                        @else
+                            <div class="space-y-4">
+                                <p class="text-sm text-zinc-500 dark:text-zinc-400">
+                                    {{ __('When you enable two-factor authentication, you will be prompted for a secure pin during login. This pin can be retrieved from a TOTP-supported application on your phone.') }}
+                                </p>
+
                                 <x-button
-                                    variant="danger"
-                                    wire:click="disable"
+                                    variant="primary"
+                                    wire:click="enable"
                                 >
-                                    {{ __('Disable 2FA') }}
+                                    {{ __('Enable 2FA') }}
                                 </x-button>
                             </div>
-
-                            <livewire:settings.two-factor.recovery-codes :$requiresConfirmation />
-                        </div>
-                    @else
-                        <div class="space-y-4">
-                            <p class="text-sm text-zinc-500 dark:text-zinc-400">
-                                {{ __('When you enable two-factor authentication, you will be prompted for a secure pin during login. This pin can be retrieved from a TOTP-supported application on your phone.') }}
-                            </p>
-
-                            <x-button
-                                variant="primary"
-                                wire:click="enable"
-                            >
-                                {{ __('Enable 2FA') }}
-                            </x-button>
-                        </div>
-                    @endif
-                </div>
-            </section>
-        @endif
+                        @endif
+                    </div>
+                </x-card>
+            @endif
 
         @if ($canManageTwoFactor)
             <x-modal
@@ -235,11 +249,14 @@
         @endif
 
         @if ($canManagePasskeys)
-            <section class="mt-12">
-                <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ __('Passkeys') }}</h2>
-                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Manage your passkeys for passwordless sign-in') }}</p>
+            <x-card>
+                <h2 class="flex items-center gap-2 text-lg font-medium">
+                    <x-app-icon name="key" class="size-5 text-zinc-400" />
+                    {{ __('Passkeys') }}
+                </h2>
+                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ __('Manage your passkeys for passwordless sign-in') }}</p>
 
-                <div class="mt-6 flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
+                <div class="mt-4 flex flex-col w-full space-y-6 text-sm" wire:cloak>
                     <div class="border rounded-lg border-zinc-200 dark:border-zinc-700 overflow-hidden">
                         @forelse ($passkeys as $passkey)
                             <div class="flex items-center justify-between p-4 {{ ! $loop->last ? 'border-b border-zinc-200 dark:border-zinc-700' : '' }}">
@@ -284,8 +301,9 @@
 
                     <x-passkey-registration />
                 </div>
-            </section>
+            </x-card>
         @endif
+        </div>
     </x-account.layout>
 
     <x-modal

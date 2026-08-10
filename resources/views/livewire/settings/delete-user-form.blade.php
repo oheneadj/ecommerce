@@ -1,14 +1,19 @@
-<section class="mt-10 space-y-6">
-    <div class="relative mb-5">
-        <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ __('Delete account') }}</h2>
-        <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Delete your account and all of its resources') }}</p>
-    </div>
-
-    <x-modal-trigger name="confirm-user-deletion">
-        <x-button variant="danger">
+<div>
+    <x-card>
+        <h2 class="flex items-center gap-2 text-lg font-medium">
+            <x-app-icon name="trash" class="size-5 text-zinc-400" />
             {{ __('Delete account') }}
-        </x-button>
-    </x-modal-trigger>
+        </h2>
+        <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ __('Delete your account and all of its resources') }}</p>
+
+        <div class="mt-4">
+            <x-modal-trigger name="confirm-user-deletion">
+                <x-button variant="danger">
+                    {{ __('Delete account') }}
+                </x-button>
+            </x-modal-trigger>
+        </div>
+    </x-card>
 
     <x-modal name="confirm-user-deletion" :show="$errors->isNotEmpty()" class="max-w-lg">
         <form method="POST" wire:submit="deleteUser" class="space-y-6">
@@ -31,4 +36,4 @@
             </div>
         </form>
     </x-modal>
-</section>
+</div>

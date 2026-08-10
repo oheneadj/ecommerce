@@ -87,7 +87,10 @@ class VariantsRelationManager extends RelationManager
                             /** @var Product $product */
                             $product = $this->getOwnerRecord();
 
-                            return $query->whereIn('attribute_id', $product->attributes()->pluck('attributes.id'));
+                            // `getOptionLabelFromRecordUsing()` below reads
+                            // $term->attribute per option — without this,
+                            // that's a lazy load per rendered term.
+                            return $query->with('attribute')->whereIn('attribute_id', $product->attributes()->pluck('attributes.id'));
                         },
                     )
                     ->getOptionLabelFromRecordUsing(fn (AttributeTerm $term): string => "{$term->attribute->name}: {$term->value}")
@@ -132,6 +135,11 @@ class VariantsRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('sku')
+            // The "Attributes" column below reads attributeTerms.attribute
+            // and attributeValues per row — without eager loading here,
+            // that's an N+1 (or, with lazy loading disabled outside
+            // production, an outright violation).
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['attributeTerms.attribute', 'attributeValues']))
             ->columns([
                 TextColumn::make('sku')
                     ->searchable(),

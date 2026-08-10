@@ -420,8 +420,10 @@ class ProductDetailPageTest extends TestCase
 
         $available = $component->instance()->availableTermIdsByAttribute();
 
-        $this->assertSame([$size40->id], $available[$size->id]);
-        $this->assertSame([$green->id, $white->id], $available[$color->id]);
+        // Canonicalizing, not assertSame — the underlying collection's
+        // iteration order isn't guaranteed, and order doesn't matter here.
+        $this->assertEqualsCanonicalizing([$size40->id], $available[$size->id]);
+        $this->assertEqualsCanonicalizing([$green->id, $white->id], $available[$color->id]);
         // Greyed styling, not an HTML `disabled` attribute on the term
         // button itself — still clickable, per
         // test_changing_color_prunes_a_now_unreachable_size_and_re_prompts.

@@ -9,6 +9,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed — Lightbox carousel arrows moved outside the image
 - The prev/next arrows were absolutely positioned on top of the image's edges, overlapping it. Now laid out as flex siblings beside the image (with a gap) so they sit in the backdrop area instead of over the photo itself.
 
+### Added — `Model::preventLazyLoading()` wired up (required by CLAUDE.md §17, was entirely missing)
+- `AppServiceProvider::configureDefaults()` now calls `Model::preventLazyLoading()` unconditionally — it's read once per model at hydration time (`Builder::hydrate()`), so toggling it off in production wouldn't just relax detection, it would disable it outright and the violation callback would never fire. The environment split that actually matters is whether a violation callback is registered: local/staging/testing leave it unregistered (a lazy load throws immediately), production registers one that logs a warning instead of ever throwing on a real customer's request.
+- Enabling this surfaced 4 real, previously-silent lazy-loading violations, all fixed:
+  - `ProductVariant::galleryImages()` read `$this->product` without it ever being eager-loaded — harmless only because lazy loading was silently tolerated.
+  - Livewire's Eloquent rehydration between separate `wire:click` requests does not preserve relations-of-relations nested inside a collection (each `ProductVariant`'s own `attributeTerms`/`images`/`product`, `Attribute`'s `terms`) — only `mount()`'s initial load had them; every later request silently re-queried one at a time. Fixed generally via a new `ProductDetailPage::hydrate()` lifecycle hook (runs on every request after the first, unlike `mount()`) that re-applies the same eager-load spec via `loadMissing()`.
+  - `VariantsRelationManager`'s table "Attributes" column and its `attributeTerms` Select's option labels both read `attribute`/`attributeValues` without eager loading them.
+  - `ProductListingPage` eager-loaded `variants` but not `variants.images`, hit by the storefront product-card component.
+  - `DeleteProductVariant` read `$variant->product` directly — fixed with `loadMissing('product')` so the Action itself doesn't depend on every caller remembering to eager-load it.
+- Verified via a full `--parallel` run with the new setting active: 641/641 passing (previously silent violations would now throw in the test environment, same as local/staging).
+
 ### Added — Product detail page: complete-selection prompts, live-filtered options, always-preselected default variant
 - The page now always loads with a real variant selected (price/stock visible, Add to cart usable) and the corresponding Color/Size buttons visibly highlighted — previously a default variant was chosen internally but none of its attribute buttons showed as selected.
 - Selecting only one of several attributes (e.g. Color, not yet Size) now prompts "Select a Size to see price and availability." instead of the misleading "Currently unavailable" — that message is now reserved for a genuinely complete selection with no matching variant.

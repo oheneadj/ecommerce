@@ -68,17 +68,7 @@ class ProductDetailPage extends Component
         $this->product = Product::query()
             ->where('status', ProductStatus::Active)
             ->where('slug', $productSlug)
-            ->with([
-                'images',
-                'category',
-                'brand',
-                'attributes.terms',
-                'variants' => fn ($query) => $query->where('status', VariantStatus::Active)->orderBy('price'),
-                'variants.attributeTerms',
-                'variants.attributeValues',
-                'variants.images',
-                'reviews' => fn ($query) => $query->where('status', ReviewStatus::Approved)->with('user')->latest(),
-            ])
+            ->with($this->eagerLoads())
             ->firstOrFail();
 
         // The page must always load with a real variant selected (price/
@@ -97,6 +87,45 @@ class ProductDetailPage extends Component
                     ->all();
             }
         }
+    }
+
+    /**
+     * Livewire's Eloquent model/collection rehydration between requests
+     * (every `wire:click` action call is a separate request) restores
+     * `$this->product`'s own attributes and its top-level relations, but
+     * NOT relations-of-relations nested inside a collection (e.g. each
+     * `ProductVariant`'s own `attributeTerms`/`images`, or `Attribute`'s
+     * `terms`) — those come back unloaded every time, silently re-queried
+     * one at a time unless something catches it (exactly what
+     * `Model::preventLazyLoading()` is for). `hydrate()` runs on every
+     * request after the first (unlike `mount()`, which only runs once) —
+     * the right place to restore anything `loadMissing` finds gone.
+     */
+    public function hydrate(): void
+    {
+        $this->product->loadMissing($this->eagerLoads());
+    }
+
+    /**
+     * The full eager-load spec for `$this->product`, shared by `mount()`
+     * (the initial query) and `hydrate()` (re-applied via `loadMissing()`
+     * on every later request — see `hydrate()`'s own docblock for why).
+     *
+     * @return array<int|string, string|\Closure>
+     */
+    private function eagerLoads(): array
+    {
+        return [
+            'images',
+            'category',
+            'brand',
+            'attributes.terms',
+            'variants' => fn ($query) => $query->where('status', VariantStatus::Active)->orderBy('price'),
+            'variants.attributeTerms',
+            'variants.attributeValues',
+            'variants.images',
+            'reviews' => fn ($query) => $query->where('status', ReviewStatus::Approved)->with('user')->latest(),
+        ];
     }
 
     /**
@@ -136,6 +165,14 @@ class ProductDetailPage extends Component
     #[Computed]
     public function usableVariants(): Collection
     {
+        // `variants.product` was never in mount()'s eager-load list —
+        // pointless as a query anyway, since every one of these variants
+        // belongs to this exact, already-loaded `$this->product`. Setting
+        // the inverse relation directly avoids both the extra query AND a
+        // lazy-load violation the moment `galleryImages()` (or anything
+        // else) reads `$variant->product`.
+        $this->product->variants->each(fn (ProductVariant $variant) => $variant->setRelation('product', $this->product));
+
         if ($this->product->attributes->isEmpty()) {
             return $this->product->variants;
         }

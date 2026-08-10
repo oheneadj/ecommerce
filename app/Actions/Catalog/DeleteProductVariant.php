@@ -31,7 +31,11 @@ class DeleteProductVariant
     public function handle(ProductVariant $variant): bool
     {
         return DB::transaction(function () use ($variant): bool {
-            $product = $variant->product;
+            // loadMissing, not a bare $variant->product — callers (e.g. a
+            // Filament table's bulk action) aren't guaranteed to have
+            // eager-loaded it, and this Action shouldn't depend on them
+            // remembering to.
+            $product = $variant->loadMissing('product')->product;
 
             $variant->update(['sku' => "{$variant->sku}-deleted-{$variant->id}"]);
             $variant->delete();

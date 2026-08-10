@@ -11,11 +11,13 @@ use App\Sms\Contracts\SmsGateway;
 use App\Sms\SmsManager;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -75,6 +77,31 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function configureDefaults(): void
     {
+        // Always on — `preventsLazyLoading` is read once per model at
+        // hydration time (Builder::hydrate()), so toggling it off in
+        // production wouldn't just relax detection, it would disable it
+        // outright and the violation callback below would never fire.
+        // The environment split that actually matters (throw vs. log) is
+        // whether a violation callback is registered at all: local/
+        // staging leaves it unregistered, so a lazy load throws
+        // immediately and an N+1 (or a Livewire rehydration gap losing a
+        // nested relation, as happened to
+        // ProductVariant::attributeTerms/images/product across separate
+        // wire:click requests) fails loudly during development. Production
+        // never throws on a real customer's request over a performance
+        // issue — logged instead, so it's still visible without taking
+        // the storefront down.
+        Model::preventLazyLoading();
+
+        if (app()->isProduction()) {
+            Model::handleLazyLoadingViolationUsing(function (Model $model, string $relation): void {
+                Log::warning('Lazy loading violation', [
+                    'model' => $model::class,
+                    'relation' => $relation,
+                ]);
+            });
+        }
+
         Date::use(CarbonImmutable::class);
 
         DB::prohibitDestructiveCommands(

@@ -69,7 +69,11 @@ class ProductListingPage extends Component
             ->when($this->brand, fn ($query) => $query->whereHas('brand', fn ($query) => $query->where('slug', $this->brand)))
             ->when($this->minPrice !== null, fn ($query) => $query->whereHas('variants', fn ($query) => $query->where('price', '>=', (int) round($this->minPrice * 100))))
             ->when($this->maxPrice !== null, fn ($query) => $query->whereHas('variants', fn ($query) => $query->where('price', '<=', (int) round($this->maxPrice * 100))))
-            ->with(['images', 'variants' => fn ($query) => $query->where('status', VariantStatus::Active)->orderBy('price')])
+            ->with([
+                'images',
+                'variants' => fn ($query) => $query->where('status', VariantStatus::Active)->orderBy('price'),
+                'variants.images',
+            ])
             ->latest()
             ->paginate(12);
     }

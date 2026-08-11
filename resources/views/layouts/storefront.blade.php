@@ -43,10 +43,33 @@
                         <livewire:storefront.notification-indicator />
                     @endauth
                     <livewire:storefront.cart-indicator />
-                    <a href="{{ route('account.show') }}" wire:navigate class="flex items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary dark:text-zinc-300">
-                        <x-app-icon name="user" class="size-5" />
-                        <span class="hidden sm:inline">{{ __('Account') }}</span>
-                    </a>
+
+                    @auth
+                        <x-dropdown align="end">
+                            <x-slot:trigger>
+                                <button type="button" class="flex items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary dark:text-zinc-300">
+                                    <x-app-icon name="user" class="size-5" />
+                                    <span class="hidden sm:inline">{{ __('Account') }}</span>
+                                </button>
+                            </x-slot:trigger>
+
+                            <x-menu-item :href="route('account.show')" icon="home" wire:navigate>
+                                {{ __('My Account') }}
+                            </x-menu-item>
+
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <x-menu-item type="submit" icon="arrow-right-start">
+                                    {{ __('Log out') }}
+                                </x-menu-item>
+                            </form>
+                        </x-dropdown>
+                    @else
+                        <a href="{{ route('account.show') }}" wire:navigate class="flex items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary dark:text-zinc-300">
+                            <x-app-icon name="user" class="size-5" />
+                            <span class="hidden sm:inline">{{ __('Account') }}</span>
+                        </a>
+                    @endauth
                 </nav>
             </div>
         </header>

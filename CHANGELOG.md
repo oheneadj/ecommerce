@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — No way to log out as a customer
+- A real regression: the storefront had no logout UI anywhere. It used to live on the old starter-kit sidebar's user-menu dropdown, which was deleted along with `/dashboard` earlier without a replacement being added to the storefront navbar. `route('logout')` (Fortify) still worked, it just had nothing pointing at it.
+- The navbar's "Account" link is now a dropdown for authenticated customers (reusing the existing `<x-dropdown>`/`<x-menu-item>` components, unused since the old sidebar's removal) — "My Account" and "Log out". Guests still see the plain link, unchanged.
+- 3 new tests (`NavbarAccountMenuTest`).
+
 ### Fixed — Vite build warning about optimized font fallbacks
 - `npm run build`/`npm run dev` printed `Optimized font fallbacks require the optional "fontaine" package` on every run. Installed `fontaine` as a dev dependency (Vite's font plugin already looked for it — no config change needed) so it now generates real fallback-font metrics (`ascent-override` etc.) for Lexend, reducing layout shift while the webfont loads, instead of just silencing the warning.
 

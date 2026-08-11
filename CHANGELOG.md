@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed — Redesigned the "Send Notification" form to match other admin forms
+- The form was a flat, unsectioned list of fields — inconsistent with every other admin form in the panel (`CouponForm`, `ProductForm`, `ShippingMethodForm`), which group related fields into `Section`s with a description, and use `helperText`/`placeholder` throughout rather than bare inputs. Restructured into three sections: **Recipients** (target radio + conditional segment/customer pickers), **Channels** (checkbox list, now with a per-channel description of what each one does and who it reaches), **Message** (subject + body). Added a search placeholder to the specific-customers picker and example placeholders to Subject/Message.
+- No behavioral change — same fields, same validation, same `statePath`; existing tests (`SendCustomerNotificationTest`) pass unmodified, confirming the visibility/validation logic wasn't touched, only the layout.
+
 ### Added — Storefront notification center (final piece of customer broadcasts)
 - Customers never log into the Filament admin panel, so the admin bell (added when `->databaseNotifications()` was enabled) can't surface the in-app leg of a broadcast to them. Added a customer-facing notification center: a bell icon in the storefront navbar (`NotificationIndicator`, `#[Lazy]` with a placeholder, same click-to-toggle-dropdown pattern as `CartIndicator`) showing an unread-count badge and the 5 most recent notifications, plus a full paginated history at `/account/notifications` (`NotificationsPage`), linked from the account sidebar nav. Both read from the same `notifications` table `CustomerBroadcastNotification` already wrote to — no new storage.
 - Opening the dropdown marks only the shown batch as read (not the whole history); viewing the full list page marks that page's batch as read — either way, older unread notifications beyond what was actually shown stay unread until genuinely seen.

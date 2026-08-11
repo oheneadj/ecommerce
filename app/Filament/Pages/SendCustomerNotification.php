@@ -22,6 +22,7 @@ use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -68,64 +69,91 @@ class SendCustomerNotification extends Page implements HasForms
     {
         return $schema
             ->components([
-                Radio::make('target')
-                    ->label('Send to')
-                    ->options([
-                        'all' => 'All customers',
-                        'segment' => 'A segment',
-                        'specific' => 'Specific customers',
-                    ])
-                    ->default('all')
-                    ->live()
-                    ->required(),
+                Section::make('Recipients')
+                    ->description('Choose who this notification reaches. Staff accounts are never included, regardless of target.')
+                    ->schema([
+                        Radio::make('target')
+                            ->label('Send to')
+                            ->options([
+                                'all' => 'All customers',
+                                'segment' => 'A segment',
+                                'specific' => 'Specific customers',
+                            ])
+                            ->default('all')
+                            ->live()
+                            ->required()
+                            ->columnSpanFull(),
 
-                Select::make('segment')
-                    ->label('Segment')
-                    ->options(collect(CustomerSegment::cases())->mapWithKeys(
-                        fn (CustomerSegment $segment): array => [$segment->value => $segment->label()],
-                    ))
-                    ->visible(fn (Get $get): bool => $get('target') === 'segment')
-                    ->required(fn (Get $get): bool => $get('target') === 'segment'),
+                        Select::make('segment')
+                            ->label('Segment')
+                            ->options(collect(CustomerSegment::cases())->mapWithKeys(
+                                fn (CustomerSegment $segment): array => [$segment->value => $segment->label()],
+                            ))
+                            ->helperText('Recalculated at send time — always reflects who currently matches.')
+                            ->visible(fn (Get $get): bool => $get('target') === 'segment')
+                            ->required(fn (Get $get): bool => $get('target') === 'segment'),
 
-                Select::make('customerIds')
-                    ->label('Customers')
-                    ->multiple()
-                    ->searchable()
-                    ->getSearchResultsUsing(fn (string $search): array => User::query()
-                        ->customers()
-                        ->where(fn (Builder $query) => $query
-                            ->where('name', 'like', "%{$search}%")
-                            ->orWhere('email', 'like', "%{$search}%")
-                            ->orWhere('phone', 'like', "%{$search}%"))
-                        ->limit(50)
-                        ->pluck('name', 'id')
-                        ->all())
-                    ->getOptionLabelsUsing(fn (array $values): array => User::query()
-                        ->whereIn('id', $values)
-                        ->pluck('name', 'id')
-                        ->all())
-                    ->visible(fn (Get $get): bool => $get('target') === 'specific')
-                    ->required(fn (Get $get): bool => $get('target') === 'specific'),
+                        Select::make('customerIds')
+                            ->label('Customers')
+                            ->multiple()
+                            ->searchable()
+                            ->placeholder('Search by name, email, or phone…')
+                            ->getSearchResultsUsing(fn (string $search): array => User::query()
+                                ->customers()
+                                ->where(fn (Builder $query) => $query
+                                    ->where('name', 'like', "%{$search}%")
+                                    ->orWhere('email', 'like', "%{$search}%")
+                                    ->orWhere('phone', 'like', "%{$search}%"))
+                                ->limit(50)
+                                ->pluck('name', 'id')
+                                ->all())
+                            ->getOptionLabelsUsing(fn (array $values): array => User::query()
+                                ->whereIn('id', $values)
+                                ->pluck('name', 'id')
+                                ->all())
+                            ->visible(fn (Get $get): bool => $get('target') === 'specific')
+                            ->required(fn (Get $get): bool => $get('target') === 'specific'),
+                    ]),
 
-                CheckboxList::make('channels')
-                    ->label('Channels')
-                    ->options([
-                        'email' => 'Email',
-                        'sms' => 'SMS',
-                        'database' => 'In-app notification',
-                    ])
-                    ->required()
-                    ->minItems(1),
+                Section::make('Channels')
+                    ->description('At least one is required. A customer missing the contact method for a channel is skipped for that channel only.')
+                    ->schema([
+                        CheckboxList::make('channels')
+                            ->label('Channels')
+                            ->hiddenLabel()
+                            ->options([
+                                'email' => 'Email',
+                                'sms' => 'SMS',
+                                'database' => 'In-app notification',
+                            ])
+                            ->descriptions([
+                                'email' => 'Sent to the customer\'s email on file.',
+                                'sms' => 'Sent to the customer\'s phone on file.',
+                                'database' => 'Shown on the storefront notification bell and account page.',
+                            ])
+                            ->required()
+                            ->minItems(1),
+                    ]),
 
-                TextInput::make('subject')
-                    ->required()
-                    ->maxLength(255),
+                Section::make('Message')
+                    ->description('One message, reused as-is across every selected channel.')
+                    ->schema([
+                        TextInput::make('subject')
+                            ->required()
+                            ->maxLength(255)
+                            ->placeholder('e.g. Weekend sale — 20% off everything')
+                            ->helperText('Used as the email subject and the in-app notification title.')
+                            ->columnSpanFull(),
 
-                Textarea::make('message')
-                    ->required()
-                    ->rows(6)
-                    ->helperText('Sent as-is across every selected channel — the email body, the SMS text, and the in-app notification body.'),
+                        Textarea::make('message')
+                            ->required()
+                            ->rows(6)
+                            ->placeholder('Write the message customers will see…')
+                            ->helperText('Used as the email body, the SMS text, and the in-app notification body — plain text, no formatting.')
+                            ->columnSpanFull(),
+                    ]),
             ])
+            ->columns(1)
             ->statePath('data');
     }
 

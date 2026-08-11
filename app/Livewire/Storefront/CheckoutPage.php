@@ -25,6 +25,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Lazy;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -38,6 +39,7 @@ use Livewire\Component;
  * @property-read int $estimatedTotal
  */
 #[Title('Checkout')]
+#[Lazy]
 class CheckoutPage extends Component
 {
     public ?int $selectedAddressId = null;
@@ -231,5 +233,15 @@ class CheckoutPage extends Component
     public function render(): View
     {
         return view('livewire.storefront.checkout-page');
+    }
+
+    /**
+     * Shown until this component's own follow-up request resolves — a
+     * skeleton matching the real page's two-column layout so there's no
+     * layout shift when it swaps in.
+     */
+    public function placeholder(): View
+    {
+        return view('livewire.storefront.checkout-page-placeholder');
     }
 }

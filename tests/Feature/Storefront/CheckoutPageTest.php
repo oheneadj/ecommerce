@@ -73,7 +73,7 @@ class CheckoutPageTest extends TestCase
         ShippingMethod::factory()->create(['active' => true, 'cost' => 1500]);
         ShippingMethod::factory()->create(['active' => false, 'cost' => 100]);
 
-        Livewire::test(CheckoutPage::class)
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
             ->assertSet('selectedAddressId', $defaultAddress->id)
             ->assertSet('selectedShippingMethodId', $cheap->id);
     }
@@ -91,7 +91,7 @@ class CheckoutPageTest extends TestCase
     {
         ShippingMethod::factory()->create(['active' => true]);
 
-        Livewire::test(CheckoutPage::class)
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
             ->assertSeeHtml('wire:model.live="selectedShippingMethodId"');
     }
 
@@ -106,7 +106,7 @@ class CheckoutPageTest extends TestCase
         $cheap = ShippingMethod::factory()->create(['active' => true, 'cost' => 500]);
         $express = ShippingMethod::factory()->create(['active' => true, 'cost' => 2000]);
 
-        $component = Livewire::test(CheckoutPage::class)
+        $component = Livewire::test(CheckoutPage::class, ['lazy' => false])
             ->assertSet('selectedShippingMethodId', $cheap->id)
             ->assertSet('shippingCost', 500)
             ->assertSee('GH₵5.00');
@@ -124,7 +124,7 @@ class CheckoutPageTest extends TestCase
         Address::factory()->create(['user_id' => $user->id, 'is_default' => true]);
         ShippingMethod::factory()->create(['active' => true]);
 
-        Livewire::test(CheckoutPage::class)
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
             ->call('placeOrder')
             ->assertHasErrors('cart');
 
@@ -139,7 +139,7 @@ class CheckoutPageTest extends TestCase
         AddItemToCart::run(GetCurrentCart::run($user), $variant, 1);
         ShippingMethod::factory()->create(['active' => true]);
 
-        Livewire::test(CheckoutPage::class)
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
             ->set('selectedAddressId', null)
             ->call('placeOrder')
             ->assertHasErrors('selectedAddressId');
@@ -155,7 +155,7 @@ class CheckoutPageTest extends TestCase
         AddItemToCart::run(GetCurrentCart::run($user), $variant, 1);
         Address::factory()->create(['user_id' => $user->id, 'is_default' => true]);
 
-        Livewire::test(CheckoutPage::class)
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
             ->set('selectedShippingMethodId', null)
             ->call('placeOrder')
             ->assertHasErrors('selectedShippingMethodId');
@@ -176,7 +176,7 @@ class CheckoutPageTest extends TestCase
         $this->withoutExceptionHandling();
         $this->expectException(AuthorizationException::class);
 
-        Livewire::test(CheckoutPage::class)
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
             ->set('selectedAddressId', $otherAddress->id)
             ->call('placeOrder');
     }
@@ -190,7 +190,7 @@ class CheckoutPageTest extends TestCase
         $address = Address::factory()->create(['user_id' => $user->id, 'is_default' => true]);
         $shippingMethod = ShippingMethod::factory()->create(['active' => true, 'cost' => 500, 'name' => 'Express']);
 
-        Livewire::test(CheckoutPage::class)
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
             ->set('selectedAddressId', $address->id)
             ->set('selectedShippingMethodId', $shippingMethod->id)
             ->call('placeOrder');
@@ -245,7 +245,7 @@ class CheckoutPageTest extends TestCase
         $address = Address::factory()->create(['user_id' => $user->id, 'is_default' => true]);
         $shippingMethod = ShippingMethod::factory()->create(['active' => true]);
 
-        Livewire::test(CheckoutPage::class)
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
             ->set('selectedAddressId', $address->id)
             ->set('selectedShippingMethodId', $shippingMethod->id)
             ->call('placeOrder')
@@ -263,7 +263,7 @@ class CheckoutPageTest extends TestCase
         $address = Address::factory()->create(['user_id' => $user->id, 'is_default' => true]);
         $shippingMethod = ShippingMethod::factory()->create(['active' => true]);
 
-        Livewire::test(CheckoutPage::class)
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
             ->set('selectedAddressId', $address->id)
             ->set('selectedShippingMethodId', $shippingMethod->id)
             ->call('placeOrder')
@@ -296,7 +296,7 @@ class CheckoutPageTest extends TestCase
         $shippingMethod = ShippingMethod::factory()->create(['active' => true]);
 
         // First attempt: fails.
-        Livewire::test(CheckoutPage::class)
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
             ->set('selectedAddressId', $address->id)
             ->set('selectedShippingMethodId', $shippingMethod->id)
             ->call('placeOrder')
@@ -314,7 +314,7 @@ class CheckoutPageTest extends TestCase
 
         // Retry, gateway still down: same order, a second Failed payment
         // attempt, still no duplicate order.
-        Livewire::test(CheckoutPage::class)
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
             ->set('selectedAddressId', $address->id)
             ->set('selectedShippingMethodId', $shippingMethod->id)
             ->call('placeOrder')
@@ -327,7 +327,7 @@ class CheckoutPageTest extends TestCase
         // Retry again, gateway now working: succeeds against the same order.
         FakePaymentGateway::$initiateSucceeds = true;
 
-        Livewire::test(CheckoutPage::class)
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
             ->set('selectedAddressId', $address->id)
             ->set('selectedShippingMethodId', $shippingMethod->id)
             ->call('placeOrder')
@@ -345,7 +345,7 @@ class CheckoutPageTest extends TestCase
         $variant = ProductVariant::factory()->create(['stock' => 10, 'price' => 1000]);
         $shippingMethod = ShippingMethod::factory()->create(['active' => true, 'cost' => 300]);
 
-        $component = Livewire::test(CheckoutPage::class);
+        $component = Livewire::test(CheckoutPage::class, ['lazy' => false]);
         AddItemToCart::run(
             ResolveCurrentCart::run(null, ResolveCurrentCart::guestSessionId()),
             $variant,
@@ -374,7 +374,7 @@ class CheckoutPageTest extends TestCase
         $variant = ProductVariant::factory()->create(['stock' => 10]);
         $shippingMethod = ShippingMethod::factory()->create(['active' => true]);
 
-        $component = Livewire::test(CheckoutPage::class);
+        $component = Livewire::test(CheckoutPage::class, ['lazy' => false]);
         AddItemToCart::run(
             ResolveCurrentCart::run(null, ResolveCurrentCart::guestSessionId()),
             $variant,
@@ -402,7 +402,7 @@ class CheckoutPageTest extends TestCase
         $variant = ProductVariant::factory()->create(['stock' => 10]);
         $shippingMethod = ShippingMethod::factory()->create(['active' => true]);
 
-        $component = Livewire::test(CheckoutPage::class);
+        $component = Livewire::test(CheckoutPage::class, ['lazy' => false]);
         AddItemToCart::run(
             ResolveCurrentCart::run(null, ResolveCurrentCart::guestSessionId()),
             $variant,

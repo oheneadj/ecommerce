@@ -17,6 +17,7 @@ use App\Models\ProductVariant;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Lazy;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -25,6 +26,7 @@ use Livewire\Component;
  * @property-read int $subtotal
  */
 #[Title('My Cart')]
+#[Lazy]
 class CartPage extends Component
 {
     #[Computed]
@@ -72,5 +74,15 @@ class CartPage extends Component
     public function render(): View
     {
         return view('livewire.storefront.cart-page');
+    }
+
+    /**
+     * Shown until this component's own follow-up request resolves — a
+     * skeleton matching the real cart's line-item layout so there's no
+     * layout shift when it swaps in.
+     */
+    public function placeholder(): View
+    {
+        return view('livewire.storefront.cart-page-placeholder');
     }
 }

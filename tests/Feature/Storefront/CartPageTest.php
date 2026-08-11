@@ -28,16 +28,25 @@ class CartPageTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * The route itself (and the real component's content, once its
+     * #[Lazy] follow-up request resolves — forced here via the built-in
+     * `$refresh` no-op action, same as any other post-mount interaction).
+     */
     public function test_a_guest_can_view_an_empty_cart(): void
     {
-        $this->get('/cart')->assertOk()->assertSee('Your cart is empty');
+        $this->get('/cart')->assertOk();
+
+        Livewire::test(CartPage::class)->call('$refresh')->assertSee('Your cart is empty');
     }
 
     public function test_an_authenticated_customer_can_view_an_empty_cart(): void
     {
         $this->actingAs(User::factory()->create());
 
-        $this->get('/cart')->assertOk()->assertSee('Your cart is empty');
+        $this->get('/cart')->assertOk();
+
+        Livewire::test(CartPage::class)->call('$refresh')->assertSee('Your cart is empty');
     }
 
     public function test_get_current_cart_creates_one_when_the_user_has_none(): void
@@ -97,6 +106,7 @@ class CartPageTest extends TestCase
         AddItemToCart::run($cart, $variant, 2);
 
         Livewire::test(CartPage::class)
+            ->call('$refresh')
             ->assertSee($variant->sku)
             ->assertSee('GH₵30.00');
     }
@@ -171,6 +181,7 @@ class CartPageTest extends TestCase
         $this->actingAs($user);
 
         Livewire::test(CartPage::class)
+            ->call('$refresh')
             ->assertDontSee($otherVariant->sku)
             ->assertSee('Your cart is empty');
     }

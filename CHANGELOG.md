@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed — Product detail page share text is now catchy instead of a bare title
+- WhatsApp/X share links previously included only the product name, which reads as a bare link with no reason to click. New `ProductDetailPage::shareText()` includes the price and store name when a variant is selected and in stock (e.g. "Blue Sneakers for GH₵50.00 at Demo Store — check it out!"), falling back to a plain "Check out {product} at {store}!" with no price otherwise — same "don't imply availability that isn't there" rule already applied elsewhere on the page. Facebook's sharer left unchanged since it doesn't accept custom text via URL params.
+- 2 tests in `ProductDetailPageTest` updated/added to cover both cases.
+
 ### Added — Search box in the storefront navbar
 - The navbar had no way to search for a product — only the "Shop" link, with no query input. Added an always-visible search box between the logo and nav links in `layouts/storefront.blade.php`, submitted as a plain GET request to `/products?search=...`. No new search logic: `ProductListingPage` already filters by name via its `#[Url]`-bound `search` property, so the navbar box is purely a new entry point into existing functionality.
 

@@ -258,7 +258,7 @@
                 <span class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Share') }}</span>
 
                 <a
-                    href="https://wa.me/?text={{ urlencode($product->name.' — '.$shareUrl) }}"
+                    href="https://wa.me/?text={{ urlencode($this->shareText.' '.$shareUrl) }}"
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="{{ __('Share on WhatsApp') }}"
@@ -268,7 +268,7 @@
                 </a>
 
                 <a
-                    href="https://twitter.com/intent/tweet?url={{ urlencode($shareUrl) }}&text={{ urlencode($product->name) }}"
+                    href="https://twitter.com/intent/tweet?url={{ urlencode($shareUrl) }}&text={{ urlencode($this->shareText) }}"
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="{{ __('Share on X') }}"

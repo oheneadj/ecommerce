@@ -21,6 +21,7 @@ use App\Models\Attribute;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Review;
+use App\Models\StoreSetting;
 use App\Models\WishlistItem;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -39,6 +40,7 @@ use Livewire\Component;
  * @property-read Collection<int, Review> $reviews
  * @property-read float $averageRating
  * @property-read bool $isWishlisted
+ * @property-read string $shareText
  */
 class ProductDetailPage extends Component
 {
@@ -328,6 +330,34 @@ class ProductDetailPage extends Component
 
             return $variantTermIds === $selected;
         });
+    }
+
+    /**
+     * Share text for WhatsApp/X — the plain product name alone reads as a
+     * bare link with no reason to click; naming the price and the store
+     * gives a friend something to actually react to. Falls back to
+     * "Check out {product}" with no price when nothing's selected/in
+     * stock, same "don't imply availability that isn't there" rule the
+     * rest of the page follows.
+     */
+    #[Computed]
+    public function shareText(): string
+    {
+        $businessName = StoreSetting::current()->business_name ?: config('app.name', 'Laravel');
+        $variant = $this->selectedVariant;
+
+        if ($variant !== null && $variant->stock > 0) {
+            return __(':product for :price at :store — check it out!', [
+                'product' => $this->product->name,
+                'price' => $variant->price_formatted,
+                'store' => $businessName,
+            ]);
+        }
+
+        return __('Check out :product at :store!', [
+            'product' => $this->product->name,
+            'store' => $businessName,
+        ]);
     }
 
     /**

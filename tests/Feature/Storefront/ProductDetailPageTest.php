@@ -23,6 +23,7 @@ use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
 use App\Models\Review;
+use App\Models\StoreSetting;
 use App\Models\User;
 use App\Models\WishlistItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -51,18 +52,33 @@ class ProductDetailPageTest extends TestCase
         $this->get("/products/{$product->slug}")->assertNotFound();
     }
 
-    public function test_share_links_point_to_the_products_public_url(): void
+    public function test_share_links_include_a_catchy_message_with_price_and_store_name_not_just_the_bare_title(): void
     {
+        StoreSetting::current()->update(['business_name' => 'Demo Store']);
         $product = Product::factory()->create(['name' => 'Blue Sneakers', 'status' => ProductStatus::Active]);
-        ProductVariant::factory()->create(['product_id' => $product->id]);
+        ProductVariant::factory()->create(['product_id' => $product->id, 'price' => 5000, 'stock' => 5]);
 
         $shareUrl = route('products.show', $product);
+        $shareText = 'Blue Sneakers for GH₵50.00 at Demo Store — check it out!';
 
         $this->get("/products/{$product->slug}")
             ->assertOk()
-            ->assertSeeHtml('https://wa.me/?text='.urlencode('Blue Sneakers — '.$shareUrl))
-            ->assertSeeHtml('https://twitter.com/intent/tweet?url='.urlencode($shareUrl))
+            ->assertSeeHtml('https://wa.me/?text='.urlencode($shareText.' '.$shareUrl))
+            ->assertSeeHtml('https://twitter.com/intent/tweet?url='.urlencode($shareUrl).'&text='.urlencode($shareText))
             ->assertSeeHtml('https://www.facebook.com/sharer/sharer.php?u='.urlencode($shareUrl));
+    }
+
+    public function test_share_text_omits_the_price_when_nothing_is_in_stock(): void
+    {
+        StoreSetting::current()->update(['business_name' => 'Demo Store']);
+        $product = Product::factory()->create(['name' => 'Blue Sneakers', 'status' => ProductStatus::Active]);
+        ProductVariant::factory()->create(['product_id' => $product->id, 'stock' => 0]);
+
+        $shareText = 'Check out Blue Sneakers at Demo Store!';
+
+        $this->get("/products/{$product->slug}")
+            ->assertOk()
+            ->assertSeeHtml(urlencode($shareText));
     }
 
     public function test_the_copy_link_button_targets_the_products_public_url(): void

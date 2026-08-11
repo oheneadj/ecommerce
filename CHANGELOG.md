@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — Queued jobs on named queues never ran in local dev
+- `composer run dev` (Laravel's built-in `artisan dev`) starts a `queue:listen` process with no `--queue` flag, which only services the `default` queue. This project deliberately segments every job onto a named queue (`emails`/`sms`/`notifications`/`processing`/`external-api`, per CLAUDE.md §15) so time-sensitive work never queues behind slow external-API work — but that segmentation meant the dev queue listener was never actually working any of them. 38 jobs had piled up undelivered, including a just-sent customer broadcast notification, order confirmations, and low-stock alerts going back to when queue segmentation was introduced.
+- `AppServiceProvider::configureDevQueueWorker()` re-registers the `queue` dev command (`DevCommands::artisan(...)`) with `--queue=notifications,emails,sms,processing,external-api,default` — a userland registration wins over the framework's default per `DevCommands::resolvePriority()`. Drained the existing backlog manually (`php artisan queue:work --queue=... --stop-when-empty`); 33 succeeded, 5 pre-existing SMS jobs failed on a missing local Moolre API key (a separate, expected local-env gap — not something to paper over with fake credentials).
+- Requires restarting any already-running `composer run dev` process to take effect (it's a boot-time provider registration).
+
 ### Added — Loading feedback on the product listing's filter sidebar
 - The category/brand lists are catalog-wide and never change with filters, but the attribute-term buttons' available/greyed-out state is recomputed on every filter request — previously with no loading feedback, so a stale-looking state could sit there unexplained during a slow request. The whole sidebar now dims (`wire:loading.class="opacity-50"`, same pattern the cart page already uses for its quantity controls) while the same filter request that triggers the product grid's skeleton is in flight.
 - Assertion added to the existing skeleton regression test confirming the sidebar dim wiring is present.

@@ -12,6 +12,7 @@ use App\Sms\SmsManager;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\DevCommands;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -44,6 +45,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureDevQueueWorker();
 
         Notification::extend('sms', fn ($app) => new SmsChannel($app->make(SmsGateway::class)));
 
@@ -70,6 +72,30 @@ class AppServiceProvider extends ServiceProvider
                 $event->message->from(new Address($fromAddress, $businessName));
             }
         });
+    }
+
+    /**
+     * `composer run dev` (Laravel's built-in `artisan dev`) registers a
+     * `queue:listen` process by default, but with no `--queue` flag — it
+     * only ever services the `default` queue. This project deliberately
+     * segments every job onto a named queue (`emails`, `sms`,
+     * `notifications`, `processing`, `external-api`, per CLAUDE.md §15),
+     * so without this override every one of them sits in the `jobs` table
+     * forever in local dev, never picked up — the exact cause of a
+     * customer broadcast notification silently never arriving. Re-
+     * registering the same `queue` name from userland (not a vendor file)
+     * wins over the framework default, per `DevCommands::resolvePriority()`.
+     */
+    protected function configureDevQueueWorker(): void
+    {
+        if (! $this->app->runningInConsole()) {
+            return;
+        }
+
+        DevCommands::artisan(
+            'queue:listen --queue=notifications,emails,sms,processing,external-api,default --tries=1 --timeout=0',
+            'queue',
+        );
     }
 
     /**

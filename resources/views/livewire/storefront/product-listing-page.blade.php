@@ -198,21 +198,42 @@
         </div>
 
         <div class="lg:col-span-3">
-            @if ($this->products->isEmpty())
-                <x-card>
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No products match your filters.') }}</p>
-                </x-card>
-            @else
-                <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                    @foreach ($this->products as $product)
-                        <x-product-card wire:key="product-{{ $product->id }}" :product="$product" />
-                    @endforeach
-                </div>
+            {{--
+                Filter-change loading state only — never shown on the
+                initial page load, so product content stays fully
+                server-rendered and crawlable (see CHANGELOG: lazy-loading
+                the whole listing was deliberately rejected for this same
+                reason). Scoped via wire:target to just the filter
+                inputs/actions above, so it never fires for unrelated
+                interactions elsewhere on the page (e.g. the navbar cart).
+            --}}
+            <div wire:loading wire:target="search,category,brand,minPrice,maxPrice,toggleAttributeTerm,resetFilters" class="grid grid-cols-2 gap-4 sm:grid-cols-3" aria-hidden="true" aria-busy="true">
+                @for ($i = 0; $i < 9; $i++)
+                    <div class="animate-pulse space-y-2">
+                        <div class="aspect-square rounded-lg bg-zinc-200 dark:bg-zinc-700"></div>
+                        <div class="h-3 w-3/4 rounded bg-zinc-200 dark:bg-zinc-700"></div>
+                        <div class="h-3 w-1/3 rounded bg-zinc-200 dark:bg-zinc-700"></div>
+                    </div>
+                @endfor
+            </div>
 
-                <div class="mt-6">
-                    {{ $this->products->links() }}
-                </div>
-            @endif
+            <div wire:loading.remove wire:target="search,category,brand,minPrice,maxPrice,toggleAttributeTerm,resetFilters">
+                @if ($this->products->isEmpty())
+                    <x-card>
+                        <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No products match your filters.') }}</p>
+                    </x-card>
+                @else
+                    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                        @foreach ($this->products as $product)
+                            <x-product-card wire:key="product-{{ $product->id }}" :product="$product" />
+                        @endforeach
+                    </div>
+
+                    <div class="mt-6">
+                        {{ $this->products->links() }}
+                    </div>
+                @endif
+            </div>
         </div>
     </div>
 </div>

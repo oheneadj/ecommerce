@@ -54,6 +54,27 @@ class ProductListingPageTest extends TestCase
         Livewire::test(ProductListingPage::class)->assertSee('Red Shirt');
     }
 
+    /**
+     * Regression/SEO-safety: real product content must be present in the
+     * plain, unauthenticated initial HTTP response (not hidden behind a
+     * wire:loading skeleton that only resolves client-side) — that's what
+     * keeps this page crawlable. The filter-change skeleton itself is a
+     * client-side visibility toggle (Livewire's [wire:loading] CSS), not
+     * something a server-rendered HTML diff can observe — this only
+     * confirms the skeleton markup exists and is correctly scoped via
+     * wire:target to the filter inputs, not the whole page.
+     */
+    public function test_the_initial_page_load_shows_real_products_not_the_filter_change_skeleton(): void
+    {
+        $this->purchasableProduct(['name' => 'Red Shirt']);
+
+        $response = $this->get('/products');
+
+        $response->assertOk();
+        $response->assertSee('Red Shirt');
+        $response->assertSeeHtml('wire:target="search,category,brand,minPrice,maxPrice,toggleAttributeTerm,resetFilters"');
+    }
+
     public function test_the_listing_never_shows_an_archived_product(): void
     {
         $this->purchasableProduct(['name' => 'Archived Item', 'status' => ProductStatus::Archived]);

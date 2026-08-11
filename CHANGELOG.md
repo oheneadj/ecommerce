@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Skeleton loading state for product listing filter changes
+- Changing a filter on `/products` (search, category, brand, an attribute term, the price slider, or "Clear filters") previously gave no visual feedback while the new results loaded. The product grid now shows a skeleton (`wire:loading`, scoped via `wire:target` to just those filter inputs/actions) during that request, then swaps back to real results.
+- Deliberately **not** `#[Lazy]` — the initial page load is untouched, so real product content stays in the first HTTP response for crawlability (same reasoning as excluding `ProductListingPage` from the Cart/Checkout lazy-loading pass). This only covers the interaction that happens *after* a crawler would already have the real content: a filter change on a page that already rendered.
+- 1 new test confirming the initial response still shows real products (not the skeleton) and that the skeleton is correctly scoped to the filter targets.
+
 ### Added — `CustomerSegment` enum for targeting customer broadcasts
 - First piece of the upcoming "send a notification to customers" admin page: a small fixed set of canned recipient segments (All / Has ordered / Never ordered / Joined in the last 30 days) as a backed enum with an `apply()` method narrowing a `User::customers()` query, per CLAUDE.md §7 (helper methods live on the enum, not scattered conditionals). Deliberately no configurable day-count or general filter builder — YAGNI, these are the segments that actually come up.
 - 4 new tests (`CustomerSegmentTest`).

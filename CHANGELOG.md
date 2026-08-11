@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Search box in the storefront navbar
+- The navbar had no way to search for a product — only the "Shop" link, with no query input. Added an always-visible search box between the logo and nav links in `layouts/storefront.blade.php`, submitted as a plain GET request to `/products?search=...`. No new search logic: `ProductListingPage` already filters by name via its `#[Url]`-bound `search` property, so the navbar box is purely a new entry point into existing functionality.
+- **Found and fixed along the way**: the field initially used `<x-input>`, whose `@error()` directive depends on Laravel's `$errors` view-share, which is only bound during the normal middleware pipeline — error pages (404/403/500) render outside it but still use this same layout, so every error page crashed with an undefined `$errors` variable. Switched to a plain styled `<input>` (this field is never validated, so it never needed that behavior) — no other page using `<x-input>` is affected, since they're all reached through the normal pipeline.
+- 3 new tests (`NavbarSearchTest`), including a regression test confirming a 404 page still renders.
+
 ### Fixed — Whole page shifted sideways when navigating to a longer page (e.g. Security)
 - No page reserved space for the vertical scrollbar, so a short page (no scrollbar) rendered a few pixels wider than a taller page that does need one (e.g. `/settings/security`, with its 3 stacked cards, versus `/account`) — every centered, full-width section (header/navbar, main, footer) shifted sideways as a result, since they all sit inside the same shrunken viewport. Added `scrollbar-gutter: stable` globally (`resources/css/app.css`) so scrollbar space is always reserved, regardless of whether a given page is tall enough to need one.
 

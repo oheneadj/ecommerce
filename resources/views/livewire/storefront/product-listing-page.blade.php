@@ -2,7 +2,20 @@
     <h1 class="text-2xl font-semibold">{{ __('Shop') }}</h1>
 
     <div class="grid gap-6 lg:grid-cols-4">
-        <div class="space-y-6">
+        {{--
+            The category/brand lists themselves are catalog-wide and never
+            change with filters, but the attribute-term buttons below do
+            (their available/greyed-out state is recomputed per filter
+            request) — dim the whole sidebar during that same request so
+            a stale-looking state never sits there unexplained, same
+            wire:loading.class pattern the cart page uses for its
+            quantity controls.
+        --}}
+        <div
+            class="space-y-6 transition-opacity duration-150"
+            wire:loading.class="opacity-50"
+            wire:target="search,category,brand,minPrice,maxPrice,toggleAttributeTerm,resetFilters"
+        >
             <x-card>
                 <x-input wire:model.live.debounce.400ms="search" type="search" :placeholder="__('Search products…')" />
             </x-card>

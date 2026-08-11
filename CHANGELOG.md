@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Loading feedback on the product listing's filter sidebar
+- The category/brand lists are catalog-wide and never change with filters, but the attribute-term buttons' available/greyed-out state is recomputed on every filter request — previously with no loading feedback, so a stale-looking state could sit there unexplained during a slow request. The whole sidebar now dims (`wire:loading.class="opacity-50"`, same pattern the cart page already uses for its quantity controls) while the same filter request that triggers the product grid's skeleton is in flight.
+- Assertion added to the existing skeleton regression test confirming the sidebar dim wiring is present.
+
 ### Changed — Redesigned the "Send Notification" form to match other admin forms
 - The form was a flat, unsectioned list of fields — inconsistent with every other admin form in the panel (`CouponForm`, `ProductForm`, `ShippingMethodForm`), which group related fields into `Section`s with a description, and use `helperText`/`placeholder` throughout rather than bare inputs. Restructured into three sections: **Recipients** (target radio + conditional segment/customer pickers), **Channels** (checkbox list, now with a per-channel description of what each one does and who it reaches), **Message** (subject + body). Added a search placeholder to the specific-customers picker and example placeholders to Subject/Message.
 - No behavioral change — same fields, same validation, same `statePath`; existing tests (`SendCustomerNotificationTest`) pass unmodified, confirming the visibility/validation logic wasn't touched, only the layout.

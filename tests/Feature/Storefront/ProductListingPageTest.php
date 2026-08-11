@@ -73,6 +73,7 @@ class ProductListingPageTest extends TestCase
         $response->assertOk();
         $response->assertSee('Red Shirt');
         $response->assertSeeHtml('wire:target="search,category,brand,minPrice,maxPrice,toggleAttributeTerm,resetFilters"');
+        $response->assertSeeHtml('wire:loading.class="opacity-50"');
     }
 
     public function test_the_listing_never_shows_an_archived_product(): void

@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — "Staff" admin resource (5/N, completes the invite/management feature)
+- Final piece: a new Filament resource (`Settings` nav group) to invite and manage Admin/Store Keeper accounts — the user-facing entry point for everything built in the previous four pieces. Ties together `InviteStaffMember` (create), `SendStaffInviteNotification` (resend), and `SetStaffDisabledState` (disable/enable, single + bulk, both behind a confirmation modal explaining exactly what happens).
+- Since `CustomerResource` and this new resource are both backed by `User`, and Filament resolves `viewAny`/`create`/`update` authorization through one Policy per model class rather than per Resource, this resource overrides `canViewAny()`/`canCreate()`/`canEdit()` directly (Super Admin only, per BRD §3) instead of risking `UserPolicy` — reusing it would have wrongly granted Admin access to staff management.
+- Super Admin accounts are excluded at the query level (`getEloquentQuery()`), not just hidden from the table — a direct URL to a Super Admin's record 404s here, since every route this resource has (list/create/edit) resolves through the same scoped query.
+- 11 new tests (`StaffResourceTest`) covering access control, the Super-Admin-exclusion query scope (including the direct-URL case), invite-on-create, role changes on edit, resend-invite visibility, and disable/enable (single + bulk).
+
+
 ### Added — Disable/enable staff accounts (4/N)
 - Fourth piece of the staff invite/management feature. `SetStaffDisabledState` is the single entry point for both directions: disabling immediately deletes the account's rows from the `sessions` table (the `database` session driver) so an active session is kicked out right away, not just blocked on the next login attempt. Re-enabling never restores access under the old password — a fresh unguessable placeholder replaces it and a new set-password invite goes out via `SendStaffInviteNotification` (mail+SMS), which matters most for "disabled over a security concern."
 - The disabled/enabled transition is logged to the audit trail (BRD FR-10.2) via `User` gaining the existing `LogsAdminActivity` trait, scoped to just `disabled_at` (not every fillable attribute — a customer editing their own profile isn't "significant administrative action", only a staff account's access state is). Spatie Activitylog attributes the entry to the acting Super Admin automatically from the current auth guard, no manual `activity()->causedBy()` call needed.

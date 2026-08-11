@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — Missing/malformed docblocks in the new search feature
+- `SearchAutosuggest::close()` and `render()` had no method docblock; `suggestions()` had two separate, stacked docblock comments instead of one merged block (leftover from an edit that appended a `@return` tag without merging it into the existing explanatory comment). `SearchProducts::handle()` was missing its own purpose sentence beyond the `@return` tag. All fixed per CLAUDE.md §8 (docblock required on every method, public/protected/private).
+
 ### Changed — Price filter on the product listing sidebar is now a dual-thumb slider
 - Replaced the Min/Max number inputs with a single dual-thumb range slider (two overlapping native `<input type="range">` elements, styled via new `.range-thumb` CSS in `app.css` so only each thumb — not the full-width track — intercepts clicks/drags). Still binds to the same `minPrice`/`maxPrice` Livewire properties, so URL persistence and filtering logic are unchanged.
 - Slider ceiling is dynamic — new `ProductListingPage::catalogMaxPrice()` computed returns the highest price among active, in-stock variants (rounded up to the next whole GH₵), falling back to GH₵1000 for an empty catalog, so the slider's range always matches what's actually purchasable right now.

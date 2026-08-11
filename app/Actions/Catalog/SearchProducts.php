@@ -49,6 +49,10 @@ class SearchProducts
     private const MAX_TERM_LENGTH = 100;
 
     /**
+     * Scores and ranks every active, purchasable product against `$term`,
+     * returning the best `$limit` matches (see `score()` for how ranking
+     * works).
+     *
      * @return Collection<int, Product>
      */
     public function handle(string $term, int $limit = 8): Collection

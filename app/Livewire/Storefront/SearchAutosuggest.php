@@ -48,8 +48,7 @@ class SearchAutosuggest extends Component
      * rate-limited per visitor so a scripted flood of rapid-fire searches
      * can't hammer the database; a rate-limited request just returns no
      * new suggestions rather than erroring the page.
-     */
-    /**
+     *
      * @return Collection<int, Product>
      */
     #[Computed]
@@ -81,11 +80,18 @@ class SearchAutosuggest extends Component
         $this->open = trim($this->query) !== '';
     }
 
+    /**
+     * Dismisses the dropdown — called on click-outside, Escape, and after
+     * picking a suggestion (see search-autosuggest.blade.php).
+     */
     public function close(): void
     {
         $this->open = false;
     }
 
+    /**
+     * Renders the real search box + suggestions dropdown.
+     */
     public function render(): View
     {
         return view('livewire.storefront.search-autosuggest');

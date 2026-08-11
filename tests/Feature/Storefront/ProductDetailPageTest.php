@@ -77,6 +77,59 @@ class ProductDetailPageTest extends TestCase
             ->assertSee('Footwear');
     }
 
+    public function test_breadcrumbs_show_home_category_and_the_product_name(): void
+    {
+        $category = Category::factory()->create(['name' => 'Footwear', 'slug' => 'footwear']);
+        $product = Product::factory()->create(['name' => 'Trail Runner', 'status' => ProductStatus::Active, 'category_id' => $category->id]);
+        ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        $this->get("/products/{$product->slug}")
+            ->assertOk()
+            ->assertSeeInOrder(['Home', 'Footwear', 'Trail Runner'])
+            ->assertSeeHtml(route('home'))
+            ->assertSeeHtml(route('products.index', ['category' => 'footwear']));
+    }
+
+    public function test_breadcrumbs_include_the_parent_category_for_a_subcategory(): void
+    {
+        $parent = Category::factory()->create(['name' => 'Footwear', 'slug' => 'footwear']);
+        $child = Category::factory()->create(['name' => 'Running Shoes', 'slug' => 'running-shoes', 'parent_id' => $parent->id]);
+        $product = Product::factory()->create(['name' => 'Trail Runner', 'status' => ProductStatus::Active, 'category_id' => $child->id]);
+        ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        $this->get("/products/{$product->slug}")
+            ->assertOk()
+            ->assertSeeInOrder(['Home', 'Footwear', 'Running Shoes', 'Trail Runner'])
+            ->assertSeeHtml(route('products.index', ['category' => 'footwear']))
+            ->assertSeeHtml(route('products.index', ['category' => 'running-shoes']));
+    }
+
+    public function test_the_brands_logo_is_shown_next_to_its_name_when_it_has_one(): void
+    {
+        $brand = Brand::factory()->create(['name' => 'Nike', 'slug' => 'nike', 'logo_path' => 'brand-logos/nike.png']);
+        $product = Product::factory()->create(['status' => ProductStatus::Active, 'brand_id' => $brand->id]);
+        ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        $this->get("/products/{$product->slug}")
+            ->assertOk()
+            ->assertSeeHtml('brand-logos/nike.png');
+    }
+
+    public function test_a_brand_with_no_logo_shows_just_its_name(): void
+    {
+        $brand = Brand::factory()->create(['name' => 'Nike', 'slug' => 'nike', 'logo_path' => null]);
+        $product = Product::factory()->create(['status' => ProductStatus::Active, 'brand_id' => $brand->id]);
+        ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        // Targets the brand-logo <img>'s distinctive class combo specifically
+        // — not a bare "no <img> anywhere on the page" check, since the
+        // product gallery can legitimately render its own <img> tags.
+        $this->get("/products/{$product->slug}")
+            ->assertOk()
+            ->assertSee('Nike')
+            ->assertDontSeeHtml('h-4 w-4 rounded-full object-contain');
+    }
+
     public function test_selecting_an_attribute_term_switches_to_the_matching_variant(): void
     {
         $product = Product::factory()->create(['status' => ProductStatus::Active]);

@@ -117,7 +117,7 @@ class ProductDetailPage extends Component
     {
         return [
             'images',
-            'category',
+            'category.parent',
             'brand',
             'attributes.terms',
             'variants' => fn ($query) => $query->where('status', VariantStatus::Active)->orderBy('price'),

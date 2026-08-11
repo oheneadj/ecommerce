@@ -13,6 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The product show page displayed the brand but never the category. Both now show together above the product name (e.g. "Footwear · Nike"), each linking to the product listing pre-filtered to that category/brand — reusing the exact `route('products.index', ['category' => ...])`/`['brand' => ...])` pattern already used on the homepage's category tiles, rather than introducing a new one.
 - 2 new tests in `ProductDetailPageTest`.
 
+### Added — Brand logo and breadcrumbs on the product detail page
+- The brand link now shows its logo (`Brand::logo_path`) next to its name when one's been uploaded, falling back to just the name otherwise — no admin-side changes needed, the field already existed and was just never rendered on the storefront.
+- Added a `Home / Category / Product Name` breadcrumb trail above the gallery, including the parent category when the product's category is a subcategory (`Category::parent`). No reusable breadcrumb component existed yet (checked `resources/views/components/` per CLAUDE.md §10 first) — added a small generic `<x-breadcrumbs :items="[['label' => ..., 'url' => ...]]" />` component rather than one-off markup, so it's ready to reuse on the product listing page or elsewhere later.
+- `ProductDetailPage::eagerLoads()` now loads `category.parent` instead of just `category`.
+- 5 new tests in `ProductDetailPageTest` (breadcrumb trail, subcategory breadcrumb, brand logo shown/not-shown).
+
 ### Fixed — Settings pages didn't match the rest of the account area's design
 - Profile/Security/Appearance rendered bare forms with a small `h2` heading (a leftover from the old starter-kit settings layout), while Dashboard/Orders/Addresses/Wishlist all use an `h1` + `<x-card>` section pattern — moving the settings pages into the shared account layout in a prior change never reconciled the visual mismatch. All three (plus the nested `delete-user-form` and the security page's password/2FA/passkeys sub-sections) now use the same `h1` + icon-labeled `<x-card>` pattern as the rest of the account area.
 

@@ -1,9 +1,23 @@
 @php
     $variant = $this->selectedVariant;
     $galleryImages = $variant?->galleryImages() ?? $product->images;
+
+    $breadcrumbs = [['label' => __('Home'), 'url' => route('home')]];
+
+    if ($product->category) {
+        if ($product->category->parent) {
+            $breadcrumbs[] = ['label' => $product->category->parent->name, 'url' => route('products.index', ['category' => $product->category->parent->slug])];
+        }
+
+        $breadcrumbs[] = ['label' => $product->category->name, 'url' => route('products.index', ['category' => $product->category->slug])];
+    }
+
+    $breadcrumbs[] = ['label' => $product->name];
 @endphp
 
 <div class="space-y-8">
+    <x-breadcrumbs :items="$breadcrumbs" />
+
     <div class="grid gap-8 lg:grid-cols-2">
         <div
             wire:key="gallery-{{ $variant?->id }}"
@@ -90,17 +104,22 @@
         <div class="space-y-4">
             <div>
                 @if ($product->category || $product->brand)
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">
+                    <div class="flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400">
                         @if ($product->category)
                             <a href="{{ route('products.index', ['category' => $product->category->slug]) }}" wire:navigate class="hover:text-brand-primary hover:underline">{{ $product->category->name }}</a>
                         @endif
                         @if ($product->category && $product->brand)
-                            <span aria-hidden="true"> &middot; </span>
+                            <span aria-hidden="true">&middot;</span>
                         @endif
                         @if ($product->brand)
-                            <a href="{{ route('products.index', ['brand' => $product->brand->slug]) }}" wire:navigate class="hover:text-brand-primary hover:underline">{{ $product->brand->name }}</a>
+                            <a href="{{ route('products.index', ['brand' => $product->brand->slug]) }}" wire:navigate class="flex items-center gap-1 hover:text-brand-primary hover:underline">
+                                @if ($product->brand->logo_path)
+                                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($product->brand->logo_path) }}" alt="" class="h-4 w-4 rounded-full object-contain">
+                                @endif
+                                {{ $product->brand->name }}
+                            </a>
                         @endif
-                    </p>
+                    </div>
                 @endif
                 <h1 class="text-2xl font-semibold">{{ $product->name }}</h1>
                 @if ($this->reviews->isNotEmpty())

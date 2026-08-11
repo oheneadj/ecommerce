@@ -12,6 +12,8 @@ namespace Tests\Feature\Storefront;
 use App\Enums\ProductStatus;
 use App\Enums\VariantStatus;
 use App\Livewire\Storefront\ProductListingPage;
+use App\Models\Attribute;
+use App\Models\AttributeTerm;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
@@ -114,5 +116,102 @@ class ProductListingPageTest extends TestCase
         ProductVariant::factory()->create(['product_id' => $product->id, 'status' => VariantStatus::Active, 'stock' => 0]);
 
         Livewire::test(ProductListingPage::class)->assertDontSee('Out Of Stock Item');
+    }
+
+    public function test_an_attribute_with_no_terms_in_use_anywhere_shows_no_filter_group(): void
+    {
+        $this->purchasableProduct(['name' => 'Plain Item']);
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Purple']);
+        // "Purple" exists as a term but no variant anywhere carries it.
+
+        Livewire::test(ProductListingPage::class)
+            ->assertSet('filterableAttributes', fn ($attributes) => $attributes->isEmpty());
+    }
+
+    public function test_selecting_a_color_term_filters_to_only_matching_products(): void
+    {
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $red = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Red']);
+        $blue = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Blue']);
+
+        $redProduct = $this->purchasableProduct(['name' => 'Red Shirt']);
+        $redProduct->variants->first()->attributeTerms()->attach($red->id);
+
+        $blueProduct = $this->purchasableProduct(['name' => 'Blue Shirt']);
+        $blueProduct->variants->first()->attributeTerms()->attach($blue->id);
+
+        Livewire::test(ProductListingPage::class)
+            ->call('toggleAttributeTerm', $color->id, $red->id)
+            ->assertSee('Red Shirt')
+            ->assertDontSee('Blue Shirt');
+    }
+
+    /**
+     * Selecting Color=Red AND Size=M must require a single variant that is
+     * BOTH — not a product that merely has some Red variant and some
+     * unrelated M variant.
+     */
+    public function test_selecting_two_attributes_requires_the_same_variant_to_match_both(): void
+    {
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $size = Attribute::factory()->create(['name' => 'Size']);
+        $red = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Red']);
+        $blue = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Blue']);
+        $medium = AttributeTerm::factory()->create(['attribute_id' => $size->id, 'value' => 'M']);
+
+        // Genuinely matches both together.
+        $trueMatch = Product::factory()->create(['name' => 'Red Medium Shirt', 'status' => ProductStatus::Active]);
+        $trueMatchVariant = ProductVariant::factory()->create(['product_id' => $trueMatch->id, 'status' => VariantStatus::Active, 'stock' => 5]);
+        $trueMatchVariant->attributeTerms()->attach([$red->id, $medium->id]);
+
+        // Has a Red variant and an M variant, but never both on the same variant.
+        $falseMatch = Product::factory()->create(['name' => 'Mixed Shirt', 'status' => ProductStatus::Active]);
+        $falseMatchRedVariant = ProductVariant::factory()->create(['product_id' => $falseMatch->id, 'status' => VariantStatus::Active, 'stock' => 5]);
+        $falseMatchRedVariant->attributeTerms()->attach($red->id);
+        $falseMatchBlueMediumVariant = ProductVariant::factory()->create(['product_id' => $falseMatch->id, 'status' => VariantStatus::Active, 'stock' => 5]);
+        $falseMatchBlueMediumVariant->attributeTerms()->attach([$blue->id, $medium->id]);
+
+        Livewire::test(ProductListingPage::class)
+            ->call('toggleAttributeTerm', $color->id, $red->id)
+            ->call('toggleAttributeTerm', $size->id, $medium->id)
+            ->assertSee('Red Medium Shirt')
+            ->assertDontSee('Mixed Shirt');
+    }
+
+    public function test_picking_a_category_narrows_which_color_terms_are_available(): void
+    {
+        $shoes = Category::factory()->create();
+        $hats = Category::factory()->create();
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $red = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Red']);
+        $green = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Green']);
+
+        $shoe = $this->purchasableProduct(['category_id' => $shoes->id]);
+        $shoe->variants->first()->attributeTerms()->attach($red->id);
+
+        $hat = $this->purchasableProduct(['category_id' => $hats->id]);
+        $hat->variants->first()->attributeTerms()->attach($green->id);
+
+        $component = Livewire::test(ProductListingPage::class)->set('category', $shoes->slug);
+
+        $available = $component->instance()->availableTermIdsByAttribute();
+
+        $this->assertContains($red->id, $available[$color->id]);
+        $this->assertNotContains($green->id, $available[$color->id]);
+    }
+
+    public function test_reset_filters_clears_selected_attribute_filters(): void
+    {
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $red = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Red']);
+        $product = $this->purchasableProduct();
+        $product->variants->first()->attributeTerms()->attach($red->id);
+
+        Livewire::test(ProductListingPage::class)
+            ->call('toggleAttributeTerm', $color->id, $red->id)
+            ->assertSet('attributeFilters', [$color->id => [$red->id]])
+            ->call('resetFilters')
+            ->assertSet('attributeFilters', []);
     }
 }

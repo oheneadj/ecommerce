@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added — Search box in the storefront navbar
 - The navbar had no way to search for a product — only the "Shop" link, with no query input. Added an always-visible search box between the logo and nav links in `layouts/storefront.blade.php`, submitted as a plain GET request to `/products?search=...`. No new search logic: `ProductListingPage` already filters by name via its `#[Url]`-bound `search` property, so the navbar box is purely a new entry point into existing functionality.
+
+### Added — Dynamic attribute filters (Color, Size, etc.) on the product listing sidebar
+- The listing page had Search/Category/Brand/Price filters but nothing for global attributes. New filter groups appear per attribute, but only when it has at least one term genuinely in use somewhere in the active/in-stock catalog (`ProductListingPage::filterableAttributes()`) — an attribute whose only term was never assigned to any variant gets no group at all.
+- Terms narrow dynamically as other filters change (`availableTermIdsByAttribute()`): picking a Category greys out colors that don't exist within it, without hiding them outright — same "greyed but still clickable" affordance already used on the product detail page's variant selector, for discoverability rather than dead ends.
+- Selecting two attributes at once (e.g. Color=Red + Size=M) requires a single variant matching both together, not a product that merely has some Red variant and some unrelated M variant — enforced by chaining `whereHas('attributeTerms', ...)` calls on the same variant subquery in the new `applyAttributeFilters()`, reused for both the main product list and the facet computation (via a new shared `baseProductQuery()`).
+- Multiple terms within one attribute are OR'd (Red or Blue); multiple attributes are AND'd.
+- 5 new tests in `ProductListingPageTest`. Manually confirmed query count stays well within budget (14 queries for a full render with 4 attributes in the dev catalog).
 - **Found and fixed along the way**: the field initially used `<x-input>`, whose `@error()` directive depends on Laravel's `$errors` view-share, which is only bound during the normal middleware pipeline — error pages (404/403/500) render outside it but still use this same layout, so every error page crashed with an undefined `$errors` variable. Switched to a plain styled `<input>` (this field is never validated, so it never needed that behavior) — no other page using `<x-input>` is affected, since they're all reached through the normal pipeline.
 - 3 new tests (`NavbarSearchTest`), including a regression test confirming a 404 page still renders.
 

@@ -41,6 +41,44 @@
                 </x-card>
             @endif
 
+            @foreach ($this->filterableAttributes as $attribute)
+                @php
+                    $availableTermIds = $this->availableTermIdsByAttribute[$attribute->id] ?? [];
+                @endphp
+                {{-- An attribute with nothing reachable under the current
+                     filters gets no group at all, not just an empty one. --}}
+                @if (count($availableTermIds) > 0)
+                    <x-card wire:key="attribute-filter-{{ $attribute->id }}">
+                        <h2 class="text-sm font-medium">{{ $attribute->name }}</h2>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            @foreach ($attribute->terms as $term)
+                                @php
+                                    $isSelected = in_array($term->id, $attributeFilters[$attribute->id] ?? [], true);
+                                    $isAvailable = in_array($term->id, $availableTermIds, true);
+                                @endphp
+                                {{-- Not `disabled` when unavailable — same reasoning as
+                                     the product detail page's variant selector: greyed
+                                     styling is a hint, not a lock, so picking it still
+                                     updates the other filters instead of being a dead
+                                     end. --}}
+                                <button
+                                    type="button"
+                                    wire:click="toggleAttributeTerm({{ $attribute->id }}, {{ $term->id }})"
+                                    @class([
+                                        'rounded-lg border px-3 py-1.5 text-sm',
+                                        'border-brand-primary text-brand-primary' => $isSelected,
+                                        'border-zinc-300 dark:border-zinc-600' => ! $isSelected && $isAvailable,
+                                        'border-zinc-200 text-zinc-400 line-through cursor-not-allowed dark:border-zinc-700 dark:text-zinc-600' => ! $isSelected && ! $isAvailable,
+                                    ])
+                                >
+                                    {{ $term->value }}
+                                </button>
+                            @endforeach
+                        </div>
+                    </x-card>
+                @endif
+            @endforeach
+
             <x-card>
                 <h2 class="text-sm font-medium">{{ __('Price (GH₵)') }}</h2>
                 <div class="mt-2 flex items-center gap-2">

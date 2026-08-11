@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Models\ProductVariant;
+use App\Notifications\Support\BrandedMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -20,8 +21,11 @@ use Throwable;
  * Sent to every Admin/Super Admin (BRD FR-2.2a) after
  * AdjustStockWithReservationCheck flags one or more reservations `at_risk`
  * — a manual correction is never blocked by this, but a human must resolve
- * the affected orders (contact customer, cancel, or expedite restock).
- * Queued — see App\Notifications\OrderNotification's docblock for why.
+ * the affected orders (contact customer, cancel, or expedite restock). sms
+ * is a time-sensitive operational alert like `LowStockAlert`/
+ * `CriticalHealthAlert`; `SmsChannel` no-ops gracefully with no phone on
+ * file. Queued — see App\Notifications\OrderNotification's docblock for
+ * why.
  */
 class ReservationsAtRiskAlert extends Notification implements ShouldQueue
 {
@@ -51,7 +55,7 @@ class ReservationsAtRiskAlert extends Notification implements ShouldQueue
      */
     public function via(mixed $notifiable): array
     {
-        return ['mail', 'database'];
+        return ['mail', 'sms', 'database'];
     }
 
     public function toMail(mixed $notifiable): MailMessage
@@ -63,6 +67,13 @@ class ReservationsAtRiskAlert extends Notification implements ShouldQueue
             ->greeting('Stock correction left reservations uncovered')
             ->line("A stock adjustment on variant {$this->variant->sku} left {$count} active reservation(s) without enough stock to cover them.")
             ->line('These have been flagged at_risk and need manual review — contact the customer, cancel the order, or expedite a restock.');
+    }
+
+    public function toSms(mixed $notifiable): string
+    {
+        return BrandedMessage::sms(
+            "Reservations at risk: {$this->variant->sku} — ".count($this->reservationIds).' reservation(s) need manual review.',
+        );
     }
 
     /**

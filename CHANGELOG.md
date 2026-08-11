@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — SMS for operational admin alerts
+- `LowStockAlert`, `CriticalHealthAlert`, and `ReservationsAtRiskAlert` previously only notified via mail+database. Now that staff accounts have phone numbers on file (the Staff resource requires one), all three also send SMS — genuinely time-sensitive operational alerts, unlike `StaffInvited`'s deliberately link-free SMS, so there's no reason to withhold detail here. `SmsChannel` already no-ops gracefully for a recipient with no phone on file (e.g. the CLI-created Super Admin, which doesn't collect one), so this is a safe unconditional addition to each notification's `via()`.
+- 3 new tests confirming the `sms` channel is included alongside `mail`.
+
+
 ### Added — "Staff" admin resource (5/N, completes the invite/management feature)
 - Final piece: a new Filament resource (`Settings` nav group) to invite and manage Admin/Store Keeper accounts — the user-facing entry point for everything built in the previous four pieces. Ties together `InviteStaffMember` (create), `SendStaffInviteNotification` (resend), and `SetStaffDisabledState` (disable/enable, single + bulk, both behind a confirmation modal explaining exactly what happens).
 - Since `CustomerResource` and this new resource are both backed by `User`, and Filament resolves `viewAny`/`create`/`update` authorization through one Policy per model class rather than per Resource, this resource overrides `canViewAny()`/`canCreate()`/`canEdit()` directly (Super Admin only, per BRD §3) instead of risking `UserPolicy` — reusing it would have wrongly granted Admin access to staff management.

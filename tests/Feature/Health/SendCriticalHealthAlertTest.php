@@ -62,6 +62,21 @@ class SendCriticalHealthAlertTest extends TestCase
         Notification::assertSentTo($superAdmin, CriticalHealthAlert::class);
     }
 
+    public function test_the_alert_is_sent_via_sms_as_well_as_mail(): void
+    {
+        Role::findOrCreate(UserRole::SuperAdmin->value, 'web');
+        $superAdmin = User::factory()->create();
+        $superAdmin->assignRole(UserRole::SuperAdmin->value);
+
+        SendCriticalHealthAlert::run();
+
+        Notification::assertSentTo(
+            $superAdmin,
+            CriticalHealthAlert::class,
+            fn ($notification, array $channels) => in_array('sms', $channels, true),
+        );
+    }
+
     public function test_does_not_notify_when_nothing_is_failing(): void
     {
         $this->fakeEmptyCheckRegistry();

@@ -179,6 +179,20 @@ class NotificationTest extends TestCase
         Notification::assertSentTo($storeKeeper, LowStockAlert::class);
     }
 
+    public function test_low_stock_alert_is_sent_via_sms_as_well_as_mail(): void
+    {
+        $storeKeeper = $this->storeKeeper();
+        $variant = ProductVariant::factory()->create(['stock' => 6, 'low_stock_threshold' => 5]);
+
+        RecordStockMovement::run($variant, StockMovementType::Sale, -2);
+
+        Notification::assertSentTo(
+            $storeKeeper,
+            LowStockAlert::class,
+            fn ($notification, array $channels) => in_array('sms', $channels, true),
+        );
+    }
+
     public function test_low_stock_alert_not_resent_while_already_below_threshold(): void
     {
         $storeKeeper = $this->storeKeeper();
@@ -203,6 +217,26 @@ class NotificationTest extends TestCase
         AdjustStockWithReservationCheck::run($variant, -9, $actor);
 
         Notification::assertSentTo($admin, ReservationsAtRiskAlert::class);
+    }
+
+    public function test_reservations_at_risk_alert_is_sent_via_sms_as_well_as_mail(): void
+    {
+        $admin = $this->admin();
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+        StockReservation::factory()->create([
+            'product_variant_id' => $variant->id,
+            'quantity' => 8,
+            'status' => StockReservationStatus::Active,
+        ]);
+        $actor = User::factory()->create();
+
+        AdjustStockWithReservationCheck::run($variant, -9, $actor);
+
+        Notification::assertSentTo(
+            $admin,
+            ReservationsAtRiskAlert::class,
+            fn ($notification, array $channels) => in_array('sms', $channels, true),
+        );
     }
 
     public function test_daily_sweep_notifies_store_keeper_for_all_low_stock_variants(): void

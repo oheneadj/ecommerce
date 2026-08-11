@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Filament\Pages\SystemHealth;
+use App\Notifications\Support\BrandedMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -21,7 +22,10 @@ use Throwable;
  * is failing — Super Admin can snooze it for 24 hours from the System
  * Health page if they've already seen it and are working on it. Database
  * channel surfaces it on the Filament admin bell; mail gives an off-panel
- * heads-up, same reasoning as `LowStockAlert`.
+ * heads-up; sms is the fastest path for a genuinely critical outage, same
+ * reasoning as `LowStockAlert`. `SmsChannel` no-ops gracefully if the
+ * Super Admin has no phone on file (not collected by the CLI bootstrap
+ * command).
  */
 class CriticalHealthAlert extends Notification implements ShouldQueue
 {
@@ -50,7 +54,7 @@ class CriticalHealthAlert extends Notification implements ShouldQueue
      */
     public function via(mixed $notifiable): array
     {
-        return ['mail', 'database'];
+        return ['mail', 'sms', 'database'];
     }
 
     /**
@@ -70,6 +74,15 @@ class CriticalHealthAlert extends Notification implements ShouldQueue
         return $message
             ->action('View system health', SystemHealth::getUrl())
             ->line('You can snooze this reminder for 24 hours from the System Health page.');
+    }
+
+    public function toSms(mixed $notifiable): string
+    {
+        $summary = count($this->failures) === 1
+            ? "Critical check failing: {$this->failures[0]}"
+            : count($this->failures).' critical checks are failing.';
+
+        return BrandedMessage::sms($summary);
     }
 
     /**

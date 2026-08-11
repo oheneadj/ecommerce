@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Foundation for the staff invite/management feature (1/N)
+- First piece of a new "invite an admin user" feature (currently only possible via the CLI's `app:create-super-admin`, which is Super-Admin-only and meant for the very first bootstrap account). New nullable `disabled_at` timestamp on `users` — a timestamp rather than a plain boolean so a disabled account carries a visible "since when" on the record itself, same evidence-bearing-state convention `email_verified_at`/`phone_verified_at` already use. `User::canAccessPanel()` now also blocks a disabled account at the panel gate.
+- New `User::scopeStaff()` — deliberately scoped to `role IN (admin, store_keeper)`, not a generic "has any role" filter (unlike its `scopeCustomers()` counterpart) — Super Admin must never resolve through it, since the upcoming Staff resource uses this scope to gate every route it has (list/create/edit), not just what's hidden from a table.
+- 4 new tests (`UserTest`).
+
 ### Added — Duplicate a product from the admin panel
 - New "Duplicate" row action on the Products table (`App\Actions\Catalog\DuplicateProduct`), copying the product's own fields (name gets " (Copy)" appended, slug gets a guaranteed-unique suffix using the same row-ID pattern `DeleteProduct` uses to free a slug on delete), its enabled global attributes, every variant (fresh SKU via the same ID-suffix pattern, custom attribute values, and shared global attribute-term links), and every image. The copy always starts as Draft, regardless of the original's status — never accidentally live before review.
 - Images are **physically copied to new files on disk**, not just new `ProductImage` rows pointing at the original file — `ProductImageObserver` deletes the underlying file whenever *any* row referencing it is deleted, so sharing a path between two products' image rows would mean deleting either product's image deletes the file out from under the other. Verified with a regression test that deletes the original's image and confirms the copy's file survives.

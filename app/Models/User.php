@@ -53,6 +53,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
+ * @property Carbon|null $disabled_at
  */
 #[Fillable(['name', 'phone', 'email', 'password', 'google_id', 'avatar_url'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
@@ -72,6 +73,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
         return [
             'phone_verified_at' => 'datetime',
             'email_verified_at' => 'datetime',
+            'disabled_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -87,11 +89,15 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
     }
 
     /**
-     * Staff-only gate for the Filament admin panel — customers never hold any of these roles, per BRD Section 3.
+     * Staff-only gate for the Filament admin panel — customers never hold
+     * any of these roles, per BRD Section 3. A disabled staff account is
+     * blocked here too, even if it somehow still holds a valid session or
+     * completes a pending password reset — disabling is meant to cut off
+     * access immediately, not just prevent future logins.
      */
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->hasAnyRole([
+        return $this->disabled_at === null && $this->hasAnyRole([
             UserRole::SuperAdmin->value,
             UserRole::Admin->value,
             UserRole::StoreKeeper->value,
@@ -135,6 +141,26 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
     public function scopeCustomers(Builder $query): Builder
     {
         return $query->whereDoesntHave('roles');
+    }
+
+    /**
+     * Accounts holding exactly the two roles manageable from the Staff
+     * admin resource — deliberately not "has any role" the way
+     * `scopeCustomers()` is the inverse of. Super Admin must never
+     * resolve through this scope, since `StaffResource::getEloquentQuery()`
+     * uses it to gate every route that resource has (list/create/edit),
+     * not just the table display — a Super Admin account must 404 there
+     * even via a hand-edited URL, not just be hidden from the list.
+     *
+     * @param  Builder<User>  $query
+     * @return Builder<User>
+     */
+    public function scopeStaff(Builder $query): Builder
+    {
+        return $query->whereHas('roles', fn ($rolesQuery) => $rolesQuery->whereIn('name', [
+            UserRole::Admin->value,
+            UserRole::StoreKeeper->value,
+        ]));
     }
 
     /**

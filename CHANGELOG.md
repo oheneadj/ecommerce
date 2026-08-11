@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Staff invite notification and actions (3/N)
+- Third piece of the staff invite/management feature. `StaffInvited` — a distinctly-worded invitation, not the generic "forgot password" copy — sent via both mail and SMS (confirmed with the user): mail carries the actual set-password link, SMS is a heads-up only ("you've been invited, check your email") with no link or token in it, since SMS is unencrypted and the phone isn't OTP-verified at invite time.
+- `SendStaffInviteNotification` generates a real password-reset token through the same broker Fortify's "forgot password" flow already uses and points it at the existing `password.reset` page — no new routes/pages needed. `InviteStaffMember` creates the account with an unguessable random placeholder password (never null — no edge case in credential checking) and calls it. Both reused later for a "Resend invite" action and for re-enabling a disabled account.
+- 4 new tests (`InviteStaffMemberTest`).
+
 ### Added — Strong passwords enforced for staff, in every environment (2/N)
 - Second piece of the staff invite/management feature. `AppServiceProvider` only required a strong password (12+ chars, mixed case, numbers, symbols, not a known-compromised password) in production — everywhere else, Laravel's bare 8-character minimum applied, including to staff/admin accounts. Extracted the rule into `App\Support\PasswordPolicy::strong()` (a plain class, not a trait — traits can't be called statically without a deprecation warning unless something actually `use`s them, and neither `AppServiceProvider` nor the Fortify action naturally does) and applied it unconditionally in `ResetUserPassword` whenever the account being reset holds any staff role, regardless of environment — customers keep the existing environment-based default.
 - `ResetUserPassword` also now stamps `email_verified_at` on a successful reset if not already set — using a mailed token proves inbox ownership, whether it's an ordinary "forgot password" or (in the next piece of this feature) a staff invite/re-enable link.

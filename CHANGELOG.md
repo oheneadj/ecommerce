@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — Price slider didn't render or drag correctly
+- The dual-thumb slider shipped as two overlapping native `<input type="range">` elements with `pointer-events` CSS tricks to let each thumb "win" over the other's full-width hit area. That approach was unreliable in practice — the thumb overflowed the 4px-tall track, and there was no click-to-jump on the track since the whole input had `pointer-events: none` outside the thumb itself. Rebuilt as a self-contained Alpine-driven slider (plain `<div>` track/thumbs, `getBoundingClientRect()` + pointer math) with proper click-anywhere-on-track and thumb-drag support. Dragging updates local Alpine state only; the actual `minPrice`/`maxPrice` filter commits via `$wire.set()` once on drag release or track click, not on every pixel of movement, so it doesn't hammer the server mid-drag. Verified visually (screenshots, light and dark) and via a scripted CDP drag/click that confirmed both interactions filter the product grid correctly with no console errors.
+
 ### Fixed — Missing/malformed docblocks in the new search feature
 - `SearchAutosuggest::close()` and `render()` had no method docblock; `suggestions()` had two separate, stacked docblock comments instead of one merged block (leftover from an edit that appended a `@return` tag without merging it into the existing explanatory comment). `SearchProducts::handle()` was missing its own purpose sentence beyond the `@return` tag. All fixed per CLAUDE.md §8 (docblock required on every method, public/protected/private).
 

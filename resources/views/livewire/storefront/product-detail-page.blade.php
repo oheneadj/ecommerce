@@ -13,6 +13,8 @@
     }
 
     $breadcrumbs[] = ['label' => $product->name];
+
+    $shareUrl = route('products.show', $product);
 @endphp
 
 <div class="space-y-8">
@@ -237,6 +239,64 @@
                     {{ $product->description }}
                 </div>
             @endif
+
+            <div
+                class="flex items-center gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-700"
+                x-data="{
+                    copied: false,
+                    async copyLink() {
+                        try {
+                            await navigator.clipboard.writeText('{{ $shareUrl }}');
+                            this.copied = true;
+                            setTimeout(() => this.copied = false, 1500);
+                        } catch (e) {
+                            console.warn('Could not copy to clipboard');
+                        }
+                    },
+                }"
+            >
+                <span class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Share') }}</span>
+
+                <a
+                    href="https://wa.me/?text={{ urlencode($product->name.' — '.$shareUrl) }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="{{ __('Share on WhatsApp') }}"
+                    class="text-zinc-400 hover:text-brand-primary"
+                >
+                    <x-app-icon name="whatsapp" class="size-5" />
+                </a>
+
+                <a
+                    href="https://twitter.com/intent/tweet?url={{ urlencode($shareUrl) }}&text={{ urlencode($product->name) }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="{{ __('Share on X') }}"
+                    class="text-zinc-400 hover:text-brand-primary"
+                >
+                    <x-app-icon name="x" class="size-5" />
+                </a>
+
+                <a
+                    href="https://www.facebook.com/sharer/sharer.php?u={{ urlencode($shareUrl) }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="{{ __('Share on Facebook') }}"
+                    class="text-zinc-400 hover:text-brand-primary"
+                >
+                    <x-app-icon name="facebook" class="size-5" />
+                </a>
+
+                <button
+                    type="button"
+                    @click="copyLink()"
+                    aria-label="{{ __('Copy link') }}"
+                    class="text-zinc-400 hover:text-brand-primary"
+                >
+                    <x-app-icon x-show="!copied" name="document-duplicate" class="size-5" />
+                    <x-app-icon x-show="copied" x-cloak name="check" class="size-5 text-green-600 dark:text-green-400" />
+                </button>
+            </div>
         </div>
     </div>
 

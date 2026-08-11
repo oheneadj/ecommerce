@@ -51,6 +51,32 @@ class ProductDetailPageTest extends TestCase
         $this->get("/products/{$product->slug}")->assertNotFound();
     }
 
+    public function test_share_links_point_to_the_products_public_url(): void
+    {
+        $product = Product::factory()->create(['name' => 'Blue Sneakers', 'status' => ProductStatus::Active]);
+        ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        $shareUrl = route('products.show', $product);
+
+        $this->get("/products/{$product->slug}")
+            ->assertOk()
+            ->assertSeeHtml('https://wa.me/?text='.urlencode('Blue Sneakers — '.$shareUrl))
+            ->assertSeeHtml('https://twitter.com/intent/tweet?url='.urlencode($shareUrl))
+            ->assertSeeHtml('https://www.facebook.com/sharer/sharer.php?u='.urlencode($shareUrl));
+    }
+
+    public function test_the_copy_link_button_targets_the_products_public_url(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        $shareUrl = route('products.show', $product);
+
+        $this->get("/products/{$product->slug}")
+            ->assertOk()
+            ->assertSeeHtml("navigator.clipboard.writeText('{$shareUrl}')");
+    }
+
     public function test_the_products_category_and_brand_are_shown_and_link_to_the_filtered_listing(): void
     {
         $category = Category::factory()->create(['name' => 'Footwear', 'slug' => 'footwear']);

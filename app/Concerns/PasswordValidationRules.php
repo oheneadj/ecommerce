@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Shared password validation rule sets used by Fortify's auth actions.
+ */
+
+declare(strict_types=1);
+
 namespace App\Concerns;
 
 use Illuminate\Contracts\Validation\ValidationRule;

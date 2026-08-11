@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Strong passwords enforced for staff, in every environment (2/N)
+- Second piece of the staff invite/management feature. `AppServiceProvider` only required a strong password (12+ chars, mixed case, numbers, symbols, not a known-compromised password) in production — everywhere else, Laravel's bare 8-character minimum applied, including to staff/admin accounts. Extracted the rule into `App\Support\PasswordPolicy::strong()` (a plain class, not a trait — traits can't be called statically without a deprecation warning unless something actually `use`s them, and neither `AppServiceProvider` nor the Fortify action naturally does) and applied it unconditionally in `ResetUserPassword` whenever the account being reset holds any staff role, regardless of environment — customers keep the existing environment-based default.
+- `ResetUserPassword` also now stamps `email_verified_at` on a successful reset if not already set — using a mailed token proves inbox ownership, whether it's an ordinary "forgot password" or (in the next piece of this feature) a staff invite/re-enable link.
+- 6 new tests (`PasswordResetTest`).
+
+
 ### Added — Foundation for the staff invite/management feature (1/N)
 - First piece of a new "invite an admin user" feature (currently only possible via the CLI's `app:create-super-admin`, which is Super-Admin-only and meant for the very first bootstrap account). New nullable `disabled_at` timestamp on `users` — a timestamp rather than a plain boolean so a disabled account carries a visible "since when" on the record itself, same evidence-bearing-state convention `email_verified_at`/`phone_verified_at` already use. `User::canAccessPanel()` now also blocks a disabled account at the panel gate.
 - New `User::scopeStaff()` — deliberately scoped to `role IN (admin, store_keeper)`, not a generic "has any role" filter (unlike its `scopeCustomers()` counterpart) — Super Admin must never resolve through it, since the upcoming Staff resource uses this scope to gate every route it has (list/create/edit), not just what's hidden from a table.

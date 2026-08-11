@@ -9,6 +9,7 @@ use App\Payments\PaymentManager;
 use App\Policies\ActivityPolicy;
 use App\Sms\Contracts\SmsGateway;
 use App\Sms\SmsManager;
+use App\Support\PasswordPolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Database\Eloquent\Model;
@@ -161,12 +162,7 @@ class AppServiceProvider extends ServiceProvider
         );
 
         Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
-                ->mixedCase()
-                ->letters()
-                ->numbers()
-                ->symbols()
-                ->uncompromised()
+            ? PasswordPolicy::strong()
             : null,
         );
     }

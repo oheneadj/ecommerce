@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Icons on the account sidebar nav
+- The account area's sidebar nav (Dashboard/Orders/Notifications/Addresses/Wishlist/Profile/Security/Appearance) was text-only. Added an icon per item, reusing the same icon already used for that concept elsewhere in the app rather than picking new ones (DRY): `home`, `shopping-bag`, `bell`, `globe`, `heart`, `user`, `lock-closed`, `sun`.
+- 1 new test confirming every nav item renders exactly one icon.
+
 ### Fixed — Queued jobs on named queues never ran in local dev
 - `composer run dev` (Laravel's built-in `artisan dev`) starts a `queue:listen` process with no `--queue` flag, which only services the `default` queue. This project deliberately segments every job onto a named queue (`emails`/`sms`/`notifications`/`processing`/`external-api`, per CLAUDE.md §15) so time-sensitive work never queues behind slow external-API work — but that segmentation meant the dev queue listener was never actually working any of them. 38 jobs had piled up undelivered, including a just-sent customer broadcast notification, order confirmations, and low-stock alerts going back to when queue segmentation was introduced.
 - `AppServiceProvider::configureDevQueueWorker()` re-registers the `queue` dev command (`DevCommands::artisan(...)`) with `--queue=notifications,emails,sms,processing,external-api,default` — a userland registration wins over the framework's default per `DevCommands::resolvePriority()`. Drained the existing backlog manually (`php artisan queue:work --queue=... --stop-when-empty`); 33 succeeded, 5 pre-existing SMS jobs failed on a missing local Moolre API key (a separate, expected local-env gap — not something to paper over with fake credentials).

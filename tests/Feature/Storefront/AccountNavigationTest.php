@@ -50,4 +50,21 @@ class AccountNavigationTest extends TestCase
             ->assertSee(route('account.show'), false)
             ->assertSee(route('security.edit'), false);
     }
+
+    public function test_every_account_nav_item_has_an_icon(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $response = $this->get('/account');
+        $response->assertOk();
+
+        $html = (string) $response->getContent();
+        preg_match('/<nav aria-label="Account".*?<\/nav>/s', $html, $matches);
+
+        if (! isset($matches[0])) {
+            $this->fail('Account nav not found in the response.');
+        }
+
+        $this->assertSame(8, substr_count($matches[0], '<svg'), 'Expected one icon per account nav item.');
+    }
 }

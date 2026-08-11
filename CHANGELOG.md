@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Duplicate a product from the admin panel
+- New "Duplicate" row action on the Products table (`App\Actions\Catalog\DuplicateProduct`), copying the product's own fields (name gets " (Copy)" appended, slug gets a guaranteed-unique suffix using the same row-ID pattern `DeleteProduct` uses to free a slug on delete), its enabled global attributes, every variant (fresh SKU via the same ID-suffix pattern, custom attribute values, and shared global attribute-term links), and every image. The copy always starts as Draft, regardless of the original's status — never accidentally live before review.
+- Images are **physically copied to new files on disk**, not just new `ProductImage` rows pointing at the original file — `ProductImageObserver` deletes the underlying file whenever *any* row referencing it is deleted, so sharing a path between two products' image rows would mean deleting either product's image deletes the file out from under the other. Verified with a regression test that deletes the original's image and confirms the copy's file survives.
+- Not copied: reviews and stock movements/reservations — real history belonging to the original product, not template data for a copy.
+- 9 new tests (`DuplicateProductTest`).
+
 ### Added — Mailpit for local email testing
 - Outgoing mail had no way to be actually inspected in local dev short of reading `storage/logs/laravel.log` (the "log" mailer). `.env`/`.env.example`'s `MAIL_MAILER`/`MAIL_PORT` now point at Mailpit's SMTP port (1025) with the mailer set to `smtp`, so real emails render and are viewable at `http://127.0.0.1:8025`. `.env.example` keeps `log` as its checked-in default (works with zero external dependencies on a fresh clone) with a comment explaining the Mailpit switch.
 - `composer run dev` now auto-starts Mailpit as a fifth process (`AppServiceProvider::configureDevMailServer()`, same `DevCommands::register()` mechanism used for the queue-worker fix), but only when the `mailpit` binary is actually present — it isn't a project dependency, just a common local tool (bundled with Herd/Herd Lite), and `artisan dev`'s `--kill-others-on-fail` would otherwise take down the whole dev process group on a machine that hasn't installed it.

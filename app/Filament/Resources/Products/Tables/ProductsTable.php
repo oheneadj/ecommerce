@@ -4,14 +4,17 @@ namespace App\Filament\Resources\Products\Tables;
 
 use App\Actions\Catalog\DeleteProduct;
 use App\Actions\Catalog\DeleteProductImageFiles;
+use App\Actions\Catalog\DuplicateProduct;
 use App\Enums\ProductStatus;
 use App\Models\Product;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -55,6 +58,20 @@ class ProductsTable
             ->recordActions([
                 EditAction::make()
                     ->button(),
+                Action::make('duplicate')
+                    ->label('Duplicate')
+                    ->icon(Heroicon::OutlinedDocumentDuplicate)
+                    ->requiresConfirmation()
+                    ->modalDescription('Creates a full copy of this product (variants, attributes, and images) as a new Draft product.')
+                    ->action(function (Product $record): void {
+                        $copy = DuplicateProduct::run($record);
+
+                        Notification::make()
+                            ->title('Product duplicated')
+                            ->body("\"{$copy->name}\" was created as a draft.")
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

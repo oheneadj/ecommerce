@@ -16,7 +16,9 @@ use App\Enums\ReviewStatus;
 use App\Livewire\Storefront\ProductDetailPage;
 use App\Models\Attribute;
 use App\Models\AttributeTerm;
+use App\Models\Brand;
 use App\Models\Cart;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
@@ -47,6 +49,32 @@ class ProductDetailPageTest extends TestCase
         $product = Product::factory()->create(['status' => ProductStatus::Draft]);
 
         $this->get("/products/{$product->slug}")->assertNotFound();
+    }
+
+    public function test_the_products_category_and_brand_are_shown_and_link_to_the_filtered_listing(): void
+    {
+        $category = Category::factory()->create(['name' => 'Footwear', 'slug' => 'footwear']);
+        $brand = Brand::factory()->create(['name' => 'Nike', 'slug' => 'nike']);
+        $product = Product::factory()->create(['status' => ProductStatus::Active, 'category_id' => $category->id, 'brand_id' => $brand->id]);
+        ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        $this->get("/products/{$product->slug}")
+            ->assertOk()
+            ->assertSee('Footwear')
+            ->assertSee('Nike')
+            ->assertSeeHtml(route('products.index', ['category' => 'footwear']))
+            ->assertSeeHtml(route('products.index', ['brand' => 'nike']));
+    }
+
+    public function test_a_product_with_no_brand_only_shows_the_category(): void
+    {
+        $category = Category::factory()->create(['name' => 'Footwear', 'slug' => 'footwear']);
+        $product = Product::factory()->create(['status' => ProductStatus::Active, 'category_id' => $category->id, 'brand_id' => null]);
+        ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        $this->get("/products/{$product->slug}")
+            ->assertOk()
+            ->assertSee('Footwear');
     }
 
     public function test_selecting_an_attribute_term_switches_to_the_matching_variant(): void

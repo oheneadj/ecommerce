@@ -89,8 +89,18 @@
 
         <div class="space-y-4">
             <div>
-                @if ($product->brand)
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ $product->brand->name }}</p>
+                @if ($product->category || $product->brand)
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400">
+                        @if ($product->category)
+                            <a href="{{ route('products.index', ['category' => $product->category->slug]) }}" wire:navigate class="hover:text-brand-primary hover:underline">{{ $product->category->name }}</a>
+                        @endif
+                        @if ($product->category && $product->brand)
+                            <span aria-hidden="true"> &middot; </span>
+                        @endif
+                        @if ($product->brand)
+                            <a href="{{ route('products.index', ['brand' => $product->brand->slug]) }}" wire:navigate class="hover:text-brand-primary hover:underline">{{ $product->brand->name }}</a>
+                        @endif
+                    </p>
                 @endif
                 <h1 class="text-2xl font-semibold">{{ $product->name }}</h1>
                 @if ($this->reviews->isNotEmpty())

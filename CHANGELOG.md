@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed — Whole page shifted sideways when navigating to a longer page (e.g. Security)
 - No page reserved space for the vertical scrollbar, so a short page (no scrollbar) rendered a few pixels wider than a taller page that does need one (e.g. `/settings/security`, with its 3 stacked cards, versus `/account`) — every centered, full-width section (header/navbar, main, footer) shifted sideways as a result, since they all sit inside the same shrunken viewport. Added `scrollbar-gutter: stable` globally (`resources/css/app.css`) so scrollbar space is always reserved, regardless of whether a given page is tall enough to need one.
 
+### Added — Product detail page shows category and brand
+- The product show page displayed the brand but never the category. Both now show together above the product name (e.g. "Footwear · Nike"), each linking to the product listing pre-filtered to that category/brand — reusing the exact `route('products.index', ['category' => ...])`/`['brand' => ...])` pattern already used on the homepage's category tiles, rather than introducing a new one.
+- 2 new tests in `ProductDetailPageTest`.
+
 ### Fixed — Settings pages didn't match the rest of the account area's design
 - Profile/Security/Appearance rendered bare forms with a small `h2` heading (a leftover from the old starter-kit settings layout), while Dashboard/Orders/Addresses/Wishlist all use an `h1` + `<x-card>` section pattern — moving the settings pages into the shared account layout in a prior change never reconciled the visual mismatch. All three (plus the nested `delete-user-form` and the security page's password/2FA/passkeys sub-sections) now use the same `h1` + icon-labeled `<x-card>` pattern as the rest of the account area.
 

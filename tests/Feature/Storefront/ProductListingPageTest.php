@@ -110,6 +110,28 @@ class ProductListingPageTest extends TestCase
             ->assertSee('Expensive Item');
     }
 
+    public function test_the_price_slider_ceiling_matches_the_most_expensive_active_in_stock_variant(): void
+    {
+        $this->purchasableProduct(['name' => 'Cheap Item'], ['price' => 1000]);
+        $this->purchasableProduct(['name' => 'Priciest Item'], ['price' => 15099]);
+
+        // A variant that's out of stock shouldn't be able to push the
+        // ceiling higher than what's actually purchasable right now.
+        $unreachable = Product::factory()->create(['status' => ProductStatus::Active]);
+        ProductVariant::factory()->create(['product_id' => $unreachable->id, 'status' => VariantStatus::Active, 'stock' => 0, 'price' => 99999]);
+
+        $component = Livewire::test(ProductListingPage::class);
+
+        $this->assertSame(151.0, $component->instance()->catalogMaxPrice());
+    }
+
+    public function test_the_price_slider_ceiling_falls_back_when_the_catalog_is_empty(): void
+    {
+        $component = Livewire::test(ProductListingPage::class);
+
+        $this->assertSame(1000.0, $component->instance()->catalogMaxPrice());
+    }
+
     public function test_a_product_with_no_stock_never_appears_in_the_listing(): void
     {
         $product = Product::factory()->create(['name' => 'Out Of Stock Item', 'status' => ProductStatus::Active]);

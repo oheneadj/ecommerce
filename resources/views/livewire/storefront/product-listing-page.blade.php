@@ -79,11 +79,44 @@
                 @endif
             @endforeach
 
-            <x-card>
+            <x-card
+                x-data="{
+                    min: @entangle('minPrice').live,
+                    max: @entangle('maxPrice').live,
+                    ceiling: {{ $this->catalogMaxPrice }},
+                }"
+            >
                 <h2 class="text-sm font-medium">{{ __('Price (GH₵)') }}</h2>
-                <div class="mt-2 flex items-center gap-2">
-                    <x-input wire:model.live.debounce.400ms="minPrice" type="number" :placeholder="__('Min')" />
-                    <x-input wire:model.live.debounce.400ms="maxPrice" type="number" :placeholder="__('Max')" />
+                <div class="mt-3 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
+                    <span x-text="'GH₵' + (min ?? 0)"></span>
+                    <span x-text="'GH₵' + (max ?? ceiling)"></span>
+                </div>
+                <div class="relative mt-2 h-1">
+                    <div class="absolute inset-0 rounded-full bg-zinc-200 dark:bg-zinc-700"></div>
+                    <div
+                        class="absolute h-1 rounded-full bg-brand-primary"
+                        :style="`left: ${((min ?? 0) / ceiling) * 100}%; right: ${100 - ((max ?? ceiling) / ceiling) * 100}%`"
+                    ></div>
+                    <input
+                        type="range"
+                        min="0"
+                        :max="ceiling"
+                        step="1"
+                        x-model.number.debounce.400ms="min"
+                        @input="if (min > (max ?? ceiling)) min = (max ?? ceiling)"
+                        class="range-thumb absolute inset-0 w-full appearance-none bg-transparent"
+                        aria-label="{{ __('Minimum price') }}"
+                    >
+                    <input
+                        type="range"
+                        min="0"
+                        :max="ceiling"
+                        step="1"
+                        x-model.number.debounce.400ms="max"
+                        @input="if (max < (min ?? 0)) max = (min ?? 0)"
+                        class="range-thumb absolute inset-0 w-full appearance-none bg-transparent"
+                        aria-label="{{ __('Maximum price') }}"
+                    >
                 </div>
             </x-card>
 

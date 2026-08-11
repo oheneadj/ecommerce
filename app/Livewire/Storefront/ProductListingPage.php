@@ -17,6 +17,7 @@ use App\Models\AttributeTerm;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -34,6 +35,7 @@ use Livewire\WithPagination;
  * @property-read Collection<int, Attribute> $filterableAttributes
  * @property-read array<int, array<int, int>> $availableTermIdsByAttribute
  * @property-read array<int, int> $matchingProductIds
+ * @property-read float $catalogMaxPrice
  */
 #[Title('Shop')]
 class ProductListingPage extends Component
@@ -173,6 +175,29 @@ class ProductListingPage extends Component
     public function brands(): Collection
     {
         return Brand::query()->orderBy('name')->get();
+    }
+
+    /**
+     * Upper bound for the price range slider — the highest price any
+     * active, in-stock variant is actually selling for right now, in
+     * major units (GH₵), rounded up so the slider's ceiling never sits
+     * mid-price and cuts off the single most expensive item. Falls back
+     * to a sane default when the catalog is empty so the slider still
+     * renders something usable.
+     */
+    #[Computed]
+    public function catalogMaxPrice(): float
+    {
+        $maxMinorUnits = ProductVariant::query()
+            ->where('status', VariantStatus::Active)
+            ->where('stock', '>', 0)
+            ->max('price');
+
+        if ($maxMinorUnits === null) {
+            return 1000.0;
+        }
+
+        return (float) ceil($maxMinorUnits / 100);
     }
 
     /**

@@ -86,11 +86,25 @@
                 other's full-width hit area, which is unreliable across
                 browsers (dead zones, no click-to-jump on the track, thumb
                 overflow at this track's 4px height) and gave a slider that
-                genuinely didn't work. Dragging updates local Alpine state
-                only, at 60fps with no server round trip; the actual
-                minPrice/maxPrice filter (and the URL/results it drives)
-                commits once via `commit()` when the drag ends or the track
-                is clicked, not on every pixel of movement.
+                genuinely didn't work.
+
+                A single `mousedown`/`touchstart` handler on the TRACK (not
+                a separate `click` handler) does both click-to-jump and
+                drag-start — a first version used a distinct `click`
+                listener for jumping and `mousedown` on each thumb for
+                dragging, but a fast drag leaves the thumb's DOM position
+                one Alpine reactivity tick behind the cursor, so the
+                browser's synthetic `click` on release lands on the track
+                (not the thumb — `@click.stop` on the thumb never runs) and
+                fires a second, slightly different jump right after the
+                drag already committed. That's what looked like the slider
+                "moving by itself" after letting go. One code path for both
+                interactions removes the race entirely.
+
+                Dragging updates local Alpine state only, at 60fps with no
+                server round trip; the actual minPrice/maxPrice filter (and
+                the URL/results it drives) commits once via `commit()` when
+                the pointer is released.
             --}}
             <x-card
                 x-data="{
@@ -104,13 +118,17 @@
                         const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
                         return Math.round(ratio * this.ceiling);
                     },
-                    startDrag(thumb, event) {
-                        this.dragging = thumb;
+                    startDrag(event) {
+                        const value = this.valueFromEvent(event);
+                        this.dragging = Math.abs(value - this.min) <= Math.abs(value - this.max) ? 'min' : 'max';
+                        this.applyValue(value);
                         event.preventDefault();
                     },
                     onMove(event) {
                         if (!this.dragging) return;
-                        const value = this.valueFromEvent(event);
+                        this.applyValue(this.valueFromEvent(event));
+                    },
+                    applyValue(value) {
                         if (this.dragging === 'min') {
                             this.min = Math.min(value, this.max);
                         } else {
@@ -120,15 +138,6 @@
                     stopDrag() {
                         if (!this.dragging) return;
                         this.dragging = null;
-                        this.commit();
-                    },
-                    onTrackClick(event) {
-                        const value = this.valueFromEvent(event);
-                        if (Math.abs(value - this.min) <= Math.abs(value - this.max)) {
-                            this.min = Math.min(value, this.max);
-                        } else {
-                            this.max = Math.max(value, this.min);
-                        }
                         this.commit();
                     },
                     commit() {
@@ -146,7 +155,12 @@
                     <span x-text="'GH₵' + min"></span>
                     <span x-text="'GH₵' + max"></span>
                 </div>
-                <div x-ref="track" @click="onTrackClick($event)" class="relative mt-4 h-1 cursor-pointer rounded-full bg-zinc-200 dark:bg-zinc-700">
+                <div
+                    x-ref="track"
+                    @mousedown="startDrag($event)"
+                    @touchstart="startDrag($event)"
+                    class="relative mt-4 h-1 cursor-pointer rounded-full bg-zinc-200 dark:bg-zinc-700"
+                >
                     <div
                         class="absolute h-1 rounded-full bg-brand-primary"
                         :style="`left: ${(min / ceiling) * 100}%; right: ${100 - (max / ceiling) * 100}%`"
@@ -154,9 +168,6 @@
                     <div
                         class="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-2 border-white bg-brand-primary shadow"
                         :style="`left: ${(min / ceiling) * 100}%`"
-                        @mousedown="startDrag('min', $event)"
-                        @touchstart="startDrag('min', $event)"
-                        @click.stop
                         role="slider"
                         :aria-valuenow="min"
                         aria-valuemin="0"
@@ -169,9 +180,6 @@
                     <div
                         class="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-2 border-white bg-brand-primary shadow"
                         :style="`left: ${(max / ceiling) * 100}%`"
-                        @mousedown="startDrag('max', $event)"
-                        @touchstart="startDrag('max', $event)"
-                        @click.stop
                         role="slider"
                         :aria-valuenow="max"
                         aria-valuemin="0"

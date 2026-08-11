@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Concerns\LogsAdminActivity;
 use App\Enums\UserRole;
 use App\Observers\UserObserver;
 use Database\Factories\UserFactory;
@@ -31,6 +32,7 @@ use Jeffgreco13\FilamentBreezy\Traits\TwoFactorAuthenticatable as BreezyTwoFacto
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Permission\Traits\HasRoles;
 
 /**
@@ -55,13 +57,31 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $deleted_at
  * @property Carbon|null $disabled_at
  */
-#[Fillable(['name', 'phone', 'email', 'password', 'google_id', 'avatar_url'])]
+#[Fillable(['name', 'phone', 'email', 'password', 'google_id', 'avatar_url', 'disabled_at'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 #[ObservedBy(UserObserver::class)]
 class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use BreezyTwoFactorAuthenticatable, HasFactory, HasRoles, Notifiable, PasskeyAuthenticatable, SoftDeletes, TwoFactorAuthenticatable;
+    use BreezyTwoFactorAuthenticatable, HasFactory, HasRoles, LogsAdminActivity, Notifiable, PasskeyAuthenticatable, SoftDeletes, TwoFactorAuthenticatable;
+
+    /**
+     * Overrides `LogsAdminActivity`'s default (log every fillable
+     * attribute) — a customer editing their own name/email/phone via
+     * account settings isn't "significant administrative action" (BRD
+     * FR-10.2), only a staff account's disabled/enabled state is. Spatie
+     * Activitylog resolves the causer from the current auth guard
+     * automatically, so disabling/enabling via the Staff admin resource
+     * gets attributed to the acting Super Admin with no extra code.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['disabled_at'])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges()
+            ->useLogName('User');
+    }
 
     /**
      * Get the attributes that should be cast.

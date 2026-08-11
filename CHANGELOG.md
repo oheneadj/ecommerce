@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Disable/enable staff accounts (4/N)
+- Fourth piece of the staff invite/management feature. `SetStaffDisabledState` is the single entry point for both directions: disabling immediately deletes the account's rows from the `sessions` table (the `database` session driver) so an active session is kicked out right away, not just blocked on the next login attempt. Re-enabling never restores access under the old password — a fresh unguessable placeholder replaces it and a new set-password invite goes out via `SendStaffInviteNotification` (mail+SMS), which matters most for "disabled over a security concern."
+- The disabled/enabled transition is logged to the audit trail (BRD FR-10.2) via `User` gaining the existing `LogsAdminActivity` trait, scoped to just `disabled_at` (not every fillable attribute — a customer editing their own profile isn't "significant administrative action", only a staff account's access state is). Spatie Activitylog attributes the entry to the acting Super Admin automatically from the current auth guard, no manual `activity()->causedBy()` call needed.
+- 5 new tests (`SetStaffDisabledStateTest`).
+
 ### Added — Staff invite notification and actions (3/N)
 - Third piece of the staff invite/management feature. `StaffInvited` — a distinctly-worded invitation, not the generic "forgot password" copy — sent via both mail and SMS (confirmed with the user): mail carries the actual set-password link, SMS is a heads-up only ("you've been invited, check your email") with no link or token in it, since SMS is unencrypted and the phone isn't OTP-verified at invite time.
 - `SendStaffInviteNotification` generates a real password-reset token through the same broker Fortify's "forgot password" flow already uses and points it at the existing `password.reset` page — no new routes/pages needed. `InviteStaffMember` creates the account with an unguessable random placeholder password (never null — no edge case in credential checking) and calls it. Both reused later for a "Resend invite" action and for re-enabling a disabled account.

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Queued fan-out for customer broadcast notifications
+- Second piece of the customer-broadcast-notifications feature: `BroadcastMessageToCustomers` (Action) resolves a recipient query to a plain ID list and dispatches a new queued `FanOutCustomerBroadcast` job (`processing` queue), rather than looping and dispatching per-customer jobs inline during the admin's request — "all customers" could mean thousands of rows. `FanOutCustomerBroadcast` chunks (200 at a time) and, per customer per selected channel, reuses the existing `SendEmailToCustomer`/`SendSmsToCustomer` Actions (email/SMS) or calls a new `CustomerBroadcastNotification` (`database` channel only — email/SMS aren't routed through Laravel's notification channels here, to keep exactly one delivery path per channel). A customer missing the contact method for a selected channel is silently skipped for that channel, same as the existing bulk Customers-table actions.
+- The in-app leg (`CustomerBroadcastNotification`) writes to the same `notifications` table as everything else `Notifiable` — it does **not** surface via the Filament admin bell, since customers never log into the admin panel; a storefront-facing notification center is the next piece of this feature.
+- 8 new tests (`BroadcastMessageToCustomersTest`).
+
 ### Added — Skeleton loading state for product listing filter changes
 - Changing a filter on `/products` (search, category, brand, an attribute term, the price slider, or "Clear filters") previously gave no visual feedback while the new results loaded. The product grid now shows a skeleton (`wire:loading`, scoped via `wire:target` to just those filter inputs/actions) during that request, then swaps back to real results.
 - Deliberately **not** `#[Lazy]` — the initial page load is untouched, so real product content stays in the first HTTP response for crawlability (same reasoning as excluding `ProductListingPage` from the Cart/Checkout lazy-loading pass). This only covers the interaction that happens *after* a crawler would already have the real content: a filter change on a page that already rendered.

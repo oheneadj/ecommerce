@@ -38,6 +38,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::view('account/orders', 'account.orders')->name('account.orders');
     Route::view('account/orders/{order}', 'account.orders-show')->name('account.orders.show');
 
+    Route::view('account/notifications', 'account.notifications')->name('account.notifications');
+
     // Registered customers only — no guest wishlist (BRD FR-8.1).
     Route::view('wishlist', 'wishlist.show')->name('wishlist.show');
 

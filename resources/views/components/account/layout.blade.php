@@ -4,6 +4,7 @@
             @foreach ([
                 'account.show' => __('Dashboard'),
                 'account.orders' => __('Orders'),
+                'account.notifications' => __('Notifications'),
                 'account.addresses' => __('Addresses'),
                 'wishlist.show' => __('Wishlist'),
                 'profile.edit' => __('Profile'),

@@ -39,6 +39,9 @@
                         <x-app-icon name="heart" class="size-5" />
                         <span class="hidden sm:inline">{{ __('Wishlist') }}</span>
                     </a>
+                    @auth
+                        <livewire:storefront.notification-indicator />
+                    @endauth
                     <livewire:storefront.cart-indicator />
                     <a href="{{ route('account.show') }}" wire:navigate class="flex items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary dark:text-zinc-300">
                         <x-app-icon name="user" class="size-5" />

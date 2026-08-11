@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Storefront notification center (final piece of customer broadcasts)
+- Customers never log into the Filament admin panel, so the admin bell (added when `->databaseNotifications()` was enabled) can't surface the in-app leg of a broadcast to them. Added a customer-facing notification center: a bell icon in the storefront navbar (`NotificationIndicator`, `#[Lazy]` with a placeholder, same click-to-toggle-dropdown pattern as `CartIndicator`) showing an unread-count badge and the 5 most recent notifications, plus a full paginated history at `/account/notifications` (`NotificationsPage`), linked from the account sidebar nav. Both read from the same `notifications` table `CustomerBroadcastNotification` already wrote to — no new storage.
+- Opening the dropdown marks only the shown batch as read (not the whole history); viewing the full list page marks that page's batch as read — either way, older unread notifications beyond what was actually shown stay unread until genuinely seen.
+- New `bell` icon added to `<x-app-icon>` (checked existing icons first per CLAUDE.md §10 — none existed).
+- 8 new tests (`NotificationIndicatorTest`, `NotificationsPageTest`), including that one customer's notifications never leak into another's view.
+- Closes out the customer-broadcast-notifications feature: `CustomerSegment` enum → queued fan-out (`BroadcastMessageToCustomers`/`FanOutCustomerBroadcast`) → the admin "Send Notification" page → this storefront-facing piece.
+
 ### Added — "Send Notification" admin page for customer broadcasts
 - Third piece of the customer-broadcast-notifications feature, and the actual user-facing entry point: a new Filament page (`Sales` nav group) to compose one message and send it to customers across Email/SMS/in-app in a single action, instead of scattered per-channel actions scoped to whatever's currently selected in the Customers table. Target picker: All customers / a `CustomerSegment` / specific customers (searchable multi-select). Channels: a checkbox list (at least one required). One subject + message field reused verbatim across every selected channel. Submits through `BroadcastMessageToCustomers` — the page itself does no delivery logic, only resolves the chosen target into a query (CLAUDE.md §9).
 - Access restricted to Admin/Super Admin, the same scope as every other customer-communication capability (`UserPolicy::sendCommunication`) — Store Keeper never touches customers.

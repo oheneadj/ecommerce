@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — `CustomerSegment` enum for targeting customer broadcasts
+- First piece of the upcoming "send a notification to customers" admin page: a small fixed set of canned recipient segments (All / Has ordered / Never ordered / Joined in the last 30 days) as a backed enum with an `apply()` method narrowing a `User::customers()` query, per CLAUDE.md §7 (helper methods live on the enum, not scattered conditionals). Deliberately no configurable day-count or general filter builder — YAGNI, these are the segments that actually come up.
+- 4 new tests (`CustomerSegmentTest`).
+
 ### Changed — Extracted `User::scopeCustomers()`
 - The "is this a customer, not staff" filter (`whereDoesntHave('roles')`) was inlined only in `CustomerResource::getEloquentQuery()`. Extracted to a `scopeCustomers()` model scope so the upcoming customer-broadcast-notifications feature (targeting "all customers") can reuse the exact same definition instead of a second copy. `CustomerResource` itself keeps its inline filter (a PHPStan generics limitation on Filament's `getEloquentQuery()` return type means the scope can't be resolved through `parent::getEloquentQuery()`'s untyped `Builder`); the new scope is for the other call sites where the query starts from `User::query()` directly.
 - 1 new test (`UserTest`).

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Mailpit for local email testing
+- Outgoing mail had no way to be actually inspected in local dev short of reading `storage/logs/laravel.log` (the "log" mailer). `.env`/`.env.example`'s `MAIL_MAILER`/`MAIL_PORT` now point at Mailpit's SMTP port (1025) with the mailer set to `smtp`, so real emails render and are viewable at `http://127.0.0.1:8025`. `.env.example` keeps `log` as its checked-in default (works with zero external dependencies on a fresh clone) with a comment explaining the Mailpit switch.
+- `composer run dev` now auto-starts Mailpit as a fifth process (`AppServiceProvider::configureDevMailServer()`, same `DevCommands::register()` mechanism used for the queue-worker fix), but only when the `mailpit` binary is actually present — it isn't a project dependency, just a common local tool (bundled with Herd/Herd Lite), and `artisan dev`'s `--kill-others-on-fail` would otherwise take down the whole dev process group on a machine that hasn't installed it.
+- Verified end-to-end: sent a real email through the app's mail config and confirmed it appeared in Mailpit's inbox via its API.
+
 ### Fixed — No way to log out as a customer
 - A real regression: the storefront had no logout UI anywhere. It used to live on the old starter-kit sidebar's user-menu dropdown, which was deleted along with `/dashboard` earlier without a replacement being added to the storefront navbar. `route('logout')` (Fortify) still worked, it just had nothing pointing at it.
 - The navbar's "Account" link is now a dropdown for authenticated customers (reusing the existing `<x-dropdown>`/`<x-menu-item>` components, unused since the old sidebar's removal) — "My Account" and "Log out". Guests still see the plain link, unchanged.

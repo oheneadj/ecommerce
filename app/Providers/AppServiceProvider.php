@@ -46,6 +46,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureDevQueueWorker();
+        $this->configureDevMailServer();
 
         Notification::extend('sms', fn ($app) => new SmsChannel($app->make(SmsGateway::class)));
 
@@ -96,6 +97,31 @@ class AppServiceProvider extends ServiceProvider
             'queue:listen --queue=notifications,emails,sms,processing,external-api,default --tries=1 --timeout=0',
             'queue',
         );
+    }
+
+    /**
+     * Mailpit catches real outgoing SMTP mail locally (UI at
+     * http://127.0.0.1:8025) so a developer can actually see what an
+     * email/order-confirmation/broadcast looks like instead of only
+     * reading it out of `storage/logs/laravel.log` (the "log" mailer).
+     * Only registered when the `mailpit` binary is actually present —
+     * `composer run dev` must keep working on a machine that hasn't
+     * installed it (it isn't a project dependency, just a common local
+     * tool bundled with Herd/Herd Lite), and `--kill-others-on-fail`
+     * would otherwise take down the whole dev process group over one
+     * missing binary.
+     */
+    protected function configureDevMailServer(): void
+    {
+        if (! $this->app->runningInConsole()) {
+            return;
+        }
+
+        if (trim((string) shell_exec('command -v mailpit')) === '') {
+            return;
+        }
+
+        DevCommands::register('mailpit', 'mail');
     }
 
     /**

@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — Vite build warning about optimized font fallbacks
+- `npm run build`/`npm run dev` printed `Optimized font fallbacks require the optional "fontaine" package` on every run. Installed `fontaine` as a dev dependency (Vite's font plugin already looked for it — no config change needed) so it now generates real fallback-font metrics (`ascent-override` etc.) for Lexend, reducing layout shift while the webfont loads, instead of just silencing the warning.
+
 ### Added — Icons on the account sidebar nav
 - The account area's sidebar nav (Dashboard/Orders/Notifications/Addresses/Wishlist/Profile/Security/Appearance) was text-only. Added an icon per item, reusing the same icon already used for that concept elsewhere in the app rather than picking new ones (DRY): `home`, `shopping-bag`, `bell`, `globe`, `heart`, `user`, `lock-closed`, `sun`.
 - 1 new test confirming every nav item renders exactly one icon.

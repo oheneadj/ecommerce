@@ -45,6 +45,20 @@
 
 @layer base {
 
+    /*
+     * Reserves the vertical scrollbar's width on every page, whether or
+     * not that page is tall enough to need one. Without this, a page
+     * short enough to have no scrollbar renders slightly wider than a
+     * taller page that does — since every centered, full-width section
+     * (header, main, footer) sits inside that same shrunken viewport,
+     * the whole page visibly shifts sideways when navigating between
+     * pages of different heights (e.g. the account area's short
+     * Dashboard vs. the much longer Security page).
+     */
+    html {
+        scrollbar-gutter: stable;
+    }
+
     *,
     ::after,
     ::before,

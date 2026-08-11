@@ -18,6 +18,7 @@ use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -120,6 +121,20 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
     public function routeNotificationForSms(): ?string
     {
         return $this->phone;
+    }
+
+    /**
+     * Accounts holding none of the staff roles — the single definition of
+     * "customer" reused everywhere that distinction matters (the Customers
+     * admin resource, customer-broadcast targeting), instead of each call
+     * site re-writing its own `whereDoesntHave('roles')`.
+     *
+     * @param  Builder<User>  $query
+     * @return Builder<User>
+     */
+    public function scopeCustomers(Builder $query): Builder
+    {
+        return $query->whereDoesntHave('roles');
     }
 
     /**

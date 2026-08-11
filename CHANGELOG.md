@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed — Extracted `User::scopeCustomers()`
+- The "is this a customer, not staff" filter (`whereDoesntHave('roles')`) was inlined only in `CustomerResource::getEloquentQuery()`. Extracted to a `scopeCustomers()` model scope so the upcoming customer-broadcast-notifications feature (targeting "all customers") can reuse the exact same definition instead of a second copy. `CustomerResource` itself keeps its inline filter (a PHPStan generics limitation on Filament's `getEloquentQuery()` return type means the scope can't be resolved through `parent::getEloquentQuery()`'s untyped `Builder`); the new scope is for the other call sites where the query starts from `User::query()` directly.
+- 1 new test (`UserTest`).
+
 ### Added — Lazy loading + skeletons on Cart and Checkout
 - `CartPage` and `CheckoutPage` are now `#[Lazy]` with a matching skeleton placeholder (same pattern already used by `CartIndicator`/`SearchAutosuggest`) — the outer page shell (nav, layout) paints immediately while the cart/checkout queries run, instead of the customer staring at a blank page during the delay. Real heading text (`My Cart`, `Checkout`) stays visible in the placeholder (not greyed out) so the page title and `assertSee`-style checks aren't affected by the swap; only the dynamic content below is skeletonized.
 - **Deliberately excluded from this treatment**: `ProductListingPage` (making it lazy would mean real product names/prices are no longer in the first HTML response — a genuine SEO/crawlability regression for the site's most search-indexed page) and `ProductDetailPage` (its `mount()` does `Product::where('slug', ...)->firstOrFail()`, which is what makes an invalid/removed product slug return a real HTTP 404 — deferring `mount()` via `#[Lazy]` would turn that into a 200 + placeholder, with the "not found" only surfacing afterward as an awkward Livewire error instead of a proper 404 page).

@@ -42,6 +42,11 @@ class CustomerResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
+        // Not `->customers()` — Filament's base getEloquentQuery() return
+        // type carries no model generic, so PHPStan can't resolve the
+        // scope through Eloquent's magic __call() here. User::customers()
+        // (a real Builder<User>) is used everywhere else this filter
+        // applies; this one spot keeps the inline filter it already had.
         return parent::getEloquentQuery()->whereDoesntHave('roles');
     }
 

@@ -28,26 +28,7 @@
                     @endif
                 </a>
 
-                {{--
-                    A plain <input>, not <x-input> — that component's
-                    @error() directive depends on the $errors view-share,
-                    which is only bound during the normal middleware
-                    pipeline. Error pages (404/403/500) render outside it
-                    but still use this layout, so <x-input> here would
-                    crash them with an undefined $errors variable. This
-                    field is a plain GET query param, never validated,
-                    so it never needed that behavior anyway.
-                --}}
-                <form action="{{ route('products.index') }}" method="GET" class="min-w-0 flex-1" role="search">
-                    <input
-                        type="search"
-                        name="search"
-                        value="{{ request('search') }}"
-                        placeholder="{{ __('Search products…') }}"
-                        aria-label="{{ __('Search products') }}"
-                        class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
-                    >
-                </form>
+                <livewire:storefront.search-autosuggest />
 
                 <nav class="flex shrink-0 items-center gap-5 text-sm font-medium">
                     <a href="{{ route('products.index') }}" wire:navigate class="flex items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary dark:text-zinc-300">

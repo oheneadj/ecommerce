@@ -1,10 +1,12 @@
 <?php
 
 /**
- * Covers the storefront navbar's always-visible search box
- * (`layouts/storefront.blade.php`) — a plain GET form to `/products`, which
- * `ProductListingPage` already filters by via its `#[Url]`-bound `search`
- * property, so no new search logic is introduced here.
+ * Covers the storefront navbar's search box
+ * (`<livewire:storefront.search-autosuggest />`, embedded in
+ * `layouts/storefront.blade.php`) — the lazy-loaded placeholder shown on
+ * first paint, and that a plain full-listing search still works via the
+ * `?search=` query param `ProductListingPage` reads. Live-suggestion
+ * behavior itself is covered by SearchAutosuggestTest.
  */
 
 declare(strict_types=1);
@@ -13,19 +15,32 @@ namespace Tests\Feature\Storefront;
 
 use App\Enums\ProductStatus;
 use App\Enums\VariantStatus;
+use App\Livewire\Storefront\SearchAutosuggest;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class NavbarSearchTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_the_navbar_shows_a_search_box_on_every_storefront_page(): void
+    public function test_the_navbar_shows_a_search_box_placeholder_on_every_storefront_page(): void
     {
         $this->get('/')
             ->assertOk()
+            ->assertSeeHtml('placeholder="Search products');
+    }
+
+    public function test_the_mounted_search_component_renders_a_real_search_form(): void
+    {
+        // A #[Lazy] component's very first render is its placeholder (see
+        // search-autosuggest-placeholder.blade.php) — any interaction
+        // after that mounts the real component, same as the browser's
+        // automatic lazy follow-up request.
+        Livewire::test(SearchAutosuggest::class)
+            ->set('query', '')
             ->assertSeeHtml('name="search"')
             ->assertSeeHtml('action="'.route('products.index').'"');
     }
@@ -55,6 +70,6 @@ class NavbarSearchTest extends TestCase
     {
         $this->get('/this-route-does-not-exist')
             ->assertNotFound()
-            ->assertSeeHtml('name="search"');
+            ->assertSeeHtml('placeholder="Search products');
     }
 }

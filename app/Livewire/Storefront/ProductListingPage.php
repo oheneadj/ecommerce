@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Storefront;
 
+use App\Actions\Catalog\SearchProducts;
 use App\Enums\ProductStatus;
 use App\Enums\VariantStatus;
 use App\Models\Attribute;
@@ -32,6 +33,7 @@ use Livewire\WithPagination;
  * @property-read Collection<int, Brand> $brands
  * @property-read Collection<int, Attribute> $filterableAttributes
  * @property-read array<int, array<int, int>> $availableTermIdsByAttribute
+ * @property-read array<int, int> $matchingProductIds
  */
 #[Title('Shop')]
 class ProductListingPage extends Component
@@ -64,6 +66,25 @@ class ProductListingPage extends Component
      */
     #[Url(as: 'attrs')]
     public array $attributeFilters = [];
+
+    /**
+     * IDs of products matching the current search term (fuzzy/typo-
+     * tolerant, see SearchProducts) — memoized per request via #[Computed]
+     * so `baseProductQuery()` can be called repeatedly (once for the
+     * listing, once per attribute in the facet computation below) without
+     * re-running the search's own query/scoring work each time.
+     *
+     * @return array<int, int>
+     */
+    #[Computed]
+    public function matchingProductIds(): array
+    {
+        if ($this->search === '') {
+            return [];
+        }
+
+        return SearchProducts::run($this->search, SearchProducts::CANDIDATE_LIMIT)->pluck('id')->all();
+    }
 
     public function updating(string $name): void
     {
@@ -101,7 +122,7 @@ class ProductListingPage extends Component
     {
         return Product::query()
             ->where('status', ProductStatus::Active)
-            ->when($this->search !== '', fn ($query) => $query->where('name', 'like', "%{$this->search}%"))
+            ->when($this->search !== '', fn ($query) => $query->whereIn('id', $this->matchingProductIds))
             ->when($this->category, fn ($query) => $query->whereHas('category', fn ($query) => $query->where('slug', $this->category)))
             ->when($this->brand, fn ($query) => $query->whereHas('brand', fn ($query) => $query->where('slug', $this->brand)))
             ->when($this->minPrice !== null, fn ($query) => $query->whereHas('variants', fn ($query) => $query->where('price', '>=', (int) round($this->minPrice * 100))))

@@ -90,6 +90,24 @@ class InventoryManagementTest extends TestCase
     }
 
     /**
+     * SQLite (the in-memory test database) has no row-level locking and
+     * doesn't log BEGIN/COMMIT as queries (they go through PDO directly),
+     * so the transaction/lock mechanism can't be observed behaviorally here
+     * — the actual serialization guarantee is proven behaviorally instead
+     * by the "last unit" test below. This is a guard rail against someone
+     * silently dropping the lock or the transaction wrapper, in the same
+     * spirit as this suite's migration-linting source checks.
+     */
+    public function test_reservation_creation_uses_row_locking_inside_a_transaction(): void
+    {
+        $source = (string) file_get_contents(app_path('Actions/Inventory/ReserveStockForOrder.php'));
+
+        $this->assertStringContainsString('lockForUpdate()', $source);
+        $this->assertStringContainsString('DB::transaction(', $source);
+        $this->assertTrue(strpos($source, 'DB::transaction(') < strpos($source, 'lockForUpdate()'));
+    }
+
+    /**
      * True cross-connection concurrency can't be exercised against the
      * in-memory SQLite database used by the test suite (each connection
      * would get its own isolated database). This instead proves the

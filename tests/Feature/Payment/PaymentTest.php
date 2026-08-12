@@ -25,6 +25,7 @@ use App\Models\WebhookEvent;
 use App\Payments\PaymentManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class PaymentTest extends TestCase
@@ -110,6 +111,33 @@ class PaymentTest extends TestCase
 
         $this->assertSame(PaymentStatus::Pending, $payment->fresh()->status);
         $this->assertDatabaseHas('webhook_events', ['event_id' => 'evt-1', 'verified' => false]);
+    }
+
+    public function test_paystack_payment_is_server_side_verified_not_trusted_from_the_webhook_body(): void
+    {
+        config(['payments.providers.paystack.secret_key' => 'test-secret']);
+        // Paystack's real verify endpoint says the charge actually failed —
+        // the webhook body below claims 'success', but that claim must
+        // never be trusted directly. Only the GET /transaction/verify
+        // response determines the outcome.
+        Http::fake([
+            'api.paystack.co/transaction/verify/*' => Http::response([
+                'status' => true,
+                'data' => ['status' => 'failed', 'reference' => 'ps-ref-1'],
+            ]),
+        ]);
+
+        $order = $this->orderWithReservedItem();
+        $payment = Payment::factory()->create(['order_id' => $order->id, 'provider' => 'paystack', 'provider_reference' => 'ps-ref-1', 'status' => PaymentStatus::Pending]);
+
+        $body = json_encode(['event' => 'charge.success', 'data' => ['reference' => 'ps-ref-1', 'status' => 'success']], JSON_THROW_ON_ERROR);
+        $signature = hash_hmac('sha512', $body, 'test-secret');
+
+        $request = Request::create('/webhooks/payments/paystack', 'POST', server: ['HTTP_X_PAYSTACK_SIGNATURE' => $signature, 'CONTENT_TYPE' => 'application/json'], content: $body);
+        HandlePaymentWebhook::run($request, 'paystack');
+
+        Http::assertSent(fn ($sentRequest) => str_contains((string) $sentRequest->url(), '/transaction/verify/ps-ref-1'));
+        $this->assertSame(PaymentStatus::Failed, $payment->fresh()->status);
     }
 
     public function test_webhook_success_converts_reservation_to_stock_movement_and_marks_order_paid(): void

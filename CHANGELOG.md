@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — QA hardening: security-boundary test coverage (Sprint 10)
+- Closed gaps found by an audit of `docs/test-plan-ecommerce.md` against the actual test suite. All behavior below already existed in the code — these are new regression tests proving it, not new features.
+- **2.7** — new `PaymentTest` case proves a Paystack webhook's self-reported status is never trusted directly: even when the webhook body claims `success`, only the server-side `GET /transaction/verify` response determines the outcome.
+- **1.4** — new `InventoryManagementTest` case guards `ReserveStockForOrder` against silently losing its `lockForUpdate()`/`DB::transaction()` wrapper (SQLite, the test DB, doesn't log BEGIN/COMMIT or enforce row locks, so the existing "last unit" concurrency test remains the actual behavioral proof — this is a source-level guard rail alongside it).
+- **8.4** — new `AdminPanelAccessTest`: a customer with no staff role — including one who also has a Google identity linked — gets a 403 from `/admin`.
+- **4a.15** — same file: an Admin with phone + Google identifiers set logs into `/admin` exactly as before; customer-facing auth methods don't touch staff login.
+- **4a.12 / 4a.13** — two new `GoogleLoginTest` cases hit the real `/login/google/callback` route (`Socialite::shouldReceive` fake): unauthenticated requests always go through `LoginWithGoogle` (never silently merge into a matching-email account), authenticated requests always go through `LinkAccountIdentifier` against the current session (never a different account sharing that email).
+- 7 new tests.
+
 ### Added — Store social media links, shown in the storefront footer
 - Store Settings gained a "Social media" section (Facebook, Instagram, X, TikTok, WhatsApp — each a `->url()`-validated text input) so the Super Admin can set the store's social links without a deploy. `StoreSetting::socialLinks()` returns only the ones actually set, keyed by icon name.
 - The storefront footer now renders a row of brand-icon links for whichever platforms are set (`target="_blank" rel="noopener noreferrer"`), hidden entirely when none are set. Added `instagram` and `tiktok` brand icons to `<x-app-icon>` (joining the existing `facebook`/`x`/`whatsapp`).

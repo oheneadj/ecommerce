@@ -140,6 +140,36 @@ class CheckoutTest extends TestCase
         $this->assertSame(1150, $order->grand_total);
     }
 
+    public function test_order_total_calculation_has_no_floating_point_drift_across_many_line_items(): void
+    {
+        // Deliberately odd prices/quantities/tax rate — the kind of inputs
+        // that expose float imprecision (e.g. 0.1 + 0.2 !== 0.3) if the
+        // arithmetic ever stopped being pure-integer minor units.
+        StoreSetting::current()->update(['tax_rate' => 7]);
+        $cart = Cart::factory()->create();
+        $prices = [333, 1099, 47, 2501, 19, 8888, 101, 733, 5, 12345];
+
+        $expectedSubtotal = 0;
+
+        foreach ($prices as $price) {
+            $variant = ProductVariant::factory()->create(['stock' => 100, 'price' => $price]);
+            AddItemToCart::run($cart, $variant, 3);
+            $expectedSubtotal += $price * 3;
+        }
+
+        $address = Address::factory()->create(['user_id' => $cart->user_id]);
+
+        $order = CreateOrderFromCart::run($cart, $address);
+
+        $expectedTax = (int) round($expectedSubtotal * 7 / 100);
+
+        $this->assertSame($expectedSubtotal, $order->subtotal);
+        $this->assertSame($expectedTax, $order->tax_total);
+        $this->assertSame($expectedSubtotal + $expectedTax, $order->grand_total);
+        $this->assertIsInt($order->getRawOriginal('subtotal'));
+        $this->assertIsInt($order->getRawOriginal('grand_total'));
+    }
+
     public function test_checkout_with_a_zero_tax_rate_charges_no_tax(): void
     {
         StoreSetting::current()->update(['tax_rate' => 0]);

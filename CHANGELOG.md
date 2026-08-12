@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — QA hardening: money-correctness test coverage (Sprint 10)
+- **11.4** — new `CheckoutTest` case checks out a cart with 10 line items at deliberately odd prices/quantities/tax rate (the kind of inputs that expose `0.1 + 0.2 !== 0.3`-style float drift) and asserts `subtotal`/`tax_total`/`grand_total` match hand-computed integer arithmetic exactly, with no float ever touching the stored columns.
+- **11.5** — new `tests/Feature/Health/MoneyDisplayLintingTest.php`, a source-scanning test (companion to the existing `MigrationLintingTest` decimal-column check) asserting no Blade view divides a value by 100 inline — every money value must render through `<x-money>` or a `HasFormattedMoney`-backed `*_formatted` accessor.
+- 2 new tests.
+
 ### Added — QA hardening: security-boundary test coverage (Sprint 10)
 - Closed gaps found by an audit of `docs/test-plan-ecommerce.md` against the actual test suite. All behavior below already existed in the code — these are new regression tests proving it, not new features.
 - **2.7** — new `PaymentTest` case proves a Paystack webhook's self-reported status is never trusted directly: even when the webhook body claims `success`, only the server-side `GET /transaction/verify` response determines the outcome.

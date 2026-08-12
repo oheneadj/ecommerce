@@ -240,12 +240,26 @@
                 x-data="{
                     copied: false,
                     async copyLink() {
+                        const url = '{{ $shareUrl }}';
+
                         try {
-                            await navigator.clipboard.writeText('{{ $shareUrl }}');
+                            if (navigator.clipboard) {
+                                await navigator.clipboard.writeText(url);
+                            } else {
+                                const input = document.createElement('textarea');
+                                input.value = url;
+                                input.style.position = 'fixed';
+                                input.style.opacity = '0';
+                                document.body.appendChild(input);
+                                input.select();
+                                document.execCommand('copy');
+                                document.body.removeChild(input);
+                            }
+
                             this.copied = true;
                             setTimeout(() => this.copied = false, 1500);
                         } catch (e) {
-                            console.warn('Could not copy to clipboard');
+                            window.dispatchEvent(new CustomEvent('toast', { detail: { variant: 'error', message: '{{ __('Could not copy link.') }}' } }));
                         }
                     },
                 }"

@@ -52,7 +52,7 @@ class HistoricalDataSeeder extends Seeder
 
     public function run(): void
     {
-        $variants = ProductVariant::query()->get();
+        $variants = ProductVariant::query()->with('product')->get();
 
         if ($variants->isEmpty()) {
             return;

@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — `db:seed` crashed on `HistoricalDataSeeder` (lazy loading violation)
+- `HistoricalDataSeeder::run()` loaded `ProductVariant` rows without eager-loading `product`, then accessed `$variant->product->name` while seeding order line items — fine on the in-memory factory-created data other seeders use, but this seeder queries real persisted variants, and `Model::preventLazyLoading()` is enabled app-wide, so it threw `LazyLoadingViolationException` partway through seeding 2500 historical orders. Fixed by eager-loading `product` in the initial query.
+
 ### Added — richer Payment Providers admin (logo, description, Paystack checkout mode)
 - `payment_provider_settings` gains `logo_path`, `description`, and `checkout_mode` (nullable, Paystack-only). Previously the admin screen was a bare toggle table with no way to give each provider a logo or explanation.
 - `PaymentProviderSettingsTable` now shows each provider's logo (falling back to a generated avatar) and description, and gained an Edit modal (logo upload, description, and — only for Paystack — a Redirect/Popup checkout-mode radio). The radio is fully omitted from the schema for every other provider, not just visually hidden, since Filament's `->visible(false)` leaves a field present in the schema tree.

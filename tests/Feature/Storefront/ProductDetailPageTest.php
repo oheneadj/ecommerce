@@ -27,6 +27,7 @@ use App\Models\StoreSetting;
 use App\Models\User;
 use App\Models\WishlistItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Js;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -90,7 +91,7 @@ class ProductDetailPageTest extends TestCase
 
         $this->get("/products/{$product->slug}")
             ->assertOk()
-            ->assertSeeHtml('x-data="copyToClipboard('.\Illuminate\Support\Js::from($shareUrl).',');
+            ->assertSeeHtml('x-data="copyToClipboard('.Js::from($shareUrl).',');
     }
 
     public function test_the_products_category_and_brand_are_shown_and_link_to_the_filtered_listing(): void

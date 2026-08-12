@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — payment provider logo too small on checkout
+- Bumped the checkout payment-method logo from `h-6` to `h-10` so it's actually legible next to the provider label.
+
 ### Fixed — payment provider logo never appeared at checkout
 - `CheckoutPage::enabledPaymentProviders()` returned bare `PaymentProvider` enum cases (`->pluck('provider')`), not the `PaymentProviderSetting` row the logo/description live on — the checkout payment-method list could only ever render the plain text label, regardless of what was uploaded on the admin Payment Providers screen. Now returns the full settings rows.
 - New `PaymentProviderSetting::logoUrl` accessor resolves the Storage URL once on the model, so `checkout-page.blade.php` reads `$setting->logo_url` directly rather than computing a `Storage::disk('public')->url(...)` call inline in the view — required by this project's "no inline computation in Blade" rule (§11), and now shared by every consumer instead of each deriving its own.

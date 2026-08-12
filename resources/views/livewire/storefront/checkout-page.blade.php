@@ -103,7 +103,7 @@
                             <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-700">
                                 <input type="radio" wire:model="paymentProvider" value="{{ $setting->provider->value }}">
                                 @if ($setting->logo_url)
-                                    <img src="{{ $setting->logo_url }}" alt="{{ $setting->provider->label() }}" class="h-6 w-auto shrink-0">
+                                    <img src="{{ $setting->logo_url }}" alt="{{ $setting->provider->label() }}" class="h-10 w-auto shrink-0">
                                 @endif
                                 {{ $setting->provider->label() }}
                             </label>

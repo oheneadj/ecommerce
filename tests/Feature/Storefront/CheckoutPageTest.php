@@ -14,6 +14,7 @@ use App\Actions\Cart\AddItemToCart;
 use App\Actions\Cart\GetCurrentCart;
 use App\Actions\Cart\ResolveCurrentCart;
 use App\Enums\CouponType;
+use App\Enums\PaymentProvider;
 use App\Enums\PaymentStatus;
 use App\Livewire\Storefront\CheckoutPage;
 use App\Models\Address;
@@ -32,8 +33,10 @@ use App\Payments\RefundResult;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\Feature\Payment\FakePaymentGateway;
 use Tests\TestCase;
@@ -78,6 +81,30 @@ class CheckoutPageTest extends TestCase
         $this->actingAs(User::factory()->create());
 
         $this->get('/checkout')->assertOk()->assertSee('Checkout');
+    }
+
+    /**
+     * Uploading a logo on the admin Payment Providers screen previously
+     * had no visible effect anywhere — enabledPaymentProviders() returned
+     * bare PaymentProvider enum cases, not the settings row the logo
+     * lives on, so the checkout radio list could only ever show the
+     * plain text label.
+     */
+    public function test_a_providers_logo_is_shown_on_the_checkout_payment_method_list(): void
+    {
+        Storage::fake('public');
+        $logo = UploadedFile::fake()->image('moolre.png');
+        $path = (string) $logo->store('payment-providers', 'public');
+        DB::table('payment_provider_settings')->where('provider', 'moolre')->update(['logo_path' => $path]);
+
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
+            ->assertSeeHtml(Storage::disk('public')->url($path));
+    }
+
+    public function test_a_provider_with_no_logo_shows_just_its_label(): void
+    {
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
+            ->assertSee(PaymentProvider::Moolre->label());
     }
 
     public function test_the_default_address_and_cheapest_active_shipping_method_are_preselected(): void

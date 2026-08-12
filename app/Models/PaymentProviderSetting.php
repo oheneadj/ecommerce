@@ -14,9 +14,11 @@ use App\Enums\PaystackCheckoutMode;
 use Database\Factories\PaymentProviderSettingFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * One row per `PaymentProvider` enum case, auto-seeded via
@@ -29,6 +31,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property PaymentProvider $provider
  * @property string|null $logo_path
+ * @property-read string|null $logo_url
  * @property string|null $description
  * @property PaystackCheckoutMode|null $checkout_mode
  * @property bool $enabled
@@ -52,6 +55,21 @@ class PaymentProviderSetting extends Model
             'checkout_mode' => PaystackCheckoutMode::class,
             'enabled' => 'boolean',
         ];
+    }
+
+    /**
+     * The logo's public URL, or null when none has been uploaded — kept
+     * here rather than computed inline in a view, so every consumer
+     * (admin table, checkout page) reads the same resolved value instead
+     * of each deriving its own Storage::disk()->url() call.
+     *
+     * @return Attribute<string|null, never>
+     */
+    protected function logoUrl(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): ?string => $this->logo_path ? Storage::disk('public')->url($this->logo_path) : null,
+        );
     }
 
     /**

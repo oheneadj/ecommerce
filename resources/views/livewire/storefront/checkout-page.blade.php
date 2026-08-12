@@ -99,10 +99,13 @@
                     <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ __('No payment method is available right now. Please contact us to place your order.') }}</p>
                 @else
                     <div class="mt-4 space-y-2">
-                        @foreach ($this->enabledPaymentProviders as $provider)
+                        @foreach ($this->enabledPaymentProviders as $setting)
                             <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-700">
-                                <input type="radio" wire:model="paymentProvider" value="{{ $provider->value }}">
-                                {{ $provider->label() }}
+                                <input type="radio" wire:model="paymentProvider" value="{{ $setting->provider->value }}">
+                                @if ($setting->logo_url)
+                                    <img src="{{ $setting->logo_url }}" alt="{{ $setting->provider->label() }}" class="h-6 w-auto shrink-0">
+                                @endif
+                                {{ $setting->provider->label() }}
                             </label>
                         @endforeach
                     </div>

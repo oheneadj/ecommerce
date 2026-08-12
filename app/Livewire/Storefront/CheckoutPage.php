@@ -14,7 +14,6 @@ use App\Actions\Checkout\CreateOrderFromCart;
 use App\Actions\Checkout\PreviewCouponDiscount;
 use App\Actions\Payment\InitiatePayment;
 use App\Enums\CouponType;
-use App\Enums\PaymentProvider;
 use App\Enums\PaymentStatus;
 use App\Exceptions\CouponUsageLimitExceededException;
 use App\Exceptions\EmptyCartException;
@@ -29,7 +28,6 @@ use App\Models\StoreSetting;
 use App\Payments\PaymentManager;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Lazy;
@@ -40,7 +38,7 @@ use Livewire\Component;
  * @property-read Cart $cart
  * @property-read Collection<int, Address> $addresses
  * @property-read Collection<int, ShippingMethod> $shippingMethods
- * @property-read SupportCollection<int, PaymentProvider> $enabledPaymentProviders
+ * @property-read Collection<int, PaymentProviderSetting> $enabledPaymentProviders
  * @property-read int $subtotal
  * @property-read int $taxEstimate
  * @property-read int $shippingCost
@@ -180,14 +178,16 @@ class CheckoutPage extends Component
     /**
      * The providers a Super Admin has enabled from the Payment Providers
      * admin screen, in their configured display order — what the customer
-     * actually gets to choose between at checkout.
+     * actually gets to choose between at checkout. Returns the full
+     * settings row (not just the bare enum) so the view can show each
+     * provider's logo, not just its label.
      *
-     * @return SupportCollection<int, PaymentProvider>
+     * @return Collection<int, PaymentProviderSetting>
      */
     #[Computed]
-    public function enabledPaymentProviders(): SupportCollection
+    public function enabledPaymentProviders(): Collection
     {
-        return PaymentProviderSetting::query()->enabledOrdered()->get()->pluck('provider');
+        return PaymentProviderSetting::query()->enabledOrdered()->get();
     }
 
     /**
@@ -264,7 +264,7 @@ class CheckoutPage extends Component
         // Re-validated against the currently enabled set, not just trusted
         // from the posted value — a provider disabled by the Super Admin
         // between page load and submit must never sneak through.
-        if ($this->paymentProvider === null || ! $this->enabledPaymentProviders->contains(fn (PaymentProvider $provider): bool => $provider->value === $this->paymentProvider)) {
+        if ($this->paymentProvider === null || ! $this->enabledPaymentProviders->contains(fn (PaymentProviderSetting $setting): bool => $setting->provider->value === $this->paymentProvider)) {
             $this->addError('paymentProvider', 'Please select a payment method.');
 
             return;

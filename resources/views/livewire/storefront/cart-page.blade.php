@@ -13,46 +13,48 @@
                         $variant = $item->productVariant;
                         $product = $variant->product;
                     @endphp
-                    <div wire:key="cart-item-{{ $item->id }}" class="flex items-center gap-4 rounded-lg p-4 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-700/30">
-                        <x-product-thumbnail :variant="$variant" :product="$product" class="h-16 w-16" />
+                    <div wire:key="cart-item-{{ $item->id }}" class="flex flex-wrap items-center gap-4 rounded-lg p-4 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-700/30">
+                        <x-product-thumbnail :variant="$variant" :product="$product" class="h-16 w-16 shrink-0" />
 
-                        <div class="flex-1">
-                            <p class="font-medium">{{ $product->name }}</p>
-                            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ $variant->sku }}</p>
+                        <div class="min-w-0 flex-1 basis-40">
+                            <p class="truncate font-medium">{{ $product->name }}</p>
+                            <p class="truncate text-sm text-zinc-500 dark:text-zinc-400">{{ $variant->sku }}</p>
                             <p class="mt-1 text-sm font-medium">{{ $variant->price_formatted }}</p>
                         </div>
 
-                        <div class="flex items-center gap-2 transition-opacity duration-150" wire:loading.class="opacity-50" wire:target="updateQuantity({{ $variant->id }}, {{ max(0, $item->quantity - 1) }}), updateQuantity({{ $variant->id }}, {{ $item->quantity + 1 }})">
-                            <button
-                                type="button"
-                                wire:click="updateQuantity({{ $variant->id }}, {{ $item->quantity - 1 }})"
-                                aria-label="{{ __('Decrease quantity') }}"
-                                class="flex size-8 items-center justify-center rounded-lg border border-zinc-300 transition-colors hover:bg-zinc-50 active:scale-95 dark:border-zinc-600 dark:hover:bg-zinc-800"
-                            >
-                                <x-app-icon name="minus" class="size-4" />
-                            </button>
-                            <span class="w-8 text-center text-sm">{{ $item->quantity }}</span>
-                            <button
-                                type="button"
-                                wire:click="updateQuantity({{ $variant->id }}, {{ $item->quantity + 1 }})"
-                                aria-label="{{ __('Increase quantity') }}"
-                                @disabled($item->quantity >= $variant->stock)
-                                class="flex size-8 items-center justify-center rounded-lg border border-zinc-300 transition-colors hover:bg-zinc-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-zinc-600 dark:hover:bg-zinc-800"
-                            >
-                                <x-app-icon name="plus" class="size-4" />
-                            </button>
-                        </div>
-                        @if ($item->quantity >= $variant->stock)
-                            <p class="text-xs text-amber-600 dark:text-amber-400">{{ __('Max stock reached') }}</p>
-                        @endif
+                        <div class="ms-auto flex items-center gap-4 sm:ms-0">
+                            <div class="flex items-center gap-2 transition-opacity duration-150" wire:loading.class="opacity-50" wire:target="updateQuantity({{ $variant->id }}, {{ max(0, $item->quantity - 1) }}), updateQuantity({{ $variant->id }}, {{ $item->quantity + 1 }})">
+                                <button
+                                    type="button"
+                                    wire:click="updateQuantity({{ $variant->id }}, {{ $item->quantity - 1 }})"
+                                    aria-label="{{ __('Decrease quantity') }}"
+                                    class="flex size-8 items-center justify-center rounded-lg border border-zinc-300 transition-colors hover:bg-zinc-50 active:scale-95 dark:border-zinc-600 dark:hover:bg-zinc-800"
+                                >
+                                    <x-app-icon name="minus" class="size-4" />
+                                </button>
+                                <span class="w-8 text-center text-sm">{{ $item->quantity }}</span>
+                                <button
+                                    type="button"
+                                    wire:click="updateQuantity({{ $variant->id }}, {{ $item->quantity + 1 }})"
+                                    aria-label="{{ __('Increase quantity') }}"
+                                    @disabled($item->quantity >= $variant->stock)
+                                    class="flex size-8 items-center justify-center rounded-lg border border-zinc-300 transition-colors hover:bg-zinc-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-zinc-600 dark:hover:bg-zinc-800"
+                                >
+                                    <x-app-icon name="plus" class="size-4" />
+                                </button>
+                            </div>
+                            @if ($item->quantity >= $variant->stock)
+                                <p class="text-xs text-amber-600 dark:text-amber-400">{{ __('Max stock reached') }}</p>
+                            @endif
 
-                        <div class="w-24 text-right font-medium">
-                            <x-money :amount="$variant->price * $item->quantity" />
-                        </div>
+                            <div class="w-20 text-right font-medium sm:w-24">
+                                <x-money :amount="$variant->price * $item->quantity" />
+                            </div>
 
-                        <x-button wire:click="removeItem({{ $variant->id }})" wire:confirm="{{ __('Remove this item?') }}" variant="ghost">
-                            <x-app-icon name="trash" class="size-4" />
-                        </x-button>
+                            <x-button wire:click="removeItem({{ $variant->id }})" wire:confirm="{{ __('Remove this item?') }}" variant="ghost">
+                                <x-app-icon name="trash" class="size-4" />
+                            </x-button>
+                        </div>
                     </div>
                 @endforeach
             </div>

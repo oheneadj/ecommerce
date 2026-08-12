@@ -28,7 +28,17 @@
                     @endif
                 </a>
 
-                <livewire:storefront.search-autosuggest />
+                {{--
+                    Hidden below sm: — logo + this + the icon nav don't fit
+                    a narrow phone viewport without squeezing the search
+                    box down to an unusable sliver (min-w-0 lets it shrink
+                    that far). The "Shop" nav icon (magnifying glass) is
+                    still a real search entry point on mobile — it lands on
+                    /products, which has its own search box in the sidebar.
+                --}}
+                <div class="hidden min-w-0 flex-1 sm:block">
+                    <livewire:storefront.search-autosuggest />
+                </div>
 
                 <nav class="flex shrink-0 items-center gap-5 text-sm font-medium">
                     <a href="{{ route('products.index') }}" wire:navigate class="flex items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary dark:text-zinc-300">
@@ -105,5 +115,6 @@
         </footer>
 
         <x-toast-container />
+        <x-cookie-consent-banner />
     </body>
 </html>

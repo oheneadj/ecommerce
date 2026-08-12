@@ -14,13 +14,15 @@
         class="relative flex items-center gap-1.5 text-zinc-700 hover:text-brand-primary dark:text-zinc-300"
         aria-label="{{ __('Cart') }}"
     >
-        <x-app-icon name="shopping-bag" class="size-5" />
+        <span class="relative">
+            <x-app-icon name="shopping-bag" class="size-5" />
+            @if ($this->itemCount > 0)
+                <span class="absolute -top-2 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-primary px-1 text-xs font-semibold text-white">
+                    {{ $this->itemCount }}
+                </span>
+            @endif
+        </span>
         <span class="hidden sm:inline">{{ __('Cart') }}</span>
-        @if ($this->itemCount > 0)
-            <span class="absolute -top-2 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-primary px-1 text-xs font-semibold text-white">
-                {{ $this->itemCount }}
-            </span>
-        @endif
     </button>
 
     @if ($open)

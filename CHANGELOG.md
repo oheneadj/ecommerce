@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — Mobile viewport audit (Sprint 10 / E12.7)
+- Systematically screenshotted every major storefront page (home, product listing/detail, cart, checkout, account dashboard/orders/addresses/notifications, wishlist, order confirmation, a static page) at 375px and 768px, logged in as a real customer, checking for horizontal overflow and visual breakage — the story's actual AC ("tested on common mobile viewport widths"). Found and fixed three real bugs:
+  - **Cart item rows overflowed off-screen at 375px** — the row's quantity controls/line total/remove button didn't fit next to the product name alongside a fixed-width thumbnail, pushing the whole page wider than the viewport. Now wraps onto a second line (`flex-wrap`) with the product info truncating instead of forcing width.
+  - **Navbar search box collapsed to an unusable sliver at 375px** — logo + search + 5 nav icons don't fit a phone-width viewport, and `min-w-0` let the search input shrink almost to nothing rather than overflowing. Hidden below `sm:`; the existing "Shop" nav icon already lands on `/products`, which has its own search box.
+  - **Wishlist item's "Add to cart" button visually overlapped the product name/SKU** at 375px — same missing-wrap issue as the cart row, fixed the same way.
+  - **Cart icon's item-count badge overlapped the "Cart" label text at ≥640px** — the badge was positioned absolutely relative to the whole button (icon + label), so once the label became visible at the `sm:` breakpoint the badge's fixed offset landed mid-text. Now positioned relative to just the icon, correct at every width regardless of whether the label shows.
+- No regressions: full suite (781 tests) green, no test asserted the specific markup/classes touched.
+
+
 ### Added — Automatic loading state on every button
 - `<x-button>` now automatically disables itself (`wire:loading.attr="disabled"`, scoped via `wire:target` to its own `wire:click`) while its action is in flight, and the same for any `type="submit"` button — the existing `disabled:opacity-50 disabled:cursor-not-allowed` classes already on the component provide the dimmed/not-allowed visual for free. Individual call sites no longer need to hand-roll this (and risk forgetting it, leaving a button double-clickable with no feedback); the two places that already did (`addToCart`/`toggleWishlist` on the product detail page, `placeOrder` on checkout) had their now-redundant manual wiring removed. An explicit `wire:target` passed by the caller is always respected, never overridden.
 - 4 new tests (`ButtonComponentTest`).

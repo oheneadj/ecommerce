@@ -10,6 +10,7 @@ namespace App\Models;
 
 use App\Concerns\LogsAdminActivity;
 use App\Enums\PaymentProvider;
+use App\Enums\PaystackCheckoutMode;
 use Database\Factories\PaymentProviderSettingFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,17 +22,21 @@ use Illuminate\Support\Carbon;
  * One row per `PaymentProvider` enum case, auto-seeded via
  * `syncKnownProviders()` — never admin-created (no Create/Edit page; a
  * Filament list with an inline toggle + drag-reorder is the entire admin
- * surface). Multiple rows can be `enabled` at once; the customer picks
- * one of the enabled providers at checkout, in `sort_order`.
+ * surface, plus an edit modal for the presentational/mode fields below).
+ * Multiple rows can be `enabled` at once; the customer picks one of the
+ * enabled providers at checkout, in `sort_order`.
  *
  * @property int $id
  * @property PaymentProvider $provider
+ * @property string|null $logo_path
+ * @property string|null $description
+ * @property PaystackCheckoutMode|null $checkout_mode
  * @property bool $enabled
  * @property int $sort_order
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['provider', 'enabled', 'sort_order'])]
+#[Fillable(['provider', 'logo_path', 'description', 'checkout_mode', 'enabled', 'sort_order'])]
 class PaymentProviderSetting extends Model
 {
     /** @use HasFactory<PaymentProviderSettingFactory> */
@@ -44,8 +49,22 @@ class PaymentProviderSetting extends Model
     {
         return [
             'provider' => PaymentProvider::class,
+            'checkout_mode' => PaystackCheckoutMode::class,
             'enabled' => 'boolean',
         ];
+    }
+
+    /**
+     * Whether this row should use Paystack's popup checkout instead of a
+     * full-page redirect — false for every other provider (and false for
+     * Paystack itself until an admin explicitly picks Popup; Redirect
+     * stays the default so an unconfigured deployment behaves exactly as
+     * it always has).
+     */
+    public function usesPaystackPopup(): bool
+    {
+        return $this->provider === PaymentProvider::Paystack
+            && $this->checkout_mode === PaystackCheckoutMode::Popup;
     }
 
     /**

@@ -11,12 +11,16 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin;
 
 use App\Enums\PaymentProvider;
+use App\Enums\PaystackCheckoutMode;
 use App\Enums\UserRole;
 use App\Filament\Resources\PaymentProviders\Pages\ListPaymentProviders;
 use App\Filament\Resources\PaymentProviders\PaymentProviderResource;
 use App\Models\PaymentProviderSetting;
 use App\Models\User;
+use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -138,5 +142,59 @@ class PaymentProviderResourceTest extends TestCase
             ->call('reorderTable', [(string) $second->getKey(), (string) $first->getKey()]);
 
         $this->assertTrue($second->fresh()->sort_order < $first->fresh()->sort_order);
+    }
+
+    public function test_editing_moolres_row_has_no_checkout_mode_field(): void
+    {
+        $setting = PaymentProviderSetting::factory()->create(['provider' => PaymentProvider::Moolre]);
+        $this->actingAs($this->superAdmin());
+
+        Livewire::test(ListPaymentProviders::class)
+            ->mountAction(TestAction::make('edit')->table($setting))
+            ->assertSchemaComponentDoesNotExist('checkout_mode');
+    }
+
+    /**
+     * A brand-new row has `checkout_mode` genuinely null in the database
+     * (Redirect is only the runtime *behavior* default, applied by
+     * `PaymentProviderSetting::usesPaystackPopup()` treating anything
+     * other than Popup as redirect — Filament's form default doesn't
+     * backfill an existing null value when editing, only on a fresh
+     * create form) — this asserts that runtime default holds.
+     */
+    public function test_a_paystack_row_with_no_checkout_mode_set_behaves_as_redirect(): void
+    {
+        $setting = PaymentProviderSetting::factory()->create(['provider' => PaymentProvider::Paystack, 'checkout_mode' => null]);
+
+        $this->assertFalse($setting->usesPaystackPopup());
+    }
+
+    public function test_saving_paystacks_checkout_mode_as_popup_persists_it(): void
+    {
+        $setting = PaymentProviderSetting::factory()->create(['provider' => PaymentProvider::Paystack]);
+        $this->actingAs($this->superAdmin());
+
+        Livewire::test(ListPaymentProviders::class)
+            ->mountAction(TestAction::make('edit')->table($setting))
+            ->setActionData(['checkout_mode' => PaystackCheckoutMode::Popup->value])
+            ->callMountedAction();
+
+        $this->assertSame(PaystackCheckoutMode::Popup, $setting->fresh()->checkout_mode);
+        $this->assertTrue($setting->fresh()->usesPaystackPopup());
+    }
+
+    public function test_saving_a_logo_upload_persists_the_file_path(): void
+    {
+        Storage::fake('public');
+        $setting = PaymentProviderSetting::factory()->create(['provider' => PaymentProvider::Moolre]);
+        $this->actingAs($this->superAdmin());
+
+        Livewire::test(ListPaymentProviders::class)
+            ->mountAction(TestAction::make('edit')->table($setting))
+            ->setActionData(['logo_path' => UploadedFile::fake()->image('moolre.jpg')])
+            ->callMountedAction();
+
+        $this->assertNotNull($setting->fresh()->logo_path);
+        Storage::disk('public')->assertExists($setting->fresh()->logo_path);
     }
 }

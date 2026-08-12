@@ -101,4 +101,22 @@
             transition: none;
         }
     }
+
+    /*
+     * iOS Safari auto-zooms the whole page in when a focused form control's
+     * *computed* font-size is under 16px — every text input in this app
+     * uses Tailwind's text-sm (14px), so tapping any of them (or a modal/
+     * drawer that autofocuses one on open) triggered this. 16px sidesteps
+     * the browser behavior entirely; !important is required since a bare
+     * element selector otherwise loses to the text-sm/text-xs utility
+     * classes already applied. Desktop is untouched — this only matters on
+     * the narrow viewports iOS Safari actually applies the behavior on.
+     */
+    @media (max-width: 767px) {
+        input,
+        select,
+        textarea {
+            font-size: 16px !important;
+        }
+    }
 }

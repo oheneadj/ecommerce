@@ -9,7 +9,7 @@
 
 Payment providers are resolved through `App\Payments\PaymentManager`, a Laravel `Manager`-pattern class. No Action ever talks to a vendor SDK directly — every Action goes through the `App\Payments\Contracts\PaymentGateway` interface, so adding a provider is **a new driver class + a config entry + an enum case**, never an Action change.
 
-The Super Admin picks which registered provider is *active* from Store Settings (`/admin` → Settings → Store Settings → "Payment & SMS providers"). That choice only affects **new** payments — `HandlePaymentWebhook`, `VerifyPaymentWithGateway`, and `IssueProviderRefund` all resolve their gateway from the provider stored on the individual `Payment` row (`PaymentManager::driver($payment->provider)`), so switching the active provider never disrupts a payment already in progress.
+Unlike a single "active" setting, **more than one provider can be enabled at once** — the Super Admin turns providers on/off and sets their display order from `/admin` → Settings → Payment Providers, and the customer picks one of the enabled providers at checkout. That choice only affects **new** payments — `HandlePaymentWebhook`, `VerifyPaymentWithGateway`, and `IssueProviderRefund` all resolve their gateway from the provider stored on the individual `Payment` row (`PaymentManager::driver($payment->provider)`), so enabling/disabling a provider never disrupts a payment already in progress.
 
 Existing reference implementations: `app/Payments/Drivers/PaystackGateway.php` (hosted-checkout redirect style) and `app/Payments/Drivers/MoolreGateway.php` (request-to-pay style, no redirect). Read whichever is closer to how your new provider works before starting.
 
@@ -57,7 +57,7 @@ RefundResult(bool $success, ?string $providerRefundReference, ?string $errorMess
 ],
 ```
 
-The array key (`'yourprovider'`) **is the provider name everywhere else** — it's what gets stored in `payments.provider`, what the Super Admin's Select resolves to, and what `PaymentManager::driver()` uses to find your driver method.
+The array key (`'yourprovider'`) **is the provider name everywhere else** — it's what gets stored in `payments.provider`, what the enum case's `->value` resolves to, and what `PaymentManager::driver()` uses to find your driver method.
 
 ---
 
@@ -82,7 +82,7 @@ Throwing `InvalidArgumentException` on a missing credential (rather than passing
 
 ## 4. Add the enum case
 
-`app/Enums/PaymentProvider.php` — this is what makes the provider selectable from Store Settings:
+`app/Enums/PaymentProvider.php` — this is what makes the provider selectable/enableable from the Payment Providers admin screen. `App\Models\PaymentProviderSetting::syncKnownProviders()` auto-seeds a disabled row for any case with no row yet, so the new provider appears in the list (disabled, greyed out until credentials are set) the next time that screen loads — no manual seeding needed:
 
 ```php
 enum PaymentProvider: string implements HasLabel
@@ -134,7 +134,7 @@ Also update `docs/infrastructure-deployment.md`'s "Environment Configuration" en
 ## 7. Write tests
 
 Follow the existing pattern in `tests/Feature/Payment/PaymentTest.php`:
-- **Extensibility proof** (already covered generically — no new test needed per provider, but useful to sanity-check): register your driver via `PaymentManager::extend()`, set `config(['payments.default' => 'yourprovider'])`, call `InitiatePayment::run($order)`, assert `$payment->provider === 'yourprovider'`.
+- **Extensibility proof** (already covered generically — no new test needed per provider, but useful to sanity-check): register your driver via `PaymentManager::extend()`, enable it (`DB::table('payment_provider_settings')->insert(['provider' => 'yourprovider', 'enabled' => true, ...])` for a test-only driver name, or the `PaymentProviderSetting` factory for a real enum case), call `InitiatePayment::run($order, 'yourprovider')`, assert `$payment->provider === 'yourprovider'`.
 - **Driver-specific test** (new file, e.g. `tests/Feature/Payment/YourProviderGatewayTest.php`), mirroring `MoolreSmsConnectionFailureTest.php`'s shape for the SMS side:
   - `Http::fake()` your endpoint(s), assert the request shape (headers, body) matches the provider's documented API.
   - Assert `verifyWebhookSignature()` accepts a correctly-signed request and rejects a tampered one.
@@ -151,7 +151,7 @@ php -l app/Payments/Drivers/YourProviderGateway.php
 php artisan test --parallel
 ```
 
-Then manually: in `/admin` → Store Settings, confirm the new provider appears in the "Active payment provider" dropdown, confirm picking it with no credentials set is rejected by the save-time validation, add real/sandbox credentials, save, and place a real test checkout to confirm `initiate()` actually hits your driver (check `payment_api_logs`).
+Then manually: in `/admin` → Settings → Payment Providers, confirm the new provider appears in the list, confirm its "Enabled" toggle is disabled (greyed out, with a tooltip) while no credentials are set, add real/sandbox credentials, toggle it on, and place a real test checkout selecting it to confirm `initiate()` actually hits your driver (check `payment_api_logs`).
 
 ---
 

@@ -122,13 +122,36 @@
                 </div>
 
                 <div class="mt-4 space-y-2 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-700">
-                    <x-input wire:model="couponCode" placeholder="{{ __('Coupon code') }}" />
+                    @if ($this->appliedCoupon)
+                        <div class="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
+                            <span class="font-medium">{{ __('Coupon ":code" applied', ['code' => $this->appliedCoupon->code]) }}</span>
+                            <button type="button" wire:click="removeCoupon" class="text-xs font-medium underline">
+                                {{ __('Remove') }}
+                            </button>
+                        </div>
+                    @else
+                        <div class="flex items-start gap-2">
+                            <div class="flex-1">
+                                <x-input wire:model="couponCode" placeholder="{{ __('Coupon code') }}" />
+                            </div>
+                            <x-button type="button" wire:click="applyCoupon" wire:loading.attr="disabled" wire:target="applyCoupon">
+                                <span wire:loading.remove wire:target="applyCoupon">{{ __('Apply') }}</span>
+                                <span wire:loading wire:target="applyCoupon">{{ __('Applying…') }}</span>
+                            </x-button>
+                        </div>
+                    @endif
                 </div>
 
-                <div class="mt-4 space-y-2 border-t border-zinc-200 pt-4 text-sm transition-opacity duration-150 dark:border-zinc-700" wire:loading.class="opacity-50" wire:target="selectedShippingMethodId">
+                <div class="mt-4 space-y-2 border-t border-zinc-200 pt-4 text-sm transition-opacity duration-150 dark:border-zinc-700" wire:loading.class="opacity-50" wire:target="selectedShippingMethodId,applyCoupon,removeCoupon">
                     <div class="flex justify-between"><span>{{ __('Subtotal') }}</span><span><x-money :amount="$this->subtotal" /></span></div>
+                    @if ($this->discountAmount > 0)
+                        <div class="flex justify-between text-emerald-600 dark:text-emerald-400">
+                            <span>{{ __('Discount') }}</span>
+                            <span>-<x-money :amount="$this->discountAmount" /></span>
+                        </div>
+                    @endif
                     <div class="flex justify-between"><span>{{ __('Tax') }}</span><span><x-money :amount="$this->taxEstimate" /></span></div>
-                    <div class="flex justify-between"><span>{{ __('Shipping') }}</span><span><x-money :amount="$this->shippingCost" /></span></div>
+                    <div class="flex justify-between"><span>{{ __('Shipping') }}</span><span><x-money :amount="$this->effectiveShippingCost" /></span></div>
                     <div class="flex justify-between text-base font-semibold"><span>{{ __('Total') }}</span><span><x-money :amount="$this->estimatedTotal" /></span></div>
                 </div>
 

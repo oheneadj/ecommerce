@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — "Apply" button for the checkout coupon code
+- The coupon code field at checkout was a bare input with no way to actually apply it — whatever was typed only got validated (or silently ignored) the moment "Place order" was clicked, with no feedback beforehand and no visible discount. Added an explicit "Apply" button next to the input; on success the input is replaced with a green "Coupon ':code' applied" confirmation and a "Remove" link, and a Discount line appears in the order summary with the total recalculated live — all before the order is ever placed.
+- New `App\Actions\Checkout\PreviewCouponDiscount` validates the code against the current cart and calculates the discount with **no persistence** (no `CouponUsage` row, no order mutation) — a cart isn't an order yet, so there's nothing to commit to. The authoritative, row-locked check still happens via the existing `ApplyCouponToOrder` when the order is actually placed; this preview is optimistic and can still be rejected there (e.g. a shared usage limit exhausted in between), same as every other "preview vs. final" pattern in this app.
+- Extracted the actual validation rules (active/expired/min-order-amount/scope/usage-limits) and discount calculation out of `ApplyCouponToOrder` into a new shared `App\Actions\Checkout\Support\ValidateCoupon`, so the preview and the real application enforce identical rules from one definition rather than two copies that could drift.
+- Editing the coupon code after applying it clears the stale discount immediately (`updatedCouponCode()`) — the shown discount always matches a code that was actually validated. A typed-but-never-applied code is never silently used when the order is placed; applying is a deliberate step now, not an implicit side effect.
+- A FreeShipping coupon's zero-shipping is now reflected in the checkout summary's Shipping line itself (previously only the final order got it right, via a new `effectiveShippingCost` computed shared by the Shipping line and the total).
+- 6 new tests (`CheckoutPageTest`), 6 new tests (`PreviewCouponDiscountTest`). Verified end-to-end in a real browser — applying a valid code shows the green confirmation, discount line, and updated total; removing it reverts cleanly.
+
+
 ### Changed — Product filters are a slide-over on mobile
 - The filter sidebar (search/category/brand/attributes/price) previously just stacked above the product grid, forcing a long scroll past every filter group before reaching a single product on mobile. Below `lg:`, it's now a fixed slide-over panel opened via a new "Filters" button (funnel icon) next to the page heading, with a tap-to-close backdrop and an in-panel close button — the exact same filter controls, just presented as an overlay instead of forcing the scroll. Unchanged at `lg:+` (still the always-visible static sidebar).
 - 1 new test (`ProductListingPageTest`) confirming the trigger/open-state/backdrop markup renders.

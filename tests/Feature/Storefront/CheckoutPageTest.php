@@ -13,10 +13,12 @@ namespace Tests\Feature\Storefront;
 use App\Actions\Cart\AddItemToCart;
 use App\Actions\Cart\GetCurrentCart;
 use App\Actions\Cart\ResolveCurrentCart;
+use App\Enums\CouponType;
 use App\Enums\PaymentStatus;
 use App\Livewire\Storefront\CheckoutPage;
 use App\Models\Address;
 use App\Models\Cart;
+use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\ProductVariant;
@@ -115,6 +117,125 @@ class CheckoutPageTest extends TestCase
             ->assertSet('shippingCost', 2000)
             ->assertSet('estimatedTotal', $component->get('subtotal') + $component->get('taxEstimate') + 2000)
             ->assertSee('GH₵20.00');
+    }
+
+    public function test_applying_a_valid_coupon_shows_the_discount_and_reduces_the_total(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $variant = ProductVariant::factory()->create(['price' => 10000, 'stock' => 5]);
+        AddItemToCart::run(GetCurrentCart::run($user), $variant, 1);
+        ShippingMethod::factory()->create(['active' => true, 'cost' => 0]);
+        $coupon = Coupon::factory()->create(['type' => CouponType::Fixed, 'value' => 1000]);
+
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
+            ->set('couponCode', $coupon->code)
+            ->call('applyCoupon')
+            ->assertHasNoErrors()
+            ->assertSet('discountAmount', 1000)
+            ->assertSet('appliedCouponCode', $coupon->code)
+            ->assertSee(__('Coupon ":code" applied', ['code' => $coupon->code]));
+    }
+
+    public function test_an_invalid_coupon_code_shows_an_error_and_applies_no_discount(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
+        AddItemToCart::run(GetCurrentCart::run($user), $variant, 1);
+        ShippingMethod::factory()->create(['active' => true]);
+
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
+            ->set('couponCode', 'DOES-NOT-EXIST')
+            ->call('applyCoupon')
+            ->assertHasErrors('couponCode')
+            ->assertSet('discountAmount', 0)
+            ->assertSet('appliedCouponCode', null);
+    }
+
+    public function test_removing_an_applied_coupon_clears_the_discount(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $variant = ProductVariant::factory()->create(['price' => 10000, 'stock' => 5]);
+        AddItemToCart::run(GetCurrentCart::run($user), $variant, 1);
+        ShippingMethod::factory()->create(['active' => true]);
+        $coupon = Coupon::factory()->create(['type' => CouponType::Fixed, 'value' => 1000]);
+
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
+            ->set('couponCode', $coupon->code)
+            ->call('applyCoupon')
+            ->assertSet('discountAmount', 1000)
+            ->call('removeCoupon')
+            ->assertSet('discountAmount', 0)
+            ->assertSet('appliedCouponCode', null)
+            ->assertSet('couponCode', '');
+    }
+
+    public function test_editing_the_code_after_applying_it_clears_the_stale_discount(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $variant = ProductVariant::factory()->create(['price' => 10000, 'stock' => 5]);
+        AddItemToCart::run(GetCurrentCart::run($user), $variant, 1);
+        ShippingMethod::factory()->create(['active' => true]);
+        $coupon = Coupon::factory()->create(['type' => CouponType::Fixed, 'value' => 1000]);
+
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
+            ->set('couponCode', $coupon->code)
+            ->call('applyCoupon')
+            ->assertSet('discountAmount', 1000)
+            ->set('couponCode', 'SOMETHING-ELSE')
+            ->assertSet('discountAmount', 0)
+            ->assertSet('appliedCouponCode', null);
+    }
+
+    /**
+     * A coupon typed but never actually clicked "Apply" must never
+     * silently discount the order — applying is a deliberate step, not
+     * an implicit side effect of placing the order.
+     */
+    public function test_placing_an_order_never_applies_a_typed_but_unapplied_coupon(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $variant = ProductVariant::factory()->create(['price' => 10000, 'stock' => 5]);
+        AddItemToCart::run(GetCurrentCart::run($user), $variant, 1);
+        $address = Address::factory()->create(['user_id' => $user->id, 'is_default' => true]);
+        $shippingMethod = ShippingMethod::factory()->create(['active' => true, 'cost' => 0]);
+        $coupon = Coupon::factory()->create(['type' => CouponType::Fixed, 'value' => 1000]);
+
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
+            ->set('selectedAddressId', $address->id)
+            ->set('selectedShippingMethodId', $shippingMethod->id)
+            ->set('couponCode', $coupon->code)
+            ->call('placeOrder');
+
+        $order = Order::query()->sole();
+        $this->assertNull($order->coupon_id);
+        $this->assertSame(0, $order->discount_total);
+    }
+
+    public function test_placing_an_order_after_applying_a_coupon_uses_the_applied_discount(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $variant = ProductVariant::factory()->create(['price' => 10000, 'stock' => 5]);
+        AddItemToCart::run(GetCurrentCart::run($user), $variant, 1);
+        $address = Address::factory()->create(['user_id' => $user->id, 'is_default' => true]);
+        $shippingMethod = ShippingMethod::factory()->create(['active' => true, 'cost' => 0]);
+        $coupon = Coupon::factory()->create(['type' => CouponType::Fixed, 'value' => 1000]);
+
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
+            ->set('selectedAddressId', $address->id)
+            ->set('selectedShippingMethodId', $shippingMethod->id)
+            ->set('couponCode', $coupon->code)
+            ->call('applyCoupon')
+            ->call('placeOrder');
+
+        $order = Order::query()->sole();
+        $this->assertSame($coupon->id, $order->coupon_id);
+        $this->assertSame(1000, $order->discount_total);
     }
 
     public function test_placing_an_order_with_an_empty_cart_is_rejected(): void

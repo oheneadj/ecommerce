@@ -11,7 +11,9 @@ namespace App\Livewire\Storefront;
 
 use App\Actions\Cart\ResolveCurrentCart;
 use App\Actions\Checkout\CreateOrderFromCart;
+use App\Actions\Checkout\PreviewCouponDiscount;
 use App\Actions\Payment\InitiatePayment;
+use App\Enums\CouponType;
 use App\Enums\PaymentStatus;
 use App\Exceptions\CouponUsageLimitExceededException;
 use App\Exceptions\EmptyCartException;
@@ -19,6 +21,7 @@ use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidCouponException;
 use App\Models\Address;
 use App\Models\Cart;
+use App\Models\Coupon;
 use App\Models\ShippingMethod;
 use App\Models\StoreSetting;
 use Illuminate\Contracts\View\View;
@@ -36,7 +39,9 @@ use Livewire\Component;
  * @property-read int $subtotal
  * @property-read int $taxEstimate
  * @property-read int $shippingCost
+ * @property-read int $effectiveShippingCost
  * @property-read int $estimatedTotal
+ * @property-read Coupon|null $appliedCoupon
  */
 #[Title('Checkout')]
 #[Lazy]
@@ -47,6 +52,18 @@ class CheckoutPage extends Component
     public ?int $selectedShippingMethodId = null;
 
     public string $couponCode = '';
+
+    /**
+     * The coupon code actually validated and applied via the "Apply"
+     * button — deliberately separate from `$couponCode` (what's currently
+     * typed) so editing the text field after applying doesn't silently
+     * keep discounting the order under a code the customer may have
+     * changed their mind about, or place an order under a code that was
+     * never actually validated.
+     */
+    public ?string $appliedCouponCode = null;
+
+    public int $discountAmount = 0;
 
     public string $channel = 'mobile_money';
 
@@ -127,10 +144,88 @@ class CheckoutPage extends Component
         return $method !== null ? $method->cost : 0;
     }
 
+    /**
+     * `$shippingCost` itself never changes — this is what's actually
+     * charged, zeroed by a FreeShipping coupon exactly like
+     * `ApplyCouponToOrder`/`CreateOrderFromCart` zero it for real. Used
+     * by both the order summary's Shipping line and `estimatedTotal()`,
+     * so the two can never show inconsistent numbers.
+     */
+    #[Computed]
+    public function effectiveShippingCost(): int
+    {
+        return $this->appliedCoupon?->type === CouponType::FreeShipping ? 0 : $this->shippingCost;
+    }
+
     #[Computed]
     public function estimatedTotal(): int
     {
-        return $this->subtotal + $this->taxEstimate + $this->shippingCost;
+        return $this->subtotal - $this->discountAmount + $this->taxEstimate + $this->effectiveShippingCost;
+    }
+
+    #[Computed]
+    public function appliedCoupon(): ?Coupon
+    {
+        return $this->appliedCouponCode !== null
+            ? Coupon::query()->where('code', $this->appliedCouponCode)->first()
+            : null;
+    }
+
+    /**
+     * Validates the typed code against the current cart and, if valid,
+     * previews its discount — no order exists yet, so nothing is
+     * persisted here (see `PreviewCouponDiscount`). The authoritative
+     * check happens again, locked, when the order is actually placed.
+     */
+    public function applyCoupon(): void
+    {
+        $this->resetErrorBag('couponCode');
+
+        if (trim($this->couponCode) === '') {
+            $this->addError('couponCode', 'Please enter a coupon code.');
+
+            return;
+        }
+
+        try {
+            $result = PreviewCouponDiscount::run(
+                $this->cart,
+                $this->couponCode,
+                Auth::id(),
+                Auth::check() ? null : ($this->guestEmail !== '' ? $this->guestEmail : null),
+            );
+        } catch (InvalidCouponException|CouponUsageLimitExceededException $e) {
+            $this->addError('couponCode', $e->getMessage());
+
+            return;
+        }
+
+        $this->appliedCouponCode = $result['coupon']->code;
+        $this->discountAmount = $result['discount'];
+        unset($this->appliedCoupon);
+    }
+
+    public function removeCoupon(): void
+    {
+        $this->couponCode = '';
+        $this->appliedCouponCode = null;
+        $this->discountAmount = 0;
+        $this->resetErrorBag('couponCode');
+        unset($this->appliedCoupon);
+    }
+
+    /**
+     * Editing the code after applying it invalidates the preview — the
+     * discount shown must always match a code that was actually
+     * validated, never a stale amount sitting under newly-typed text.
+     */
+    public function updatedCouponCode(): void
+    {
+        if ($this->appliedCouponCode !== null && $this->couponCode !== $this->appliedCouponCode) {
+            $this->appliedCouponCode = null;
+            $this->discountAmount = 0;
+            unset($this->appliedCoupon);
+        }
     }
 
     public function placeOrder(): void
@@ -180,7 +275,7 @@ class CheckoutPage extends Component
                 $address,
                 guestEmail: Auth::check() ? null : $this->guestEmail,
                 guestPhone: Auth::check() ? null : $this->guestPhone,
-                couponCode: $this->couponCode !== '' ? $this->couponCode : null,
+                couponCode: $this->appliedCouponCode,
                 shippingMethod: $shippingMethod,
             );
         } catch (EmptyCartException|InsufficientStockException|InvalidCouponException|CouponUsageLimitExceededException $e) {

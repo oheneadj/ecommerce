@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Personalized greeting on the admin dashboard
+- The admin Dashboard page's title is now "Welcome, {name}" instead of the generic "Dashboard", falling back to the generic title for the rare case a user has no name set.
+- 2 new tests (`DashboardGreetingTest`).
+
 ### Added — SMS for operational admin alerts
 - `LowStockAlert`, `CriticalHealthAlert`, and `ReservationsAtRiskAlert` previously only notified via mail+database. Now that staff accounts have phone numbers on file (the Staff resource requires one), all three also send SMS — genuinely time-sensitive operational alerts, unlike `StaffInvited`'s deliberately link-free SMS, so there's no reason to withhold detail here. `SmsChannel` already no-ops gracefully for a recipient with no phone on file (e.g. the CLI-created Super Admin, which doesn't collect one), so this is a safe unconditional addition to each notification's `via()`.
 - 3 new tests confirming the `sms` channel is included alongside `mail`.

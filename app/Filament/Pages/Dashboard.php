@@ -23,6 +23,7 @@ use Filament\Pages\Dashboard\Concerns\HasFiltersAction;
 use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Filters dashboard widget data via an action modal (rather than an
@@ -33,6 +34,19 @@ use Illuminate\Support\Carbon;
 class Dashboard extends BaseDashboard
 {
     use HasFiltersAction;
+
+    /**
+     * Greets the logged-in staff member by name instead of the generic
+     * "Dashboard" — falls back to that generic title for the rare case
+     * a user has no name set (e.g. a phone-only account somehow reaching
+     * the admin panel).
+     */
+    public function getTitle(): string
+    {
+        $name = Auth::user()?->name;
+
+        return $name ? "Welcome, {$name}" : 'Dashboard';
+    }
 
     /**
      * Explicit allowlist rather than the panel's auto-discovered widget

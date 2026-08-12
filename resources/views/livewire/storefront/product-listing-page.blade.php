@@ -47,6 +47,17 @@
                         @foreach ($this->brands as $brandOption)
                             <label wire:key="brand-{{ $brandOption->id }}" class="flex items-center gap-2 text-sm">
                                 <input type="radio" wire:model.live="brand" value="{{ $brandOption->slug }}">
+                                @if ($brandOption->logo_path)
+                                    <img
+                                        src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($brandOption->logo_path) }}"
+                                        alt=""
+                                        class="size-5 shrink-0 rounded-full object-contain"
+                                    >
+                                @else
+                                    <span class="flex size-5 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-800">
+                                        <x-app-icon name="folder" class="size-3" />
+                                    </span>
+                                @endif
                                 {{ $brandOption->name }}
                             </label>
                         @endforeach

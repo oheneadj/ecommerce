@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Brand logos in the product listing filter
+- The Brand filter on `/products` was text-only, even though `Brand.logo_path` already exists and is already used on the product detail page. Now shows each brand's logo (falling back to a generic icon when a brand has none) next to its name.
+- 1 new test.
+
 ### Added — Bulk export customers
 - Added an "Export" bulk action to the admin Customers table, same `pxlrbt/filament-excel` pattern already used for Products (name, phone, email, order count, joined date).
 - 1 new test (`CustomerResourceTest`).

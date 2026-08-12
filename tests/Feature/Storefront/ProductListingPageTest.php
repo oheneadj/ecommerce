@@ -19,6 +19,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -118,6 +119,21 @@ class ProductListingPageTest extends TestCase
             ->set('brand', $brandA->slug)
             ->assertSee('Brand A Item')
             ->assertDontSee('Brand B Item');
+    }
+
+    public function test_a_brand_with_a_logo_shows_it_in_the_filter_and_a_brand_without_one_shows_a_fallback_icon(): void
+    {
+        $withLogo = Brand::factory()->create(['logo_path' => 'brand-logos/nike.png']);
+        $withoutLogo = Brand::factory()->create(['logo_path' => null]);
+        $this->purchasableProduct(['brand_id' => $withLogo->id]);
+        $this->purchasableProduct(['brand_id' => $withoutLogo->id]);
+
+        $response = Livewire::test(ProductListingPage::class);
+
+        $response->assertSeeHtml(Storage::disk('public')->url('brand-logos/nike.png'));
+        // The "folder" icon's own SVG path — the fallback icon rendered
+        // for a brand with no logo (see app-icon.blade.php).
+        $response->assertSeeHtml('M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15');
     }
 
     public function test_filtering_by_price_range_excludes_products_outside_it(): void

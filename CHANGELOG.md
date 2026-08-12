@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — variant Edit form's `stock` field bypassed the stock-movement ledger
+- Editing a product variant let an admin type a new `stock` value directly, saved as a raw column update — bypassing `RecordStockMovement` (no audit trail entry) and `AdjustStockWithReservationCheck` (no check against active reservations), both of which `docs/technical-design-ecommerce.md` explicitly requires for every write to a variant's stock. `stock` is now editable only at creation (there's no ledger yet to route an initial count through); editing an existing variant shows it as a read-only `Placeholder` instead, pointing to the proper action.
+- Added a single-row **"Adjust stock"** action (the counterpart to the existing bulk one) to each variant's row-actions menu, so adjusting one variant's stock no longer requires selecting it via the bulk-actions checkbox first.
+- Fixed a stale docblock on `ProductVariant` (`@property string $status` → `@property VariantStatus $status`) surfaced while adding tests for this.
+- 2 new tests.
+
 ### Fixed — order detail page required a manual reload to show a payment settling
 - A payment can settle asynchronously — the webhook (or the `VerifyPendingPayments` polling fallback) confirms it well after the order detail page has already rendered, so the customer had to manually reload to see the order move past "Pending". Added `wire:poll.3s="refreshOrder"`, gated by a new `hasPendingPayment` computed property so it only polls while there's actually something to wait for, not indefinitely on an already-resolved order.
 

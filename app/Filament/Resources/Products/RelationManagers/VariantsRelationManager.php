@@ -26,6 +26,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -65,7 +66,23 @@ class VariantsRelationManager extends RelationManager
                     ->numeric()
                     ->required()
                     ->minValue(0)
-                    ->default(0),
+                    ->default(0)
+                    // `stock` is a cached total derived from stock_movements
+                    // (technical-design-ecommerce.md's "never update stock
+                    // directly" rule) — editable only at creation, where
+                    // there's no ledger yet to route an initial count
+                    // through. Once a variant exists, stock only ever
+                    // changes via adjustStockAction()/bulkAdjustStockAction(),
+                    // both of which go through AdjustStockWithReservationCheck
+                    // so every change is audited and reservation-safe.
+                    ->hidden(fn (string $operation): bool => $operation === 'edit')
+                    ->dehydrated(fn (string $operation): bool => $operation !== 'edit'),
+
+                Placeholder::make('current_stock')
+                    ->label('Stock')
+                    ->content(fn (?ProductVariant $record): string => $record instanceof ProductVariant ? (string) $record->stock : '—')
+                    ->helperText('Use "Adjust stock" from the variant\'s actions menu to change this — it keeps an audit trail and checks against active reservations.')
+                    ->visible(fn (string $operation): bool => $operation === 'edit'),
 
                 TextInput::make('low_stock_threshold')
                     ->numeric()
@@ -178,6 +195,7 @@ class VariantsRelationManager extends RelationManager
             ->recordActions([
                 ActionGroup::make([
                     EditAction::make(),
+                    self::adjustStockAction(),
                     self::addImageAction(),
                     self::deleteAction(),
                 ])
@@ -422,6 +440,34 @@ class VariantsRelationManager extends RelationManager
                     ->title(count($paths) === 1 ? 'Image added' : count($paths).' images added')
                     ->success()
                     ->send();
+            });
+    }
+
+    /**
+     * The single-row counterpart to bulkAdjustStockAction() — the only way
+     * to change an existing variant's stock (the Edit form's `stock` field
+     * is create-only; see form()). Routes through
+     * AdjustStockWithReservationCheck so every change is ledgered and
+     * checked against active reservations, same as the bulk version.
+     */
+    private static function adjustStockAction(): Action
+    {
+        return Action::make('adjustStock')
+            ->label('Adjust stock')
+            ->icon(Heroicon::OutlinedAdjustmentsHorizontal)
+            ->schema([
+                TextInput::make('delta')
+                    ->label('Change (+/-)')
+                    ->numeric()
+                    ->required()
+                    ->helperText('Positive to add stock, negative to remove it.'),
+                TextInput::make('note')
+                    ->maxLength(255),
+            ])
+            ->action(function (ProductVariant $record, array $data): void {
+                AdjustStockWithReservationCheck::run($record, (int) $data['delta'], Auth::user(), $data['note'] ?? null);
+
+                Notification::make()->title('Stock adjusted')->success()->send();
             });
     }
 

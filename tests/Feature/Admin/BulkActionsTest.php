@@ -65,6 +65,52 @@ class BulkActionsTest extends TestCase
         }
     }
 
+    public function test_adjusting_a_single_variants_stock_applies_the_delta_and_logs_a_movement(): void
+    {
+        $this->actingAs($this->admin());
+
+        $product = Product::factory()->create();
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id, 'stock' => 10]);
+
+        Livewire::test(VariantsRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
+            ->callTableAction('adjustStock', $variant, data: ['delta' => 5, 'note' => 'Restock'])
+            ->assertHasNoTableActionErrors();
+
+        $this->assertSame(15, $variant->fresh()->stock);
+        $this->assertDatabaseHas('stock_movements', [
+            'product_variant_id' => $variant->id,
+            'quantity' => 5,
+        ]);
+    }
+
+    /**
+     * Regression: the variant Edit form used to have a plain, directly
+     * editable `stock` field — saving it did a raw column update, bypassing
+     * RecordStockMovement/AdjustStockWithReservationCheck entirely (no
+     * ledger entry, no reservation-safety check). `stock` is now
+     * create-only; editing an existing variant must never change it, no
+     * matter what's submitted in that field's place.
+     */
+    public function test_editing_a_variant_does_not_change_its_stock_even_if_submitted(): void
+    {
+        $this->actingAs($this->admin());
+
+        $product = Product::factory()->create();
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id, 'stock' => 10, 'sku' => 'SKU-1']);
+
+        Livewire::test(VariantsRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
+            ->callTableAction('edit', $variant, data: [
+                'sku' => 'SKU-1',
+                'price' => $variant->price,
+                'stock' => 999,
+                'status' => $variant->status->value,
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $this->assertSame(10, $variant->fresh()->stock);
+        $this->assertSame(0, $variant->stockMovements()->count());
+    }
+
     public function test_bulk_adjusting_price_applies_the_percentage_to_every_selected_variant(): void
     {
         $this->actingAs($this->admin());

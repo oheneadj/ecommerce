@@ -37,7 +37,7 @@ use Illuminate\Support\Carbon;
  * @property int $price
  * @property int $stock
  * @property int|null $low_stock_threshold
- * @property string $status
+ * @property VariantStatus $status
  * @property Carbon|null $deleted_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at

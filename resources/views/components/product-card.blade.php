@@ -8,19 +8,27 @@
         ?? $variant?->images->first();
 @endphp
 
-<a href="{{ route('products.show', $product) }}" wire:navigate class="group block overflow-hidden rounded-lg border border-zinc-200 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg dark:border-zinc-700 dark:hover:border-zinc-600">
-    <div class="flex aspect-square items-center justify-center overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-        @if ($image)
-            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($image->path) }}" alt="{{ $product->name }}" loading="lazy" class="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-105">
-        @else
-            <x-app-icon name="folder" class="size-10 text-zinc-400" />
-        @endif
-    </div>
+<div class="group relative overflow-hidden rounded-lg border border-zinc-200 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg dark:border-zinc-700 dark:hover:border-zinc-600">
+    @if ($variant)
+        <div class="absolute right-2 top-2 z-10">
+            <livewire:storefront.wishlist-button :variant="$variant" :key="'wishlist-'.$variant->id" />
+        </div>
+    @endif
 
-    <div class="p-3">
-        <p class="truncate text-sm font-medium">{{ $product->name }}</p>
-        @if ($variant)
-            <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $variant->price_formatted }}</p>
-        @endif
-    </div>
-</a>
+    <a href="{{ route('products.show', $product) }}" wire:navigate class="block">
+        <div class="flex aspect-square items-center justify-center overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+            @if ($image)
+                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($image->path) }}" alt="{{ $product->name }}" loading="lazy" class="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-105">
+            @else
+                <x-app-icon name="folder" class="size-10 text-zinc-400" />
+            @endif
+        </div>
+
+        <div class="p-3">
+            <p class="truncate text-sm font-medium">{{ $product->name }}</p>
+            @if ($variant)
+                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $variant->price_formatted }}</p>
+            @endif
+        </div>
+    </a>
+</div>

@@ -9,11 +9,15 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Storefront;
 
+use App\Enums\PaymentStatus;
+use App\Jobs\VerifyPaymentWithGateway;
 use App\Livewire\Storefront\OrderConfirmationPage;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -59,5 +63,55 @@ class OrderConfirmationPageTest extends TestCase
         $this->expectException(ModelNotFoundException::class);
 
         Livewire::test(OrderConfirmationPage::class, ['orderUlid' => $otherOrder->ulid]);
+    }
+
+    /**
+     * Paystack's callback_url convention appends `?reference=` after a
+     * redirect-mode payment — used as the signal to check sooner than the
+     * ~2-minute polling sweep, rather than making the customer wait.
+     */
+    public function test_landing_with_a_reference_and_a_still_pending_payment_dispatches_an_immediate_verification(): void
+    {
+        Queue::fake();
+        $order = Order::factory()->create(['user_id' => null, 'guest_email' => 'guest@example.com']);
+        $payment = Payment::factory()->create(['order_id' => $order->id, 'status' => PaymentStatus::Pending]);
+
+        $this->get("/orders/{$order->ulid}/confirmation?reference=some-ref")->assertOk();
+
+        Queue::assertPushed(VerifyPaymentWithGateway::class, fn (VerifyPaymentWithGateway $job) => $this->paymentIdOf($job) === $payment->id);
+    }
+
+    public function test_landing_without_a_reference_does_not_dispatch_verification(): void
+    {
+        Queue::fake();
+        $order = Order::factory()->create(['user_id' => null, 'guest_email' => 'guest@example.com']);
+        Payment::factory()->create(['order_id' => $order->id, 'status' => PaymentStatus::Pending]);
+
+        $this->get("/orders/{$order->ulid}/confirmation")->assertOk();
+
+        Queue::assertNotPushed(VerifyPaymentWithGateway::class);
+    }
+
+    /**
+     * A reference is present but the payment already resolved (e.g. the
+     * webhook beat the customer's own browser redirect back) — no point
+     * dispatching a pointless repeat gateway call.
+     */
+    public function test_landing_with_a_reference_but_an_already_resolved_payment_does_not_dispatch_verification(): void
+    {
+        Queue::fake();
+        $order = Order::factory()->create(['user_id' => null, 'guest_email' => 'guest@example.com']);
+        Payment::factory()->create(['order_id' => $order->id, 'status' => PaymentStatus::Success]);
+
+        $this->get("/orders/{$order->ulid}/confirmation?reference=some-ref")->assertOk();
+
+        Queue::assertNotPushed(VerifyPaymentWithGateway::class);
+    }
+
+    private function paymentIdOf(VerifyPaymentWithGateway $job): int
+    {
+        $reflection = new \ReflectionProperty($job, 'paymentId');
+
+        return $reflection->getValue($job);
     }
 }

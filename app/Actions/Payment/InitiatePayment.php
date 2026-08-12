@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Starts a payment attempt for an order over a chosen channel.
+ * Starts a payment attempt for an order with the currently active payment provider.
  */
 
 declare(strict_types=1);
@@ -45,7 +45,7 @@ class InitiatePayment
      * status, a customer-safe message in metadata.error), and logs the
      * underlying exception for whoever's on call to actually investigate.
      */
-    public function handle(Order $order, string $channel): Payment
+    public function handle(Order $order): Payment
     {
         $existing = $order->payments()->where('status', PaymentStatus::Pending)->latest('id')->first();
 
@@ -53,12 +53,12 @@ class InitiatePayment
             return $existing;
         }
 
-        $provider = (string) config("payments.channels.{$channel}");
-        $requestPayload = ['order_id' => $order->id, 'order_number' => $order->order_number, 'amount' => $order->grand_total, 'channel' => $channel];
+        $provider = $this->payments->getDefaultDriver();
+        $requestPayload = ['order_id' => $order->id, 'order_number' => $order->order_number, 'amount' => $order->grand_total];
 
         try {
-            $gateway = $this->payments->driverForChannel($channel);
-            $result = $gateway->initiate($order, $channel);
+            $gateway = $this->payments->driver($provider);
+            $result = $gateway->initiate($order);
 
             $responsePayload = $result->rawResponse;
             $statusCode = $result->success ? 200 : 422;
@@ -70,7 +70,6 @@ class InitiatePayment
             Log::error('Payment initiation failed', [
                 'order_id' => $order->id,
                 'order_number' => $order->order_number,
-                'channel' => $channel,
                 'provider' => $provider,
                 'exception' => $e->getMessage(),
             ]);
@@ -96,7 +95,6 @@ class InitiatePayment
             'order_id' => $order->id,
             'provider' => $provider,
             'provider_reference' => $providerReference,
-            'channel' => $channel,
             'amount' => $order->grand_total,
             'currency' => 'GHS',
             'status' => $paymentStatus,

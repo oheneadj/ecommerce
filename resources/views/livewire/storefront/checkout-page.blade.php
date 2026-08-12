@@ -95,16 +95,9 @@
 
             <x-card>
                 <h2 class="text-lg font-medium">{{ __('Payment method') }}</h2>
-                <div class="mt-4 space-y-2">
-                    <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-700">
-                        <input type="radio" wire:model="channel" value="mobile_money">
-                        {{ __('Mobile Money') }}
-                    </label>
-                    <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-700">
-                        <input type="radio" wire:model="channel" value="card">
-                        {{ __('Card') }}
-                    </label>
-                </div>
+                <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                    {{ __('You will pay via :provider.', ['provider' => $this->activePaymentProviderLabel]) }}
+                </p>
             </x-card>
         </div>
 

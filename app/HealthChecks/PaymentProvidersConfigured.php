@@ -8,6 +8,8 @@ declare(strict_types=1);
 
 namespace App\HealthChecks;
 
+use App\Enums\PaymentProvider;
+use App\Models\StoreSetting;
 use Spatie\Health\Checks\Check;
 use Spatie\Health\Checks\Result;
 
@@ -21,30 +23,13 @@ class PaymentProvidersConfigured extends Check
     {
         $result = Result::make();
 
-        $channels = (array) config('payments.channels', []);
-        $providers = (array) config('payments.providers', []);
+        $provider = StoreSetting::current()->active_payment_provider
+            ?? PaymentProvider::from((string) config('payments.default'));
 
-        if ($channels === []) {
-            return $result->failed('No payment channels are configured in config/payments.php. Fix: map at least one channel (e.g. mobile_money) to a provider.');
+        if ($provider->hasCredentialsConfigured()) {
+            return $result->ok("The active payment provider ({$provider->label()}) has credentials configured.");
         }
 
-        $unconfigured = [];
-
-        foreach ($channels as $channel => $providerKey) {
-            $credentials = (array) ($providers[$providerKey] ?? []);
-            $hasCredentials = collect($credentials)->filter(fn ($value) => filled($value))->isNotEmpty();
-
-            if (! $hasCredentials) {
-                $unconfigured[] = "{$channel} (provider: {$providerKey})";
-            }
-        }
-
-        if ($unconfigured === []) {
-            return $result->ok('Every configured payment channel has credentials set.');
-        }
-
-        return $result
-            ->failed('These payment channels have no credentials configured: '.implode(', ', $unconfigured).'. Fix: set the matching provider env vars (e.g. MOOLRE_API_KEY, PAYSTACK_SECRET_KEY).')
-            ->meta(['unconfigured_channels' => $unconfigured]);
+        return $result->failed("The active payment provider ({$provider->label()}) has no credentials configured — checkout payments will fail. Fix: set its environment variables (e.g. MOOLRE_API_KEY, PAYSTACK_SECRET_KEY).");
     }
 }

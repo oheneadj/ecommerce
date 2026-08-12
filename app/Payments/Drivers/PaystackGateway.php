@@ -33,7 +33,7 @@ readonly class PaystackGateway implements PaymentGateway
         private string $secretKey,
     ) {}
 
-    public function initiate(Order $order, string $channel): PaymentInitiationResult
+    public function initiate(Order $order): PaymentInitiationResult
     {
         $response = $this->client()->post('/transaction/initialize', [
             'email' => optional($order->user)->email ?? $order->guest_email ?? 'no-reply@example.com',

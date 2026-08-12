@@ -24,18 +24,17 @@ class InitiatePaymentTest extends TestCase
 
     public function test_a_missing_provider_api_key_does_not_throw_and_produces_a_failed_payment(): void
     {
-        config(['payments.providers.moolre.api_key' => null]);
+        config(['payments.default' => 'moolre', 'payments.providers.moolre.api_key' => null]);
 
         Log::shouldReceive('error')
             ->once()
-            ->with('Payment initiation failed', \Mockery::on(fn (array $context): bool => $context['channel'] === 'mobile_money'
-                && $context['provider'] === 'moolre'
+            ->with('Payment initiation failed', \Mockery::on(fn (array $context): bool => $context['provider'] === 'moolre'
                 && str_contains($context['exception'], 'Moolre payment API key is not configured')
             ));
 
         $order = Order::factory()->create();
 
-        $payment = InitiatePayment::run($order, 'mobile_money');
+        $payment = InitiatePayment::run($order);
 
         $this->assertSame(PaymentStatus::Failed, $payment->status);
         $this->assertSame('moolre', $payment->provider);
@@ -47,12 +46,12 @@ class InitiatePaymentTest extends TestCase
 
     public function test_a_missing_provider_api_key_still_writes_an_api_log_entry(): void
     {
-        config(['payments.providers.moolre.api_key' => null]);
+        config(['payments.default' => 'moolre', 'payments.providers.moolre.api_key' => null]);
         Log::shouldReceive('error')->once();
 
         $order = Order::factory()->create();
 
-        InitiatePayment::run($order, 'mobile_money');
+        InitiatePayment::run($order);
 
         $log = PaymentApiLog::query()->where('order_id', $order->id)->sole();
 
@@ -62,13 +61,14 @@ class InitiatePaymentTest extends TestCase
         $this->assertStringContainsString('Moolre payment API key is not configured', $log->response_payload['error']);
     }
 
-    public function test_an_unknown_channel_also_fails_gracefully_instead_of_throwing(): void
+    public function test_an_unconfigured_active_provider_also_fails_gracefully_instead_of_throwing(): void
     {
+        config(['payments.default' => 'carrier_pigeon']);
         Log::shouldReceive('error')->once();
 
         $order = Order::factory()->create();
 
-        $payment = InitiatePayment::run($order, 'carrier_pigeon');
+        $payment = InitiatePayment::run($order);
 
         $this->assertSame(PaymentStatus::Failed, $payment->status);
     }

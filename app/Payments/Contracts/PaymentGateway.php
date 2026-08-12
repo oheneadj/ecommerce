@@ -25,11 +25,10 @@ use Illuminate\Http\Request;
 interface PaymentGateway
 {
     /**
-     * Start a payment for the given order over the given channel
-     * (e.g. "mobile_money", "card"), returning a redirect URL or provider
-     * reference for the customer to complete payment.
+     * Start a payment for the given order, returning a redirect URL or
+     * provider reference for the customer to complete payment.
      */
-    public function initiate(Order $order, string $channel): PaymentInitiationResult;
+    public function initiate(Order $order): PaymentInitiationResult;
 
     /**
      * Check a payment's current status directly with the provider — used

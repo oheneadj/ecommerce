@@ -47,10 +47,7 @@ class CheckoutPageTest extends TestCase
 
         FakePaymentGateway::reset();
         $this->app->make(PaymentManager::class)->extend('fake', fn () => new FakePaymentGateway);
-        config([
-            'payments.channels.mobile_money' => 'fake',
-            'payments.channels.card' => 'fake',
-        ]);
+        config(['payments.default' => 'fake']);
     }
 
     public function test_a_guest_can_view_checkout(): void
@@ -323,11 +320,11 @@ class CheckoutPageTest extends TestCase
         $this->assertSame(2500, $order->grand_total);
     }
 
-    public function test_a_channel_with_no_gateway_redirect_url_sends_the_customer_to_the_order_confirmation_page(): void
+    public function test_no_gateway_redirect_url_sends_the_customer_to_the_order_confirmation_page(): void
     {
         $this->app->make(PaymentManager::class)->extend('no_redirect', fn () => new class implements PaymentGateway
         {
-            public function initiate(Order $order, string $channel): PaymentInitiationResult
+            public function initiate(Order $order): PaymentInitiationResult
             {
                 return new PaymentInitiationResult(success: true, providerReference: 'ref-1');
             }
@@ -357,7 +354,7 @@ class CheckoutPageTest extends TestCase
                 return null;
             }
         });
-        config(['payments.channels.mobile_money' => 'no_redirect']);
+        config(['payments.default' => 'no_redirect']);
 
         $user = User::factory()->create();
         $this->actingAs($user);

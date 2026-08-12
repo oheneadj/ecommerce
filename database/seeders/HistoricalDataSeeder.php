@@ -191,7 +191,6 @@ class HistoricalDataSeeder extends Seeder
         $payment = Payment::factory()->create([
             'order_id' => $order->id,
             'provider' => fake()->randomElement(['moolre', 'paystack']),
-            'channel' => fake()->randomElement(['mobile_money', 'card']),
             'amount' => $amount,
             'status' => $paymentStatus,
         ]);

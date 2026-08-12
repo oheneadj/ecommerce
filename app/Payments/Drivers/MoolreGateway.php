@@ -34,7 +34,7 @@ readonly class MoolreGateway implements PaymentGateway
         private string $webhookSecret,
     ) {}
 
-    public function initiate(Order $order, string $channel): PaymentInitiationResult
+    public function initiate(Order $order): PaymentInitiationResult
     {
         $response = $this->client()->post('/payment/request', [
             'reference' => $order->order_number.'-'.now()->timestamp,

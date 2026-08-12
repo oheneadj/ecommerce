@@ -76,7 +76,7 @@
                     <div class="mt-4 space-y-3">
                         @foreach ($order->payments as $payment)
                             <div wire:key="payment-{{ $payment->id }}" class="flex items-center justify-between text-sm">
-                                <span>{{ ucfirst(str_replace('_', ' ', $payment->channel)) }}</span>
+                                <span>{{ ucfirst($payment->provider) }}</span>
                                 <x-status-badge :color="$payment->status->getColor()">{{ $payment->status->getLabel() }}</x-status-badge>
                             </div>
                         @endforeach

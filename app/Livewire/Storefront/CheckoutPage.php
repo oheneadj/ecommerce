@@ -1,8 +1,8 @@
 <?php
 
 /**
- * Customer-facing checkout — pick address/shipping/payment channel, place
- * the order, then hand off to the payment provider.
+ * Customer-facing checkout — pick address/shipping, place the order, then
+ * hand off to whichever payment provider is currently active.
  */
 
 declare(strict_types=1);
@@ -64,8 +64,6 @@ class CheckoutPage extends Component
     public ?string $appliedCouponCode = null;
 
     public int $discountAmount = 0;
-
-    public string $channel = 'mobile_money';
 
     // Guest checkout only (BRD FR-3.2/FR-3.3) — a guest has no saved
     // Address to select, so they fill these in directly at checkout.
@@ -169,6 +167,17 @@ class CheckoutPage extends Component
         return $this->appliedCouponCode !== null
             ? Coupon::query()->where('code', $this->appliedCouponCode)->first()
             : null;
+    }
+
+    /**
+     * Which provider will actually process payment — informational only,
+     * the customer no longer picks a channel; a Super Admin sets the
+     * single active provider in Store Settings.
+     */
+    #[Computed]
+    public function activePaymentProviderLabel(): string
+    {
+        return StoreSetting::current()->active_payment_provider?->label() ?? 'Not yet configured';
     }
 
     /**
@@ -284,7 +293,7 @@ class CheckoutPage extends Component
             return;
         }
 
-        $payment = InitiatePayment::run($order, $this->channel);
+        $payment = InitiatePayment::run($order);
 
         if ($payment->status === PaymentStatus::Failed) {
             $this->addError('cart', $payment->metadata['error'] ?? 'Payment could not be started. Please try again.');

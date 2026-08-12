@@ -91,7 +91,6 @@ class OrderSeeder extends Seeder
         $payment = Payment::factory()->create([
             'order_id' => $order->id,
             'provider' => 'moolre',
-            'channel' => 'mobile_money',
             'amount' => $order->grand_total,
             'provider_reference' => 'seed-'.$order->order_number,
             'status' => PaymentStatus::Pending,
@@ -110,7 +109,6 @@ class OrderSeeder extends Seeder
         $payment = Payment::factory()->create([
             'order_id' => $order->id,
             'provider' => 'paystack',
-            'channel' => 'card',
             'amount' => $order->grand_total,
             'provider_reference' => 'seed-'.$order->order_number,
             'status' => PaymentStatus::Pending,
@@ -131,7 +129,6 @@ class OrderSeeder extends Seeder
         $payment = Payment::factory()->create([
             'order_id' => $order->id,
             'provider' => 'moolre',
-            'channel' => 'mobile_money',
             'amount' => $order->grand_total,
             'provider_reference' => 'seed-'.$order->order_number,
             'status' => PaymentStatus::Pending,
@@ -169,7 +166,6 @@ class OrderSeeder extends Seeder
         $payment = Payment::factory()->create([
             'order_id' => $order->id,
             'provider' => 'paystack',
-            'channel' => 'card',
             'amount' => $order->grand_total,
             'provider_reference' => 'seed-'.$order->order_number,
             'status' => PaymentStatus::Pending,

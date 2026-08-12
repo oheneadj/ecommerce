@@ -19,19 +19,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Channel → Provider Mapping
+    | Active Provider
     |--------------------------------------------------------------------------
     |
-    | Both providers can be active at once: Paystack handles card payments,
-    | Moolre handles mobile money. The customer's chosen channel picks the
-    | driver, not a single global default.
+    | Once a Super Admin has saved Store Settings, App\Payments\PaymentManager
+    | reads StoreSetting::current()->active_payment_provider instead —
+    | 'default' above is only the fallback for a fresh deployment before that
+    | first save. Both Paystack and Moolre accept card payments today, so
+    | there's no per-channel routing — one active provider handles every
+    | checkout until an admin switches it.
     |
     */
-
-    'channels' => [
-        'mobile_money' => 'moolre',
-        'card' => 'paystack',
-    ],
 
     'providers' => [
         'moolre' => [

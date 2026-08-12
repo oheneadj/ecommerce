@@ -31,8 +31,6 @@ class PaymentInfolist
                                     ->label('Order'),
                                 TextEntry::make('provider')
                                     ->badge(),
-                                TextEntry::make('channel')
-                                    ->placeholder('—'),
                                 TextEntry::make('status')
                                     ->badge(),
                                 TextEntry::make('amount_formatted')

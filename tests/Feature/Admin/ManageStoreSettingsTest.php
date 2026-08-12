@@ -10,6 +10,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Enums\PaymentProvider;
+use App\Enums\SmsProvider;
 use App\Enums\UserRole;
 use App\Filament\Pages\ManageStoreSettings;
 use App\Models\StoreSetting;
@@ -123,6 +125,47 @@ class ManageStoreSettingsTest extends TestCase
             ])
             ->call('save')
             ->assertHasFormErrors(['facebook_url' => 'url']);
+    }
+
+    public function test_super_admin_can_set_the_active_payment_and_sms_providers(): void
+    {
+        config([
+            'payments.providers.moolre.api_key' => 'test-key',
+            'sms.providers.giantsms.api_token' => 'test-token',
+            'sms.providers.giantsms.sender_id' => 'TestSender',
+        ]);
+        $this->actingAs($this->superAdmin());
+
+        Livewire::test(ManageStoreSettings::class)
+            ->fillForm([
+                'active_payment_provider' => 'moolre',
+                'active_sms_provider' => 'giantsms',
+                'tax_rate' => 15,
+                'stock_reservation_minutes' => 15,
+                'low_stock_threshold' => 5,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $settings = StoreSetting::current();
+        $this->assertSame(PaymentProvider::Moolre, $settings->active_payment_provider);
+        $this->assertSame(SmsProvider::Giantsms, $settings->active_sms_provider);
+    }
+
+    public function test_picking_a_provider_with_no_credentials_configured_is_rejected(): void
+    {
+        config(['payments.providers.paystack.secret_key' => null, 'payments.providers.paystack.public_key' => null]);
+        $this->actingAs($this->superAdmin());
+
+        Livewire::test(ManageStoreSettings::class)
+            ->fillForm([
+                'active_payment_provider' => 'paystack',
+                'tax_rate' => 15,
+                'stock_reservation_minutes' => 15,
+                'low_stock_threshold' => 5,
+            ])
+            ->call('save')
+            ->assertHasFormErrors(['active_payment_provider']);
     }
 
     public function test_tax_rate_over_100_percent_is_rejected(): void

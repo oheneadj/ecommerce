@@ -23,7 +23,6 @@ class PaymentFactory extends Factory
             'order_id' => Order::factory(),
             'provider' => 'moolre',
             'provider_reference' => fake()->uuid(),
-            'channel' => 'mobile_money',
             'amount' => 1000,
             'currency' => 'GHS',
             'status' => PaymentStatus::Pending,

@@ -51,7 +51,7 @@ class FakePaymentGateway implements PaymentGateway
         self::$refundThrows = false;
     }
 
-    public function initiate(Order $order, string $channel): PaymentInitiationResult
+    public function initiate(Order $order): PaymentInitiationResult
     {
         if (! self::$initiateSucceeds) {
             return new PaymentInitiationResult(success: false, errorMessage: 'Simulated failure.');

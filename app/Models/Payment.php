@@ -32,7 +32,6 @@ use Illuminate\Support\Carbon;
  * @property int $order_id
  * @property string $provider
  * @property string|null $provider_reference
- * @property string|null $channel
  * @property int $amount
  * @property string $currency
  * @property PaymentStatus $status
@@ -40,7 +39,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['order_id', 'provider', 'provider_reference', 'channel', 'amount', 'currency', 'status', 'metadata'])]
+#[Fillable(['order_id', 'provider', 'provider_reference', 'amount', 'currency', 'status', 'metadata'])]
 class Payment extends Model
 {
     /** @use HasFactory<PaymentFactory> */

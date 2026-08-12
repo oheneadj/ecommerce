@@ -49,16 +49,16 @@ class HealthChecksTest extends TestCase
         $this->assertSame(Status::ok(), ForeignKeysAreEnforced::new()->run()->status);
     }
 
-    public function test_payment_providers_configured_fails_when_a_channel_has_no_credentials(): void
+    public function test_payment_providers_configured_fails_when_the_active_provider_has_no_credentials(): void
     {
-        config(['payments.channels' => ['mobile_money' => 'moolre'], 'payments.providers' => ['moolre' => ['api_key' => null]]]);
+        config(['payments.default' => 'moolre', 'payments.providers' => ['moolre' => ['api_key' => null]]]);
 
         $this->assertSame(Status::failed(), PaymentProvidersConfigured::new()->run()->status);
     }
 
-    public function test_payment_providers_configured_passes_when_every_channel_has_credentials(): void
+    public function test_payment_providers_configured_passes_when_the_active_provider_has_credentials(): void
     {
-        config(['payments.channels' => ['mobile_money' => 'moolre'], 'payments.providers' => ['moolre' => ['api_key' => 'secret']]]);
+        config(['payments.default' => 'moolre', 'payments.providers' => ['moolre' => ['api_key' => 'secret']]]);
 
         $this->assertSame(Status::ok(), PaymentProvidersConfigured::new()->run()->status);
     }

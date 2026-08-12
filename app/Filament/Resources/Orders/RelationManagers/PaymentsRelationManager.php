@@ -38,8 +38,6 @@ class PaymentsRelationManager extends RelationManager
                         'moolre' => 'success',
                         default => 'gray',
                     }),
-                TextColumn::make('channel')
-                    ->placeholder('—'),
                 TextColumn::make('amount_formatted')
                     ->label('Amount'),
                 TextColumn::make('status')

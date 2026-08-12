@@ -40,10 +40,7 @@ class PaymentJobQueueingTest extends TestCase
 
         FakePaymentGateway::reset();
         $this->app->make(PaymentManager::class)->extend('fake', fn () => new FakePaymentGateway);
-        config([
-            'payments.channels.mobile_money' => 'fake',
-            'payments.channels.card' => 'fake',
-        ]);
+        config(['payments.default' => 'fake']);
     }
 
     public function test_a_matched_webhook_dispatches_verification_instead_of_calling_the_gateway_inline(): void

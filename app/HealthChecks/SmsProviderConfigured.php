@@ -8,6 +8,8 @@ declare(strict_types=1);
 
 namespace App\HealthChecks;
 
+use App\Enums\SmsProvider;
+use App\Models\StoreSetting;
 use Spatie\Health\Checks\Check;
 use Spatie\Health\Checks\Result;
 
@@ -22,14 +24,13 @@ class SmsProviderConfigured extends Check
     {
         $result = Result::make();
 
-        $defaultProvider = config('sms.default');
-        $credentials = (array) config("sms.providers.{$defaultProvider}", []);
-        $hasCredentials = collect($credentials)->filter(fn ($value) => filled($value))->isNotEmpty();
+        $provider = StoreSetting::current()->active_sms_provider
+            ?? SmsProvider::from((string) config('sms.default'));
 
-        if ($hasCredentials) {
-            return $result->ok("The default SMS provider ({$defaultProvider}) has credentials configured.");
+        if ($provider->hasCredentialsConfigured()) {
+            return $result->ok("The active SMS provider ({$provider->label()}) has credentials configured.");
         }
 
-        return $result->failed("The default SMS provider ({$defaultProvider}) has no credentials configured — phone OTP delivery will fail. Fix: set the provider's env vars (e.g. MOOLRE_API_KEY, MOOLRE_SENDER_ID).");
+        return $result->failed("The active SMS provider ({$provider->label()}) has no credentials configured — phone OTP delivery will fail. Fix: set its environment variables (e.g. MOOLRE_API_KEY, GIANTSMS_TOKEN).");
     }
 }

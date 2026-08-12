@@ -38,10 +38,7 @@ class PaymentTest extends TestCase
 
         FakePaymentGateway::reset();
         $this->app->make(PaymentManager::class)->extend('fake', fn () => new FakePaymentGateway);
-        config([
-            'payments.channels.mobile_money' => 'fake',
-            'payments.channels.card' => 'fake',
-        ]);
+        config(['payments.default' => 'fake']);
     }
 
     private function orderWithReservedItem(int $stock = 10, int $quantity = 2): Order
@@ -69,8 +66,8 @@ class PaymentTest extends TestCase
     {
         $order = Order::factory()->create();
 
-        $first = InitiatePayment::run($order, 'mobile_money');
-        $second = InitiatePayment::run($order, 'mobile_money');
+        $first = InitiatePayment::run($order);
+        $second = InitiatePayment::run($order);
 
         $this->assertSame($first->id, $second->id);
         $this->assertSame(1, $order->payments()->count());
@@ -80,7 +77,7 @@ class PaymentTest extends TestCase
     {
         $order = Order::factory()->create();
 
-        InitiatePayment::run($order, 'mobile_money');
+        InitiatePayment::run($order);
 
         $this->assertSame(1, $order->fresh()->payments()->count());
         $this->assertDatabaseHas('payment_api_logs', [
@@ -94,7 +91,7 @@ class PaymentTest extends TestCase
         FakePaymentGateway::$initiateSucceeds = false;
         $order = Order::factory()->create();
 
-        $payment = InitiatePayment::run($order, 'mobile_money');
+        $payment = InitiatePayment::run($order);
 
         $this->assertSame(PaymentStatus::Failed, $payment->status);
         $this->assertDatabaseHas('payment_api_logs', ['order_id' => $order->id, 'status_code' => 422]);
@@ -365,14 +362,34 @@ class PaymentTest extends TestCase
     {
         // "Adding a provider" here is registering another driver name via the
         // same public PaymentManager::extend() point InitiatePayment already
-        // uses through driverForChannel() — no Action code changes.
+        // uses — no Action code changes.
         $this->app->make(PaymentManager::class)->extend('another-fake', fn () => new FakePaymentGateway);
-        config(['payments.channels.mobile_money' => 'another-fake']);
+        config(['payments.default' => 'another-fake']);
 
         $order = Order::factory()->create();
-        $payment = InitiatePayment::run($order, 'mobile_money');
+        $payment = InitiatePayment::run($order);
 
         $this->assertSame('another-fake', $payment->provider);
         $this->assertSame(PaymentStatus::Pending, $payment->status);
+    }
+
+    public function test_switching_the_active_provider_does_not_affect_a_payment_already_created(): void
+    {
+        $this->app->make(PaymentManager::class)->extend('second-fake', fn () => new FakePaymentGateway);
+
+        $firstOrder = Order::factory()->create();
+        $firstPayment = InitiatePayment::run($firstOrder);
+        $this->assertSame('fake', $firstPayment->provider);
+
+        config(['payments.default' => 'second-fake']);
+
+        $secondOrder = Order::factory()->create();
+        $secondPayment = InitiatePayment::run($secondOrder);
+        $this->assertSame('second-fake', $secondPayment->provider);
+
+        // Switching the active provider never rewrites a payment already
+        // created under the old one — HandlePaymentWebhook/VerifyPaymentWithGateway/
+        // IssueProviderRefund all resolve via the provider stored on the row.
+        $this->assertSame('fake', $firstPayment->fresh()->provider);
     }
 }

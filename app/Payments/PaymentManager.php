@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Payments;
 
+use App\Models\StoreSetting;
 use App\Payments\Contracts\PaymentGateway;
 use App\Payments\Drivers\MoolreGateway;
 use App\Payments\Drivers\PaystackGateway;
@@ -16,33 +17,28 @@ use InvalidArgumentException;
 
 /**
  * Laravel Manager-pattern resolver for payment drivers, mirroring
- * App\Sms\SmsManager exactly. The active provider is read from
- * `config/payments.php`, never hardcoded in an Action. Multiple providers
- * can be resolved side by side within a single request — the customer's
- * chosen channel (mobile money vs. card) determines which driver is used,
- * not a single global default.
+ * App\Sms\SmsManager exactly. Historical/in-flight payments never go
+ * through this default-resolution path — HandlePaymentWebhook,
+ * VerifyPaymentWithGateway, and IssueProviderRefund all call
+ * `driver($payment->provider)` explicitly, using whatever provider that
+ * payment was actually created with, so switching the active provider here
+ * never affects a payment already in progress.
  */
 class PaymentManager extends Manager
 {
     /**
-     * Get the default payment driver name from config.
+     * Read the Super Admin's chosen active provider from Store Settings,
+     * falling back to `config('payments.default')` only for a fresh
+     * deployment before that setting has ever been saved.
      */
     public function getDefaultDriver(): string
     {
-        return $this->config->get('payments.default');
-    }
-
-    /**
-     * Resolve the driver mapped to a checkout channel (e.g. "mobile_money"
-     * → moolre, "card" → paystack) via `config('payments.channels')`.
-     */
-    public function driverForChannel(string $channel): PaymentGateway
-    {
-        $provider = $this->config->get("payments.channels.{$channel}")
-            ?? throw new InvalidArgumentException("No payment provider is configured for channel [{$channel}].");
-
-        /** @var PaymentGateway */
-        return $this->driver($provider);
+        // Reads the raw un-cast column rather than the enum-typed property —
+        // Larastan infers the enum cast as always non-null regardless of the
+        // column's actual nullability, which would make the `??` fallback
+        // below look dead to static analysis even though it isn't.
+        return StoreSetting::current()->getRawOriginal('active_payment_provider')
+            ?? $this->config->get('payments.default');
     }
 
     /**

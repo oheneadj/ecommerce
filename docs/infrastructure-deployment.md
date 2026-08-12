@@ -98,10 +98,16 @@ APP_URL=https://client-domain.com
 
 DB_*                     # this client's isolated database
 
+PAYMENT_PROVIDER=paystack  # fallback until Store Settings is saved once
+SMS_PROVIDER=moolre         # ditto
+
 MOOLRE_API_KEY=
-MOOLRE_SMS_*=
+MOOLRE_WEBHOOK_SECRET=
+MOOLRE_SENDER_ID=
 PAYSTACK_SECRET_KEY=
 PAYSTACK_PUBLIC_KEY=
+GIANTSMS_TOKEN=
+GIANTSMS_SENDER_ID=
 GOOGLE_CLIENT_ID=        # for Google login
 GOOGLE_CLIENT_SECRET=
 

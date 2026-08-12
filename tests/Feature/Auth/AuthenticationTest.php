@@ -18,6 +18,19 @@ class AuthenticationTest extends TestCase
         $response->assertOk();
     }
 
+    /**
+     * The auth layouts previously didn't include /theme.css at all (unlike
+     * the storefront layout), so buttons/links using brand-primary silently
+     * fell back to the default zinc color instead of the store's configured
+     * brand color on every auth page.
+     */
+    public function test_login_screen_loads_the_stores_theme_stylesheet(): void
+    {
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSeeHtml('href="'.route('theme.css').'"');
+    }
+
     public function test_users_can_authenticate_using_the_login_screen(): void
     {
         $user = User::factory()->create();
@@ -46,6 +59,35 @@ class AuthenticationTest extends TestCase
         $response->assertSessionHasErrorsIn('email');
 
         $this->assertGuest();
+    }
+
+    /**
+     * `<x-input>` derives which field an error belongs to from a
+     * wire:model attribute — but the login form is a plain Fortify POST,
+     * bound via `name`, not wire:model. Without a `name` fallback, the
+     * derived field key stays null, and `@error(null)` matches *any*
+     * error in the bag — so a wrong-password error rendered under BOTH
+     * the email and the password field, not just the one it belongs to.
+     */
+    public function test_an_invalid_password_error_is_shown_once_not_under_every_field(): void
+    {
+        $user = User::factory()->create();
+
+        $this->from(route('login'))->post(route('login.store'), [
+            'email' => $user->email,
+            'password' => 'wrong-password',
+        ])->assertRedirect(route('login'));
+
+        $errorMessage = session('errors')['default']['messages']['email'][0];
+
+        $page = $this->get(route('login'));
+
+        $page->assertSee($errorMessage, escape: false);
+        $this->assertSame(
+            1,
+            substr_count((string) $page->getContent(), $errorMessage),
+            'The login error should appear exactly once, not duplicated under every input.',
+        );
     }
 
     public function test_users_with_two_factor_enabled_are_redirected_to_two_factor_challenge(): void

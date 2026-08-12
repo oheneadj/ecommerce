@@ -5,13 +5,15 @@
 ])
 
 @php
-    // Callers bind via wire:model (plain, .live, .live.debounce.400ms,
-    // etc.), never a plain `name` attribute — derive the error-bag key
-    // from whichever wire:model* attribute is actually present. Without
-    // this, $attributes->get('name') is always null, and @error(null)
-    // matches *any* error anywhere on the page (MessageBag::has(null)
-    // is defined as "has any error at all") — every <x-input> on the
-    // page would show the first error in the whole bag, not its own.
+    // Livewire callers bind via wire:model (plain, .live, .live.debounce.400ms,
+    // etc.); plain server-rendered forms (Fortify's login/register/reset-password
+    // pages) bind via a normal `name` attribute instead — derive the error-bag
+    // key from whichever is actually present, checking wire:model first since
+    // a component could technically carry both. Without this, $fieldName stays
+    // null, and @error(null) matches *any* error anywhere on the page
+    // (MessageBag::has(null) is defined as "has any error at all") — every
+    // <x-input> on the page would show every error in the whole bag, not just
+    // its own.
     $fieldName = null;
 
     foreach ($attributes->getAttributes() as $attributeName => $attributeValue) {
@@ -20,6 +22,8 @@
             break;
         }
     }
+
+    $fieldName ??= $attributes->get('name');
 @endphp
 
 <div class="w-full" @if($viewable) x-data="{ show: false }" @endif>

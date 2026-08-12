@@ -13,7 +13,6 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         @include('partials.head')
-        <link rel="stylesheet" href="{{ route('theme.css') }}">
     </head>
     <body class="min-h-screen bg-white text-zinc-900 antialiased dark:bg-zinc-900 dark:text-zinc-100">
         @include('partials.admin-bar')

@@ -24,6 +24,7 @@ use Livewire\Component;
 /**
  * @property-read string $addressLines
  * @property-read Payment|null $latestFailedPayment
+ * @property-read bool $hasPendingPayment
  */
 #[Title('Order detail')]
 class OrderDetailPage extends Component
@@ -38,6 +39,29 @@ class OrderDetailPage extends Component
             ->with(['items', 'payments', 'statusHistories', 'shipment'])
             ->where('ulid', $orderUlid)
             ->firstOrFail();
+    }
+
+    /**
+     * A payment can settle asynchronously — the webhook (or the
+     * VerifyPendingPayments polling fallback) confirms it well after this
+     * page has already rendered, so the customer otherwise has to manually
+     * reload to see the order move past "Pending". Only polled while
+     * there's actually something to wait for (`hasPendingPayment`), not
+     * indefinitely on an already-resolved order.
+     */
+    public function refreshOrder(): void
+    {
+        $this->order->refresh()->load(['payments', 'statusHistories', 'shipment']);
+    }
+
+    /**
+     * Gates `wire:poll` in the view — no reason to keep polling once every
+     * payment attempt has already settled one way or the other.
+     */
+    #[Computed]
+    public function hasPendingPayment(): bool
+    {
+        return $this->order->payments->contains(fn (Payment $payment): bool => $payment->status === PaymentStatus::Pending);
     }
 
     /**

@@ -129,6 +129,50 @@ class OrderDetailPageTest extends TestCase
             ->assertDontSee('Retry payment');
     }
 
+    /**
+     * Regression: a payment settles asynchronously (webhook, or
+     * VerifyPendingPayments' polling fallback) well after this page has
+     * already rendered — previously the customer had to manually reload to
+     * see the order move past "Pending". wire:poll only needs to be present
+     * while a payment is actually still Pending.
+     */
+    public function test_a_pending_payment_polls_for_updates(): void
+    {
+        $user = User::factory()->create();
+        $order = Order::factory()->create(['user_id' => $user->id]);
+        Payment::factory()->create(['order_id' => $order->id, 'provider' => 'moolre', 'status' => PaymentStatus::Pending]);
+        $this->actingAs($user);
+
+        $this->get("/account/orders/{$order->ulid}")->assertSeeHtml('wire:poll.3s="refreshOrder"');
+    }
+
+    public function test_a_resolved_order_does_not_poll(): void
+    {
+        $user = User::factory()->create();
+        $order = Order::factory()->create(['user_id' => $user->id]);
+        Payment::factory()->create(['order_id' => $order->id, 'provider' => 'moolre', 'status' => PaymentStatus::Success]);
+        $this->actingAs($user);
+
+        $this->get("/account/orders/{$order->ulid}")->assertDontSeeHtml('wire:poll.3s="refreshOrder"');
+    }
+
+    public function test_refreshing_the_order_picks_up_a_status_change_made_elsewhere(): void
+    {
+        $user = User::factory()->create();
+        $order = Order::factory()->create(['user_id' => $user->id, 'status' => OrderStatus::Pending]);
+        Payment::factory()->create(['order_id' => $order->id, 'provider' => 'moolre', 'status' => PaymentStatus::Pending]);
+        $this->actingAs($user);
+
+        $component = Livewire::test(OrderDetailPage::class, ['orderUlid' => $order->ulid]);
+
+        // Simulates what a webhook does in the background, independent of
+        // this already-rendered component's in-memory $order property.
+        $order->update(['status' => OrderStatus::Paid]);
+        Payment::query()->where('order_id', $order->id)->update(['status' => PaymentStatus::Success]);
+
+        $component->call('refreshOrder')->assertSee(OrderStatus::Paid->getLabel());
+    }
+
     public function test_retrying_a_failed_payment_starts_a_new_attempt_on_the_same_order(): void
     {
         $this->enableFakeProvider();

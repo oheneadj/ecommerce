@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — order detail page required a manual reload to show a payment settling
+- A payment can settle asynchronously — the webhook (or the `VerifyPendingPayments` polling fallback) confirms it well after the order detail page has already rendered, so the customer had to manually reload to see the order move past "Pending". Added `wire:poll.3s="refreshOrder"`, gated by a new `hasPendingPayment` computed property so it only polls while there's actually something to wait for, not indefinitely on an already-resolved order.
+
 ### Fixed — order detail page showed "Retry payment" on an already-paid order
 - `OrderDetailPage::latestFailedPayment()` found the most recent *Failed* payment on the order, ignoring that a later payment attempt (e.g. a retry, or a webhook confirming a second attempt) had already succeeded — so an order with one failed then one successful payment still showed a "Retry payment" button, even though the order was already paid. Both payment rows still show in the list (an accurate record of every attempt), but the button now only appears when the *most recent* attempt overall is the failed one.
 

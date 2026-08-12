@@ -1,4 +1,4 @@
-<div class="space-y-6">
+<div class="space-y-6" @if ($this->hasPendingPayment) wire:poll.3s="refreshOrder" @endif>
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-semibold">{{ $order->order_number }}</h1>

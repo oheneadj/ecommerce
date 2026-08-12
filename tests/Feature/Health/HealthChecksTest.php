@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Health;
 
+use App\Enums\PaymentProvider;
 use App\Enums\PaymentStatus;
 use App\Enums\StockReservationStatus;
 use App\Enums\UserRole;
@@ -26,6 +27,7 @@ use App\HealthChecks\TransactionDurabilityEnabled;
 use App\HealthChecks\TransactionIsolationLevelIsSafe;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\PaymentProviderSetting;
 use App\Models\StaticPage;
 use App\Models\StockReservation;
 use App\Models\StoreSetting;
@@ -49,16 +51,23 @@ class HealthChecksTest extends TestCase
         $this->assertSame(Status::ok(), ForeignKeysAreEnforced::new()->run()->status);
     }
 
-    public function test_payment_providers_configured_fails_when_the_active_provider_has_no_credentials(): void
+    public function test_payment_providers_configured_fails_when_no_provider_is_enabled(): void
     {
-        config(['payments.default' => 'moolre', 'payments.providers' => ['moolre' => ['api_key' => null]]]);
+        $this->assertSame(Status::failed(), PaymentProvidersConfigured::new()->run()->status);
+    }
+
+    public function test_payment_providers_configured_fails_when_an_enabled_provider_has_no_credentials(): void
+    {
+        config(['payments.providers' => ['moolre' => ['api_key' => null]]]);
+        PaymentProviderSetting::factory()->create(['provider' => PaymentProvider::Moolre, 'enabled' => true]);
 
         $this->assertSame(Status::failed(), PaymentProvidersConfigured::new()->run()->status);
     }
 
-    public function test_payment_providers_configured_passes_when_the_active_provider_has_credentials(): void
+    public function test_payment_providers_configured_passes_when_every_enabled_provider_has_credentials(): void
     {
-        config(['payments.default' => 'moolre', 'payments.providers' => ['moolre' => ['api_key' => 'secret']]]);
+        config(['payments.providers' => ['moolre' => ['api_key' => 'secret']]]);
+        PaymentProviderSetting::factory()->create(['provider' => PaymentProvider::Moolre, 'enabled' => true]);
 
         $this->assertSame(Status::ok(), PaymentProvidersConfigured::new()->run()->status);
     }

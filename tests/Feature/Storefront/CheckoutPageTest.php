@@ -33,6 +33,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\Feature\Payment\FakePaymentGateway;
 use Tests\TestCase;
@@ -46,8 +47,25 @@ class CheckoutPageTest extends TestCase
         parent::setUp();
 
         FakePaymentGateway::reset();
-        $this->app->make(PaymentManager::class)->extend('fake', fn () => new FakePaymentGateway);
-        config(['payments.default' => 'fake']);
+        // The 'moolre' driver name is overridden with the fake gateway —
+        // enabledPaymentProviders() (what the checkout radio list actually
+        // reads) goes through the strict-enum-cast PaymentProviderSetting
+        // model, so a fictional name like 'fake' can't be enabled there;
+        // a real PaymentProvider case with its concrete driver swapped
+        // underneath is the only way to keep that model happy in tests.
+        $this->app->make(PaymentManager::class)->extend('moolre', fn () => new FakePaymentGateway);
+        $this->enableProvider('moolre');
+    }
+
+    private function enableProvider(string $provider): void
+    {
+        DB::table('payment_provider_settings')->insert([
+            'provider' => $provider,
+            'enabled' => true,
+            'sort_order' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     public function test_a_guest_can_view_checkout(): void
@@ -322,7 +340,7 @@ class CheckoutPageTest extends TestCase
 
     public function test_no_gateway_redirect_url_sends_the_customer_to_the_order_confirmation_page(): void
     {
-        $this->app->make(PaymentManager::class)->extend('no_redirect', fn () => new class implements PaymentGateway
+        $this->app->make(PaymentManager::class)->extend('paystack', fn () => new class implements PaymentGateway
         {
             public function initiate(Order $order): PaymentInitiationResult
             {
@@ -354,7 +372,7 @@ class CheckoutPageTest extends TestCase
                 return null;
             }
         });
-        config(['payments.default' => 'no_redirect']);
+        $this->enableProvider('paystack');
 
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -366,6 +384,7 @@ class CheckoutPageTest extends TestCase
         Livewire::test(CheckoutPage::class, ['lazy' => false])
             ->set('selectedAddressId', $address->id)
             ->set('selectedShippingMethodId', $shippingMethod->id)
+            ->set('paymentProvider', 'paystack')
             ->call('placeOrder')
             ->assertRedirect(route('orders.confirmation', ['order' => Order::query()->sole()]));
     }

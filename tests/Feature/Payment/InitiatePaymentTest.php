@@ -15,6 +15,7 @@ use App\Enums\PaymentStatus;
 use App\Models\Order;
 use App\Models\PaymentApiLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
@@ -22,9 +23,21 @@ class InitiatePaymentTest extends TestCase
 {
     use RefreshDatabase;
 
+    private function enableProvider(string $provider): void
+    {
+        DB::table('payment_provider_settings')->insert([
+            'provider' => $provider,
+            'enabled' => true,
+            'sort_order' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
     public function test_a_missing_provider_api_key_does_not_throw_and_produces_a_failed_payment(): void
     {
-        config(['payments.default' => 'moolre', 'payments.providers.moolre.api_key' => null]);
+        $this->enableProvider('moolre');
+        config(['payments.providers.moolre.api_key' => null]);
 
         Log::shouldReceive('error')
             ->once()
@@ -34,7 +47,7 @@ class InitiatePaymentTest extends TestCase
 
         $order = Order::factory()->create();
 
-        $payment = InitiatePayment::run($order);
+        $payment = InitiatePayment::run($order, 'moolre');
 
         $this->assertSame(PaymentStatus::Failed, $payment->status);
         $this->assertSame('moolre', $payment->provider);
@@ -46,12 +59,13 @@ class InitiatePaymentTest extends TestCase
 
     public function test_a_missing_provider_api_key_still_writes_an_api_log_entry(): void
     {
-        config(['payments.default' => 'moolre', 'payments.providers.moolre.api_key' => null]);
+        $this->enableProvider('moolre');
+        config(['payments.providers.moolre.api_key' => null]);
         Log::shouldReceive('error')->once();
 
         $order = Order::factory()->create();
 
-        InitiatePayment::run($order);
+        InitiatePayment::run($order, 'moolre');
 
         $log = PaymentApiLog::query()->where('order_id', $order->id)->sole();
 
@@ -61,14 +75,26 @@ class InitiatePaymentTest extends TestCase
         $this->assertStringContainsString('Moolre payment API key is not configured', $log->response_payload['error']);
     }
 
-    public function test_an_unconfigured_active_provider_also_fails_gracefully_instead_of_throwing(): void
+    public function test_an_unrecognized_provider_name_fails_gracefully_instead_of_throwing(): void
     {
-        config(['payments.default' => 'carrier_pigeon']);
         Log::shouldReceive('error')->once();
 
         $order = Order::factory()->create();
 
-        $payment = InitiatePayment::run($order);
+        $payment = InitiatePayment::run($order, 'carrier_pigeon');
+
+        $this->assertSame(PaymentStatus::Failed, $payment->status);
+    }
+
+    public function test_a_recognized_but_disabled_provider_fails_gracefully_instead_of_throwing(): void
+    {
+        // Not enabled — recognized by PaymentManager (it has a real driver
+        // and config entry) but not currently offered at checkout.
+        Log::shouldReceive('error')->once();
+
+        $order = Order::factory()->create();
+
+        $payment = InitiatePayment::run($order, 'moolre');
 
         $this->assertSame(PaymentStatus::Failed, $payment->status);
     }

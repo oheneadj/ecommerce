@@ -9,7 +9,6 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Actions\Catalog\ConvertImageToWebp;
-use App\Enums\PaymentProvider;
 use App\Enums\SmsProvider;
 use App\Enums\UserRole;
 use App\Models\StoreSetting;
@@ -67,7 +66,6 @@ class ManageStoreSettings extends Page implements HasForms
         'x_url',
         'tiktok_url',
         'whatsapp_url',
-        'active_payment_provider',
         'active_sms_provider',
         'tax_rate',
         'stock_reservation_minutes',
@@ -172,32 +170,19 @@ class ManageStoreSettings extends Page implements HasForms
                             ]),
                     ]),
 
-                Section::make('Payment & SMS providers')
-                    ->description('Credentials for each provider are set via environment variables — this only chooses which already-configured provider is active. Switching here never affects a payment already in progress; it only applies to new checkouts.')
+                Section::make('SMS provider')
+                    ->description('Credentials are set via environment variables — this only chooses which already-configured provider is active. Payment providers are managed from Settings → Payment Providers instead, where more than one can be enabled at once for the customer to choose between at checkout.')
                     ->schema([
-                        Grid::make(2)
-                            ->schema([
-                                Select::make('active_payment_provider')
-                                    ->label('Active payment provider')
-                                    ->options(PaymentProvider::class)
-                                    ->native(false)
-                                    ->rule(fn () => function (string $attribute, mixed $value, Closure $fail): void {
-                                        if ($value !== null && ! PaymentProvider::from($value)->hasCredentialsConfigured()) {
-                                            $fail('This provider has no credentials configured in the environment yet.');
-                                        }
-                                    }),
-
-                                Select::make('active_sms_provider')
-                                    ->label('Active SMS provider')
-                                    ->options(SmsProvider::class)
-                                    ->native(false)
-                                    ->helperText('Used for OTP codes, low-stock/health alerts, and staff invites.')
-                                    ->rule(fn () => function (string $attribute, mixed $value, Closure $fail): void {
-                                        if ($value !== null && ! SmsProvider::from($value)->hasCredentialsConfigured()) {
-                                            $fail('This provider has no credentials configured in the environment yet.');
-                                        }
-                                    }),
-                            ]),
+                        Select::make('active_sms_provider')
+                            ->label('Active SMS provider')
+                            ->options(SmsProvider::class)
+                            ->native(false)
+                            ->helperText('Used for OTP codes, low-stock/health alerts, and staff invites.')
+                            ->rule(fn () => function (string $attribute, mixed $value, Closure $fail): void {
+                                if ($value !== null && ! SmsProvider::from($value)->hasCredentialsConfigured()) {
+                                    $fail('This provider has no credentials configured in the environment yet.');
+                                }
+                            }),
                     ]),
 
                 Section::make('Checkout & inventory')

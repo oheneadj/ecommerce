@@ -25,6 +25,7 @@ use App\Models\WebhookEvent;
 use App\Payments\PaymentManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -38,7 +39,24 @@ class PaymentTest extends TestCase
 
         FakePaymentGateway::reset();
         $this->app->make(PaymentManager::class)->extend('fake', fn () => new FakePaymentGateway);
-        config(['payments.default' => 'fake']);
+        $this->enableProvider('fake');
+    }
+
+    /**
+     * Test-only driver names (like 'fake') aren't real `PaymentProvider`
+     * enum cases, so they can't go through the enum-cast
+     * `PaymentProviderSetting` model — inserted raw instead, exactly what
+     * `InitiatePayment`'s own enabled-check queries against.
+     */
+    private function enableProvider(string $provider): void
+    {
+        DB::table('payment_provider_settings')->insert([
+            'provider' => $provider,
+            'enabled' => true,
+            'sort_order' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     private function orderWithReservedItem(int $stock = 10, int $quantity = 2): Order
@@ -66,8 +84,8 @@ class PaymentTest extends TestCase
     {
         $order = Order::factory()->create();
 
-        $first = InitiatePayment::run($order);
-        $second = InitiatePayment::run($order);
+        $first = InitiatePayment::run($order, 'fake');
+        $second = InitiatePayment::run($order, 'fake');
 
         $this->assertSame($first->id, $second->id);
         $this->assertSame(1, $order->payments()->count());
@@ -77,7 +95,7 @@ class PaymentTest extends TestCase
     {
         $order = Order::factory()->create();
 
-        InitiatePayment::run($order);
+        InitiatePayment::run($order, 'fake');
 
         $this->assertSame(1, $order->fresh()->payments()->count());
         $this->assertDatabaseHas('payment_api_logs', [
@@ -91,7 +109,7 @@ class PaymentTest extends TestCase
         FakePaymentGateway::$initiateSucceeds = false;
         $order = Order::factory()->create();
 
-        $payment = InitiatePayment::run($order);
+        $payment = InitiatePayment::run($order, 'fake');
 
         $this->assertSame(PaymentStatus::Failed, $payment->status);
         $this->assertDatabaseHas('payment_api_logs', ['order_id' => $order->id, 'status_code' => 422]);
@@ -364,32 +382,46 @@ class PaymentTest extends TestCase
         // same public PaymentManager::extend() point InitiatePayment already
         // uses — no Action code changes.
         $this->app->make(PaymentManager::class)->extend('another-fake', fn () => new FakePaymentGateway);
-        config(['payments.default' => 'another-fake']);
+        $this->enableProvider('another-fake');
 
         $order = Order::factory()->create();
-        $payment = InitiatePayment::run($order);
+        $payment = InitiatePayment::run($order, 'another-fake');
 
         $this->assertSame('another-fake', $payment->provider);
         $this->assertSame(PaymentStatus::Pending, $payment->status);
     }
 
-    public function test_switching_the_active_provider_does_not_affect_a_payment_already_created(): void
+    public function test_disabling_a_provider_does_not_affect_a_payment_already_created_with_it(): void
     {
-        $this->app->make(PaymentManager::class)->extend('second-fake', fn () => new FakePaymentGateway);
-
         $firstOrder = Order::factory()->create();
-        $firstPayment = InitiatePayment::run($firstOrder);
+        $firstPayment = InitiatePayment::run($firstOrder, 'fake');
         $this->assertSame('fake', $firstPayment->provider);
 
-        config(['payments.default' => 'second-fake']);
+        DB::table('payment_provider_settings')->where('provider', 'fake')->update(['enabled' => false]);
+        $this->app->make(PaymentManager::class)->extend('second-fake', fn () => new FakePaymentGateway);
+        $this->enableProvider('second-fake');
 
         $secondOrder = Order::factory()->create();
-        $secondPayment = InitiatePayment::run($secondOrder);
+        $secondPayment = InitiatePayment::run($secondOrder, 'second-fake');
         $this->assertSame('second-fake', $secondPayment->provider);
 
-        // Switching the active provider never rewrites a payment already
-        // created under the old one — HandlePaymentWebhook/VerifyPaymentWithGateway/
+        // Disabling a provider never rewrites a payment already created
+        // with it — HandlePaymentWebhook/VerifyPaymentWithGateway/
         // IssueProviderRefund all resolve via the provider stored on the row.
         $this->assertSame('fake', $firstPayment->fresh()->provider);
+    }
+
+    public function test_a_disabled_provider_fails_gracefully_instead_of_being_used(): void
+    {
+        DB::table('payment_provider_settings')->where('provider', 'fake')->update(['enabled' => false]);
+
+        $order = Order::factory()->create();
+        $payment = InitiatePayment::run($order, 'fake');
+
+        $this->assertSame(PaymentStatus::Failed, $payment->status);
+        $this->assertSame(
+            'Payment could not be started. Please try again or choose a different payment method.',
+            $payment->metadata['error'],
+        );
     }
 }

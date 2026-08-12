@@ -14,6 +14,7 @@ use App\Actions\Checkout\CreateOrderFromCart;
 use App\Actions\Checkout\PreviewCouponDiscount;
 use App\Actions\Payment\InitiatePayment;
 use App\Enums\CouponType;
+use App\Enums\PaymentProvider;
 use App\Enums\PaymentStatus;
 use App\Exceptions\CouponUsageLimitExceededException;
 use App\Exceptions\EmptyCartException;
@@ -22,10 +23,13 @@ use App\Exceptions\InvalidCouponException;
 use App\Models\Address;
 use App\Models\Cart;
 use App\Models\Coupon;
+use App\Models\PaymentProviderSetting;
 use App\Models\ShippingMethod;
 use App\Models\StoreSetting;
+use App\Payments\PaymentManager;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Lazy;
@@ -36,6 +40,7 @@ use Livewire\Component;
  * @property-read Cart $cart
  * @property-read Collection<int, Address> $addresses
  * @property-read Collection<int, ShippingMethod> $shippingMethods
+ * @property-read SupportCollection<int, PaymentProvider> $enabledPaymentProviders
  * @property-read int $subtotal
  * @property-read int $taxEstimate
  * @property-read int $shippingCost
@@ -65,6 +70,8 @@ class CheckoutPage extends Component
 
     public int $discountAmount = 0;
 
+    public ?string $paymentProvider = null;
+
     // Guest checkout only (BRD FR-3.2/FR-3.3) — a guest has no saved
     // Address to select, so they fill these in directly at checkout.
     public string $guestName = '';
@@ -89,6 +96,7 @@ class CheckoutPage extends Component
         }
 
         $this->selectedShippingMethodId = ShippingMethod::query()->where('active', true)->orderBy('cost')->value('id');
+        $this->paymentProvider = app(PaymentManager::class)->getDefaultDriver();
     }
 
     #[Computed]
@@ -170,14 +178,16 @@ class CheckoutPage extends Component
     }
 
     /**
-     * Which provider will actually process payment — informational only,
-     * the customer no longer picks a channel; a Super Admin sets the
-     * single active provider in Store Settings.
+     * The providers a Super Admin has enabled from the Payment Providers
+     * admin screen, in their configured display order — what the customer
+     * actually gets to choose between at checkout.
+     *
+     * @return SupportCollection<int, PaymentProvider>
      */
     #[Computed]
-    public function activePaymentProviderLabel(): string
+    public function enabledPaymentProviders(): SupportCollection
     {
-        return StoreSetting::current()->active_payment_provider?->label() ?? 'Not yet configured';
+        return PaymentProviderSetting::query()->enabledOrdered()->get()->pluck('provider');
     }
 
     /**
@@ -251,6 +261,15 @@ class CheckoutPage extends Component
             return;
         }
 
+        // Re-validated against the currently enabled set, not just trusted
+        // from the posted value — a provider disabled by the Super Admin
+        // between page load and submit must never sneak through.
+        if ($this->paymentProvider === null || ! $this->enabledPaymentProviders->contains(fn (PaymentProvider $provider): bool => $provider->value === $this->paymentProvider)) {
+            $this->addError('paymentProvider', 'Please select a payment method.');
+
+            return;
+        }
+
         if (Auth::check()) {
             if (! $this->selectedAddressId) {
                 $this->addError('selectedAddressId', 'Please select or add a delivery address.');
@@ -293,7 +312,7 @@ class CheckoutPage extends Component
             return;
         }
 
-        $payment = InitiatePayment::run($order);
+        $payment = InitiatePayment::run($order, $this->paymentProvider);
 
         if ($payment->status === PaymentStatus::Failed) {
             $this->addError('cart', $payment->metadata['error'] ?? 'Payment could not be started. Please try again.');

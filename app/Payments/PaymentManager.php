@@ -8,10 +8,10 @@ declare(strict_types=1);
 
 namespace App\Payments;
 
-use App\Models\StoreSetting;
 use App\Payments\Contracts\PaymentGateway;
 use App\Payments\Drivers\MoolreGateway;
 use App\Payments\Drivers\PaystackGateway;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Manager;
 use InvalidArgumentException;
 
@@ -21,23 +21,32 @@ use InvalidArgumentException;
  * through this default-resolution path — HandlePaymentWebhook,
  * VerifyPaymentWithGateway, and IssueProviderRefund all call
  * `driver($payment->provider)` explicitly, using whatever provider that
- * payment was actually created with, so switching the active provider here
- * never affects a payment already in progress.
+ * payment was actually created with, so an admin enabling/disabling
+ * providers never affects a payment already in progress.
  */
 class PaymentManager extends Manager
 {
     /**
-     * Read the Super Admin's chosen active provider from Store Settings,
-     * falling back to `config('payments.default')` only for a fresh
-     * deployment before that setting has ever been saved.
+     * The first enabled provider by display order — used as the technical
+     * fallback Laravel's Manager base class requires for a no-arg
+     * `driver()` call, and reused by CheckoutPage as the pre-selected
+     * radio option, so "which provider is the default" lives in one
+     * place. Falls back to `config('payments.default')` only when no
+     * provider has been enabled yet (a fresh deployment before the Super
+     * Admin has visited Payment Providers).
+     *
+     * Queried via the query builder rather than the PaymentProviderSetting
+     * model — Larastan infers the model's `provider` enum cast as always
+     * non-null regardless of the column's actual state, which would make
+     * a `??` fallback here look dead to static analysis even though it
+     * isn't.
      */
     public function getDefaultDriver(): string
     {
-        // Reads the raw un-cast column rather than the enum-typed property —
-        // Larastan infers the enum cast as always non-null regardless of the
-        // column's actual nullability, which would make the `??` fallback
-        // below look dead to static analysis even though it isn't.
-        return StoreSetting::current()->getRawOriginal('active_payment_provider')
+        return DB::table('payment_provider_settings')
+            ->where('enabled', true)
+            ->orderBy('sort_order')
+            ->value('provider')
             ?? $this->config->get('payments.default');
     }
 

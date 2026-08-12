@@ -9,7 +9,6 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Concerns\LogsAdminActivity;
-use App\Enums\PaymentProvider;
 use App\Enums\SmsProvider;
 use App\Http\Controllers\Storefront\ThemeCssController;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -41,7 +40,6 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $x_url
  * @property string|null $tiktok_url
  * @property string|null $whatsapp_url
- * @property PaymentProvider|null $active_payment_provider
  * @property SmsProvider|null $active_sms_provider
  * @property int $tax_rate
  * @property int $stock_reservation_minutes
@@ -62,7 +60,6 @@ use Illuminate\Support\Facades\Storage;
     'x_url',
     'tiktok_url',
     'whatsapp_url',
-    'active_payment_provider',
     'active_sms_provider',
     'tax_rate',
     'stock_reservation_minutes',
@@ -80,7 +77,6 @@ class StoreSetting extends Model
     {
         return [
             'health_alerts_snoozed_until' => 'datetime',
-            'active_payment_provider' => PaymentProvider::class,
             'active_sms_provider' => SmsProvider::class,
         ];
     }

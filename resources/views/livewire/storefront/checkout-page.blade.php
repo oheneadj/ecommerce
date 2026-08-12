@@ -132,7 +132,7 @@
                     <div class="flex justify-between text-base font-semibold"><span>{{ __('Total') }}</span><span><x-money :amount="$this->estimatedTotal" /></span></div>
                 </div>
 
-                <x-button wire:click="placeOrder" wire:loading.attr="disabled" variant="primary" class="mt-4 w-full">
+                <x-button wire:click="placeOrder" variant="primary" class="mt-4 w-full">
                     <span wire:loading.remove wire:target="placeOrder">{{ __('Place order') }}</span>
                     <span wire:loading wire:target="placeOrder">{{ __('Placing order…') }}</span>
                 </x-button>

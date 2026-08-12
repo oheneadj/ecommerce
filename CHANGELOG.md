@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Automatic loading state on every button
+- `<x-button>` now automatically disables itself (`wire:loading.attr="disabled"`, scoped via `wire:target` to its own `wire:click`) while its action is in flight, and the same for any `type="submit"` button — the existing `disabled:opacity-50 disabled:cursor-not-allowed` classes already on the component provide the dimmed/not-allowed visual for free. Individual call sites no longer need to hand-roll this (and risk forgetting it, leaving a button double-clickable with no feedback); the two places that already did (`addToCart`/`toggleWishlist` on the product detail page, `placeOrder` on checkout) had their now-redundant manual wiring removed. An explicit `wire:target` passed by the caller is always respected, never overridden.
+- 4 new tests (`ButtonComponentTest`).
+
 ### Added — Brand logos in the product listing filter
 - The Brand filter on `/products` was text-only, even though `Brand.logo_path` already exists and is already used on the product detail page. Now shows each brand's logo (falling back to a generic icon when a brand has none) next to its name.
 - 1 new test.

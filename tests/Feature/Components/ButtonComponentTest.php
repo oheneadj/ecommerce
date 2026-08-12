@@ -22,4 +22,34 @@ class ButtonComponentTest extends TestCase
         $this->assertStringContainsString('bg-brand-primary', $html);
         $this->assertStringContainsString('hover:bg-brand-secondary', $html);
     }
+
+    public function test_a_wire_click_button_automatically_disables_itself_while_loading(): void
+    {
+        $html = Blade::render('<x-button wire:click="save">Save</x-button>');
+
+        $this->assertStringContainsString('wire:loading.attr="disabled"', $html);
+        $this->assertStringContainsString('wire:target="save"', $html);
+    }
+
+    public function test_a_submit_button_automatically_disables_itself_while_loading(): void
+    {
+        $html = Blade::render('<x-button type="submit">Save</x-button>');
+
+        $this->assertStringContainsString('wire:loading.attr="disabled"', $html);
+    }
+
+    public function test_an_explicit_wire_target_is_not_overridden(): void
+    {
+        $html = Blade::render('<x-button wire:click="save" wire:target="somethingElse">Save</x-button>');
+
+        $this->assertStringContainsString('wire:target="somethingElse"', $html);
+        $this->assertStringNotContainsString('wire:target="save"', $html);
+    }
+
+    public function test_a_plain_link_button_gets_no_loading_wiring(): void
+    {
+        $html = Blade::render('<x-button href="/somewhere">Go</x-button>');
+
+        $this->assertStringNotContainsString('wire:loading', $html);
+    }
 }

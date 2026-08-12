@@ -210,13 +210,12 @@
                 "
             >
                 <div class="flex gap-3 pt-2">
-                    <x-button wire:click="addToCart" wire:loading.attr="disabled" wire:target="addToCart" icon="shopping-bag" variant="primary" :disabled="! $variant || $variant->stock <= 0">
+                    <x-button wire:click="addToCart" wire:target="addToCart" icon="shopping-bag" variant="primary" :disabled="! $variant || $variant->stock <= 0">
                         <span wire:loading.remove wire:target="addToCart">{{ __('Add to cart') }}</span>
                         <span wire:loading wire:target="addToCart">{{ __('Adding…') }}</span>
                     </x-button>
                     <x-button
                         wire:click="toggleWishlist"
-                        wire:loading.attr="disabled"
                         wire:target="toggleWishlist"
                         icon="heart"
                         :icon-filled="$this->isWishlisted"

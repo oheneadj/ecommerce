@@ -43,6 +43,21 @@
     }
 }
 
+/*
+ * Alpine's x-cloak attribute does nothing on its own — it relies on this
+ * exact rule to hide an element until Alpine finishes initializing and
+ * removes the attribute. Without it, every x-cloak element in the app
+ * (password-toggle icons, toasts, the mini-cart dropdown, the coupon-copy
+ * checkmark, the mobile filter slide-over, etc.) renders visible from the
+ * very first paint and only gets hidden once Alpine's JS has loaded and
+ * evaluated its x-show binding — a flash that's most visible, and most
+ * "sometimes it happens, sometimes it doesn't", on a slow connection or a
+ * cold cache.
+ */
+[x-cloak] {
+    display: none !important;
+}
+
 @layer base {
 
     /*

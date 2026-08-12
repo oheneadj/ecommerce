@@ -2,8 +2,11 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\StoreSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
 
@@ -29,6 +32,49 @@ class AuthenticationTest extends TestCase
         $this->get(route('login'))
             ->assertOk()
             ->assertSeeHtml('href="'.route('theme.css').'"');
+    }
+
+    /**
+     * The auth layouts previously always rendered `<x-app-logo-icon>` — a
+     * generic Laravel-branded mark, never the deployment's own logo — no
+     * matter what was configured in Store Settings. Falls back to the
+     * business name text when no logo has been uploaded.
+     */
+    public function test_login_screen_shows_the_stores_business_name_when_no_logo_is_set(): void
+    {
+        StoreSetting::current()->update(['business_name' => 'Acme Cosmetics', 'logo_path' => null]);
+
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSee('Acme Cosmetics')
+            ->assertDontSeeText('Laravel');
+    }
+
+    public function test_login_screen_shows_the_stores_uploaded_logo_image(): void
+    {
+        Storage::fake('public');
+        $logo = UploadedFile::fake()->image('logo.png');
+        $path = (string) $logo->store('branding', 'public');
+        StoreSetting::current()->update(['logo_path' => $path]);
+
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSeeHtml(Storage::disk('public')->url($path));
+    }
+
+    /**
+     * Every auth layout hardcoded `class="dark"` on `<html>`, always
+     * forcing dark mode on first paint regardless of the visitor's actual
+     * stored/system preference — the appearance-toggle script in
+     * partials/head.blade.php would then flip it back off for a light
+     * preference, but the layout should carry no default of its own, same
+     * as the storefront layout.
+     */
+    public function test_login_screen_does_not_hardcode_dark_mode(): void
+    {
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertDontSeeHtml('<html lang="en" class="dark">');
     }
 
     public function test_users_can_authenticate_using_the_login_screen(): void

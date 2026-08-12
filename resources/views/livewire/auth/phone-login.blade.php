@@ -39,7 +39,7 @@
             </form>
         @endif
 
-        <x-button variant="outline" :href="route('login.google')" class="w-full">
+        <x-button variant="outline" icon="google" :href="route('login.google')" class="w-full">
             {{ __('Continue with Google') }}
         </x-button>
 

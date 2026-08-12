@@ -237,4 +237,17 @@ class PhoneOtpLoginTest extends TestCase
 
         VerifyOtp::run('+233201234567', '123456');
     }
+
+    /**
+     * The "Continue with Google" button was text-only, easy to miss next
+     * to the phone-number form — added Google's brand mark so it reads as
+     * a recognizable social-login button at a glance.
+     */
+    public function test_the_phone_login_page_shows_a_google_icon_next_to_continue_with_google(): void
+    {
+        $this->get(route('login.phone'))
+            ->assertOk()
+            ->assertSee('Continue with Google')
+            ->assertSeeHtml('viewBox="0 0 488 512"');
+    }
 }

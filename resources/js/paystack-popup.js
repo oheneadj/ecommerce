@@ -5,13 +5,12 @@
  * selected, carries the access code needed to open Paystack's Inline.js
  * popup without a full-page redirect.
  *
- * NOTE: the exact PaystackPop instantiation/resumeTransaction() call shape
- * below is based on Paystack's documented pattern (server-side initialize
- * → access_code → client-side resumeTransaction) but has not been
- * live-verified against Paystack's current Inline.js build — confirm this
- * against https://paystack.com/docs/developer-tools/inlinejs/ and a real
- * sandbox transaction before this ships to a client, per the popup-mode
- * caveat in CHANGELOG.md.
+ * resumeTransaction(accessCode, options) takes the access code as a
+ * positional string — NOT as a key inside the options object — with
+ * callbacks (onSuccess/onCancel/onLoad/onError) in a separate second
+ * argument. Confirmed by inspecting @paystack/inline-js's own bundled
+ * source (v2.24.0) after an earlier version of this file passed
+ * everything as one object, which the SDK silently failed to open with.
  */
 
 const PAYSTACK_SCRIPT_URL = 'https://js.paystack.co/v2/inline.js';
@@ -38,8 +37,7 @@ window.addEventListener('paystack-popup-ready', async (event) => {
 
         const popup = new window.PaystackPop();
 
-        popup.resumeTransaction({
-            accessCode,
+        popup.resumeTransaction(accessCode, {
             onSuccess: () => {
                 window.location.href = confirmationUrl;
             },

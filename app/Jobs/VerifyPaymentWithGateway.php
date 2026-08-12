@@ -101,10 +101,40 @@ class VerifyPaymentWithGateway implements ShouldQueue
         }
 
         if ($result->status === PaymentStatus::Success) {
-            SettlePaymentSuccess::run($payment);
+            $this->settleOrRejectAmountMismatch($payment, $result->amount);
         } elseif ($result->status === PaymentStatus::Failed) {
             MarkPaymentFailed::run($payment);
         }
+    }
+
+    /**
+     * A "success" status alone was previously trusted without ever
+     * cross-checking the amount the provider actually confirms was paid —
+     * Paystack's own docs are explicit that the amount should be verified
+     * too, not just the status. `$verifiedAmount` is null when the
+     * driver's verify endpoint doesn't expose one; that's treated as
+     * "can't check" and settled normally, never as a mismatch — a driver
+     * genuinely lacking the field must never block every payment through
+     * it. A real mismatch is treated identically to a gateway-reported
+     * failure: the order must never be fulfilled for less (or more) than
+     * it's actually owed.
+     */
+    private function settleOrRejectAmountMismatch(Payment $payment, ?int $verifiedAmount): void
+    {
+        if ($verifiedAmount !== null && $verifiedAmount !== $payment->amount) {
+            Log::error('Payment amount mismatch on verification — rejecting rather than fulfilling', [
+                'payment_id' => $payment->id,
+                'order_id' => $payment->order_id,
+                'expected_amount' => $payment->amount,
+                'provider_confirmed_amount' => $verifiedAmount,
+            ]);
+
+            MarkPaymentFailed::run($payment);
+
+            return;
+        }
+
+        SettlePaymentSuccess::run($payment);
     }
 
     /**

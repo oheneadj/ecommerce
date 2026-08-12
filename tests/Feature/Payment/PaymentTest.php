@@ -27,6 +27,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 class PaymentTest extends TestCase
@@ -153,6 +154,156 @@ class PaymentTest extends TestCase
 
         Http::assertSent(fn ($sentRequest) => str_contains((string) $sentRequest->url(), '/transaction/verify/ps-ref-1'));
         $this->assertSame(PaymentStatus::Failed, $payment->fresh()->status);
+    }
+
+    /**
+     * Paystack's own docs are explicit that a "success" status alone
+     * isn't enough — the confirmed amount must be checked against what's
+     * actually owed too. Simulates the gateway reporting success but for
+     * a different amount than the order's grand total (e.g. a stale
+     * cached response, a tampered client, a provider-side bug) — the
+     * order must never be marked Paid for the wrong amount.
+     */
+    public function test_a_verified_success_for_the_wrong_amount_is_rejected_not_fulfilled(): void
+    {
+        config(['payments.providers.paystack.secret_key' => 'test-secret']);
+        Http::fake([
+            'api.paystack.co/transaction/verify/*' => Http::response([
+                'status' => true,
+                'data' => ['status' => 'success', 'reference' => 'ps-ref-1', 'amount' => 500],
+            ]),
+        ]);
+
+        $order = $this->orderWithReservedItem();
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'paystack',
+            'provider_reference' => 'ps-ref-1',
+            'status' => PaymentStatus::Pending,
+            'amount' => 5000,
+        ]);
+
+        $body = json_encode(['event' => 'charge.success', 'data' => ['reference' => 'ps-ref-1', 'status' => 'success']], JSON_THROW_ON_ERROR);
+        $signature = hash_hmac('sha512', $body, 'test-secret');
+
+        $request = Request::create('/webhooks/payments/paystack', 'POST', server: ['HTTP_X_PAYSTACK_SIGNATURE' => $signature, 'CONTENT_TYPE' => 'application/json'], content: $body);
+        HandlePaymentWebhook::run($request, 'paystack');
+
+        $this->assertSame(PaymentStatus::Failed, $payment->fresh()->status);
+        $this->assertNotSame(OrderStatus::Paid, $order->fresh()->status);
+    }
+
+    public function test_a_verified_success_matching_the_expected_amount_settles_normally(): void
+    {
+        FakePaymentGateway::$verifyAmount = 5000;
+        $order = $this->orderWithReservedItem();
+        $payment = Payment::factory()->create(['order_id' => $order->id, 'provider' => 'fake', 'provider_reference' => 'fake-ref-1', 'status' => PaymentStatus::Pending, 'amount' => 5000]);
+
+        $request = Request::create('/webhooks/payments/fake', 'POST', ['provider_reference' => 'fake-ref-1', 'event_id' => 'evt-1']);
+        HandlePaymentWebhook::run($request, 'fake');
+
+        $this->assertSame(PaymentStatus::Success, $payment->fresh()->status);
+        $this->assertSame(OrderStatus::Paid, $order->fresh()->status);
+    }
+
+    /**
+     * A driver whose verify endpoint doesn't expose a confirmed amount at
+     * all (null) must never block every payment through it — the check
+     * only fires when the driver actually reports a number that disagrees.
+     */
+    public function test_a_null_verified_amount_is_not_treated_as_a_mismatch(): void
+    {
+        FakePaymentGateway::$verifyAmount = null;
+        $order = $this->orderWithReservedItem();
+        $payment = Payment::factory()->create(['order_id' => $order->id, 'provider' => 'fake', 'provider_reference' => 'fake-ref-1', 'status' => PaymentStatus::Pending, 'amount' => 5000]);
+
+        $request = Request::create('/webhooks/payments/fake', 'POST', ['provider_reference' => 'fake-ref-1', 'event_id' => 'evt-1']);
+        HandlePaymentWebhook::run($request, 'fake');
+
+        $this->assertSame(PaymentStatus::Success, $payment->fresh()->status);
+        $this->assertSame(OrderStatus::Paid, $order->fresh()->status);
+    }
+
+    /**
+     * The IP check is a soft, log-only defense-in-depth layer on top of
+     * signature verification, never a gate — Paystack's published IPs can
+     * rotate, and the signature is what actually proves authenticity. A
+     * request from an unrecognized IP is logged but still fully processed.
+     */
+    public function test_a_paystack_webhook_from_an_unrecognized_ip_is_logged_but_still_processed(): void
+    {
+        config(['payments.providers.paystack.secret_key' => 'test-secret']);
+        Http::fake([
+            'api.paystack.co/transaction/verify/*' => Http::response([
+                'status' => true,
+                'data' => ['status' => 'success', 'reference' => 'ps-ref-1', 'amount' => 5000],
+            ]),
+        ]);
+
+        Log::shouldReceive('warning')
+            ->once()
+            ->with(
+                'Payment webhook received from an IP outside the provider\'s published list',
+                \Mockery::on(fn (array $context): bool => $context['provider'] === 'paystack' && $context['ip'] === '203.0.113.1'),
+            );
+
+        $order = $this->orderWithReservedItem();
+        $payment = Payment::factory()->create(['order_id' => $order->id, 'provider' => 'paystack', 'provider_reference' => 'ps-ref-1', 'status' => PaymentStatus::Pending, 'amount' => 5000]);
+
+        $body = json_encode(['event' => 'charge.success', 'data' => ['reference' => 'ps-ref-1', 'status' => 'success']], JSON_THROW_ON_ERROR);
+        $signature = hash_hmac('sha512', $body, 'test-secret');
+
+        $request = Request::create(
+            '/webhooks/payments/paystack',
+            'POST',
+            server: ['HTTP_X_PAYSTACK_SIGNATURE' => $signature, 'CONTENT_TYPE' => 'application/json', 'REMOTE_ADDR' => '203.0.113.1'],
+            content: $body,
+        );
+        HandlePaymentWebhook::run($request, 'paystack');
+
+        $this->assertSame(PaymentStatus::Success, $payment->fresh()->status);
+    }
+
+    public function test_a_paystack_webhook_from_a_published_ip_does_not_log_a_warning(): void
+    {
+        config(['payments.providers.paystack.secret_key' => 'test-secret']);
+        Http::fake([
+            'api.paystack.co/transaction/verify/*' => Http::response([
+                'status' => true,
+                'data' => ['status' => 'success', 'reference' => 'ps-ref-1', 'amount' => 5000],
+            ]),
+        ]);
+
+        Log::shouldReceive('warning')->never();
+
+        $order = $this->orderWithReservedItem();
+        Payment::factory()->create(['order_id' => $order->id, 'provider' => 'paystack', 'provider_reference' => 'ps-ref-1', 'status' => PaymentStatus::Pending, 'amount' => 5000]);
+
+        $body = json_encode(['event' => 'charge.success', 'data' => ['reference' => 'ps-ref-1', 'status' => 'success']], JSON_THROW_ON_ERROR);
+        $signature = hash_hmac('sha512', $body, 'test-secret');
+
+        $request = Request::create(
+            '/webhooks/payments/paystack',
+            'POST',
+            server: ['HTTP_X_PAYSTACK_SIGNATURE' => $signature, 'CONTENT_TYPE' => 'application/json', 'REMOTE_ADDR' => '52.31.139.75'],
+            content: $body,
+        );
+        HandlePaymentWebhook::run($request, 'paystack');
+    }
+
+    /**
+     * A provider with no known IP list (e.g. Moolre, whose IPs aren't
+     * published) must never be flagged just for lacking one.
+     */
+    public function test_a_provider_with_no_known_ip_list_is_never_flagged(): void
+    {
+        Log::shouldReceive('warning')->never();
+
+        $order = $this->orderWithReservedItem();
+        Payment::factory()->create(['order_id' => $order->id, 'provider' => 'fake', 'provider_reference' => 'fake-ref-1', 'status' => PaymentStatus::Pending]);
+
+        $request = Request::create('/webhooks/payments/fake', 'POST', ['provider_reference' => 'fake-ref-1', 'event_id' => 'evt-1'], server: ['REMOTE_ADDR' => '203.0.113.1']);
+        HandlePaymentWebhook::run($request, 'fake');
     }
 
     public function test_webhook_success_converts_reservation_to_stock_movement_and_marks_order_paid(): void

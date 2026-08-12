@@ -71,6 +71,12 @@ readonly class MoolreGateway implements PaymentGateway
         return new PaymentVerificationResult(
             status: $status,
             providerReference: $response->json('data.id'),
+            // Best-effort — Moolre's status response shape for this field
+            // wasn't confirmed against their live API during this change;
+            // VerifyPaymentWithGateway treats a null amount as "can't
+            // check" rather than a mismatch, so this never false-blocks
+            // a real payment if the field turns out not to be present.
+            amount: $response->json('data.amount'),
             rawResponse: $response->json() ?? [],
         );
     }

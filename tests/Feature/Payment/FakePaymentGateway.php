@@ -25,6 +25,13 @@ class FakePaymentGateway implements PaymentGateway
 
     public static PaymentStatus $verifyStatus = PaymentStatus::Success;
 
+    /**
+     * Null by default — the fake driver reports no confirmed amount at
+     * all, matching a driver whose verify endpoint doesn't expose one.
+     * Tests exercising the amount-mismatch guard set this explicitly.
+     */
+    public static ?int $verifyAmount = null;
+
     public static bool $refundSucceeds = true;
 
     public static bool $webhookSignatureValid = true;
@@ -44,6 +51,7 @@ class FakePaymentGateway implements PaymentGateway
     {
         self::$initiateSucceeds = true;
         self::$verifyStatus = PaymentStatus::Success;
+        self::$verifyAmount = null;
         self::$refundSucceeds = true;
         self::$webhookSignatureValid = true;
         self::$providerReferenceCounter = 0;
@@ -75,6 +83,7 @@ class FakePaymentGateway implements PaymentGateway
         return new PaymentVerificationResult(
             status: self::$verifyStatus,
             providerReference: $providerReference,
+            amount: self::$verifyAmount,
         );
     }
 

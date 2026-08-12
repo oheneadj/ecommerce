@@ -85,6 +85,7 @@ readonly class PaystackGateway implements PaymentGateway
         return new PaymentVerificationResult(
             status: $status,
             providerReference: $response->json('data.reference'),
+            amount: $response->json('data.amount'),
             rawResponse: $response->json() ?? [],
         );
     }

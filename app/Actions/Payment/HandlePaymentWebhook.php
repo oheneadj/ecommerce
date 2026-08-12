@@ -13,6 +13,7 @@ use App\Models\Payment;
 use App\Models\WebhookEvent;
 use App\Payments\PaymentManager;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
@@ -42,12 +43,26 @@ class HandlePaymentWebhook
 {
     use AsAction;
 
+    /**
+     * Providers' published webhook-sending IP addresses, for the soft
+     * check below — only Paystack's are known/published today. A
+     * provider with no entry here is simply skipped, never treated as
+     * suspicious for lacking one.
+     *
+     * @var array<string, array<int, string>>
+     */
+    private const KNOWN_WEBHOOK_IPS = [
+        'paystack' => ['52.31.139.75', '52.49.173.169', '52.214.14.220'],
+    ];
+
     public function __construct(
         private readonly PaymentManager $payments,
     ) {}
 
     public function handle(Request $request, string $provider): void
     {
+        $this->logIfIpIsUnexpected($request, $provider);
+
         $gateway = $this->payments->driver($provider);
         $verified = $gateway->verifyWebhookSignature($request);
         $eventId = $gateway->webhookEventId($request);
@@ -71,5 +86,31 @@ class HandlePaymentWebhook
         }
 
         $event->update(['processed_at' => now()]);
+    }
+
+    /**
+     * A soft, log-only defense-in-depth check — the HMAC signature check
+     * above is what actually decides whether a webhook is genuine (nobody
+     * can forge a valid signature without the secret key, regardless of
+     * source IP), so an IP outside the published list is only ever
+     * logged, never rejected. Provider IP lists can rotate without
+     * notice; hard-blocking on this would risk silently dropping
+     * legitimate payment confirmations for a check that isn't actually
+     * load-bearing.
+     */
+    private function logIfIpIsUnexpected(Request $request, string $provider): void
+    {
+        $knownIps = self::KNOWN_WEBHOOK_IPS[$provider] ?? null;
+
+        if ($knownIps === null) {
+            return;
+        }
+
+        if (! in_array($request->ip(), $knownIps, true)) {
+            Log::warning('Payment webhook received from an IP outside the provider\'s published list', [
+                'provider' => $provider,
+                'ip' => $request->ip(),
+            ]);
+        }
     }
 }

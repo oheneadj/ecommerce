@@ -22,6 +22,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
@@ -104,6 +105,29 @@ class OrderRecordActions
                 }
 
                 return Storage::disk('local')->download($record->invoice_path, "{$record->order_number}.pdf");
+            });
+    }
+
+    /**
+     * `downloadInvoice()` only re-renders when the file is missing — a
+     * deliberate resilience fallback for lost storage, not a way to pick
+     * up a template/branding change on an order that already has a file
+     * on disk. This is the explicit "re-render this order's invoice from
+     * its current template, right now" action for that case (e.g. after
+     * fixing a PDF rendering bug, or a rebrand — branding is read live
+     * from StoreSetting, see GenerateOrderInvoice's docblock).
+     */
+    public static function regenerateInvoice(): Action
+    {
+        return Action::make('regenerateInvoice')
+            ->label('Regenerate invoice')
+            ->icon(Heroicon::OutlinedArrowPath)
+            ->requiresConfirmation()
+            ->visible(fn (Order $record) => $record->invoice_path !== null)
+            ->action(function (Order $record): void {
+                GenerateOrderInvoice::run($record);
+
+                Notification::make()->title('Invoice regenerated')->success()->send();
             });
     }
 }

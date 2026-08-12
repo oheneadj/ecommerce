@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — "Regenerate invoice" admin action
+- `downloadInvoice` only re-renders the PDF when the file is *missing* — a deliberate resilience fallback for lost storage, never a way to refresh an existing invoice after a template/branding fix (like the Cedi Sign font fix above). An order whose invoice already existed on disk had no way to pick up such a fix short of manually deleting the file or reaching for tinker.
+- New `OrderRecordActions::regenerateInvoice()` — explicitly re-renders and overwrites the existing PDF from the order's current template/branding, always. Added to both the Orders table row actions and the order's own view page, alongside `downloadInvoice`.
+- 1 new test, `test_regenerating_an_existing_invoice_overwrites_the_stale_file`.
+
 ### Fixed — downloading an order's invoice 500'd if the PDF file was missing
 - `orders.invoice_path` being set doesn't guarantee the file is still actually on disk (storage lost/reset independently of the database) — the admin "Download invoice" action crashed with an uncaught `League\Flysystem\UnableToRetrieveMetadata` instead of handling it. `GenerateOrderInvoice` renders exclusively from the order's own permanently-snapshotted data and is explicitly documented as safe to re-run, so the action now regenerates the file on the fly when it's missing rather than 500ing.
 - 2 new tests.

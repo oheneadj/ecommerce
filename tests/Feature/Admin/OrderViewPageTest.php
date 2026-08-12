@@ -124,6 +124,30 @@ class OrderViewPageTest extends TestCase
         $this->assertSame('original-content', Storage::disk('local')->get('invoices/original.pdf'));
     }
 
+    /**
+     * `regenerateInvoice` exists specifically because `downloadInvoice`
+     * only re-renders when the file is *missing* — an existing invoice
+     * that predates a template/branding fix would otherwise be stuck
+     * showing stale content forever, with no way to refresh it short of
+     * deleting the file. Regression for exactly that scenario: an
+     * existing file must be overwritten, not left alone.
+     */
+    public function test_regenerating_an_existing_invoice_overwrites_the_stale_file(): void
+    {
+        Storage::fake('local');
+        $this->actingAs($this->admin());
+
+        $order = Order::factory()->create();
+        $path = "invoices/{$order->order_number}.pdf";
+        Storage::disk('local')->put($path, 'stale-content');
+        $order->update(['invoice_path' => $path]);
+
+        Livewire::test(ViewOrder::class, ['record' => $order->getRouteKey()])
+            ->callAction('regenerateInvoice');
+
+        $this->assertNotSame('stale-content', Storage::disk('local')->get($path));
+    }
+
     public function test_the_view_page_renders_shipping_details_from_the_address_snapshot(): void
     {
         $this->actingAs($this->admin());

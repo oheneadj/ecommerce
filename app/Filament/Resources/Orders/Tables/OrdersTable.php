@@ -63,6 +63,8 @@ class OrdersTable
                         ->button(),
                     OrderRecordActions::downloadInvoice()
                         ->button(),
+                    OrderRecordActions::regenerateInvoice()
+                        ->button(),
                 ])
                     ->label('Actions')
                     ->buttonGroup(),

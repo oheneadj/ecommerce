@@ -25,6 +25,7 @@ class ViewOrder extends ViewRecord
             OrderRecordActions::updateStatus(),
             OrderRecordActions::assignShipment(),
             OrderRecordActions::downloadInvoice(),
+            OrderRecordActions::regenerateInvoice(),
         ];
     }
 }

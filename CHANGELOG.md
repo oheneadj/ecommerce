@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — QA hardening: API documentation regression coverage (Sprint 10)
+- **11.1** — new `tests/Feature/Health/ApiDocumentationTest.php` calls Scramble's `Generator` directly and asserts the OpenAPI document builds without throwing, now exercised on every CI run (`php artisan test`) rather than only when someone happens to open `/docs/api` by hand. There's no dedicated `routes/api.php` yet, so a document with no `paths` key is the correct, passing result today.
+- This closes the last gap from the `docs/test-plan-ecommerce.md` §11 audit — all Non-Functional/Cross-Cutting scenarios now have a passing automated test (§11.2 remains an intentionally manual PR-checklist item, not automatable).
+- 1 new test.
+
 ### Added — QA hardening: money-correctness test coverage (Sprint 10)
 - **11.4** — new `CheckoutTest` case checks out a cart with 10 line items at deliberately odd prices/quantities/tax rate (the kind of inputs that expose `0.1 + 0.2 !== 0.3`-style float drift) and asserts `subtotal`/`tax_total`/`grand_total` match hand-computed integer arithmetic exactly, with no float ever touching the stored columns.
 - **11.5** — new `tests/Feature/Health/MoneyDisplayLintingTest.php`, a source-scanning test (companion to the existing `MigrationLintingTest` decimal-column check) asserting no Blade view divides a value by 100 inline — every money value must render through `<x-money>` or a `HasFormattedMoney`-backed `*_formatted` accessor.

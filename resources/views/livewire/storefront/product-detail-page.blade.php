@@ -202,12 +202,8 @@
             @endif
 
             <div
-                x-data="{ justAdded: false, autoHideTimer: null }"
-                x-on:cart-item-added.window="
-                    justAdded = true;
-                    clearTimeout(autoHideTimer);
-                    autoHideTimer = setTimeout(() => justAdded = false, 4000);
-                "
+                x-data="{ justAdded: false }"
+                x-on:cart-item-added.window="justAdded = true"
             >
                 <div class="flex gap-3 pt-2">
                     <x-button wire:click="addToCart" wire:target="addToCart" icon="shopping-bag" variant="primary" :disabled="! $variant || $variant->stock <= 0">

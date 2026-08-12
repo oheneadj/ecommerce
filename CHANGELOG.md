@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Bulk export customers
+- Added an "Export" bulk action to the admin Customers table, same `pxlrbt/filament-excel` pattern already used for Products (name, phone, email, order count, joined date).
+- 1 new test (`CustomerResourceTest`).
+
 ### Added — Wishlist button on product cards
 - `<x-product-card>` (used on both the homepage and `/products`) had no way to wishlist a product without opening it first. New `App\Livewire\Storefront\WishlistButton` — a small embeddable Livewire component (same pattern as `CartIndicator`/`SearchAutosuggest`, needed since the card renders in both a Livewire-page context and the plain HomeController-rendered homepage) — adds a heart-icon toggle overlaid on the card image, reusing the exact `AddToWishlist`/`RemoveFromWishlist`/guest-redirect behavior already established on the product detail page.
 - Restructured `product-card.blade.php`'s root from a single `<a>` to a `<div>` wrapping the link, since the wishlist button can't be a nested interactive element inside the anchor.

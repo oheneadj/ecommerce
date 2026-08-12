@@ -23,6 +23,8 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
+use pxlrbt\FilamentExcel\Actions\ExportBulkAction;
+use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
 class CustomersTable
 {
@@ -73,6 +75,12 @@ class CustomersTable
                 BulkActionGroup::make([
                     self::bulkSendEmailAction(),
                     self::bulkSendSmsAction(),
+                    ExportBulkAction::make()
+                        ->exports([
+                            ExcelExport::make()
+                                ->fromTable()
+                                ->withColumns(['name', 'phone', 'email', 'orders_count', 'created_at']),
+                        ]),
                 ]),
             ])
             ->emptyStateHeading('No customers yet')

@@ -93,4 +93,13 @@ class CustomerResourceTest extends TestCase
             ->assertCanSeeTableRecords([$home, $work])
             ->assertCanNotSeeTableRecords([$someoneElses]);
     }
+
+    public function test_customers_can_be_bulk_exported(): void
+    {
+        $this->actingAs($this->admin());
+        User::factory()->count(2)->create();
+
+        Livewire::test(ListCustomers::class)
+            ->assertTableBulkActionExists('export');
+    }
 }

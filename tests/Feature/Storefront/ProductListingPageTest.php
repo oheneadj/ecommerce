@@ -48,6 +48,24 @@ class ProductListingPageTest extends TestCase
         $this->get('/products')->assertOk();
     }
 
+    /**
+     * On mobile the sidebar becomes a slide-over rather than stacking
+     * above the product grid — this asserts the trigger button, the
+     * Alpine open-state, and the backdrop all exist in the markup (real
+     * open/close interaction is Alpine-driven client-side, not something
+     * a server-rendered HTTP test can exercise).
+     */
+    public function test_the_mobile_filters_slide_over_markup_is_present(): void
+    {
+        $response = $this->get('/products');
+
+        $response->assertOk();
+        $response->assertSee(__('Filters'));
+        $response->assertSeeHtml('x-data="{ filtersOpen: false }"');
+        $response->assertSeeHtml('@click="filtersOpen = true"');
+        $response->assertSeeHtml('@click="filtersOpen = false"');
+    }
+
     public function test_the_listing_shows_purchasable_products(): void
     {
         $this->purchasableProduct(['name' => 'Red Shirt']);

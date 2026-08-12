@@ -1,7 +1,33 @@
-<div class="space-y-6">
-    <h1 class="text-2xl font-semibold">{{ __('Shop') }}</h1>
+<div class="space-y-6" x-data="{ filtersOpen: false }">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-semibold">{{ __('Shop') }}</h1>
+
+        {{--
+            Mobile only — the sidebar becomes a slide-over below lg:
+            (previously it just stacked above the product grid, forcing a
+            long scroll past every filter group before reaching a single
+            product).
+        --}}
+        <button
+            type="button"
+            @click="filtersOpen = true"
+            class="flex items-center gap-1.5 rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium lg:hidden dark:border-zinc-600"
+        >
+            <x-app-icon name="funnel" class="size-4" />
+            {{ __('Filters') }}
+        </button>
+    </div>
 
     <div class="grid gap-6 lg:grid-cols-4">
+        {{-- Backdrop — mobile only, closes the slide-over on tap. --}}
+        <div
+            x-show="filtersOpen"
+            x-cloak
+            x-transition.opacity
+            @click="filtersOpen = false"
+            class="fixed inset-0 z-40 bg-black/50 lg:hidden"
+        ></div>
+
         {{--
             The category/brand lists themselves are catalog-wide and never
             change with filters, but the attribute-term buttons below do
@@ -10,12 +36,24 @@
             a stale-looking state never sits there unexplained, same
             wire:loading.class pattern the cart page uses for its
             quantity controls.
+
+            Below lg: this panel is a fixed slide-over (translated
+            off-screen until filtersOpen), not part of the document flow —
+            at lg:+ every mobile-only class is overridden back to the
+            original static-sidebar layout.
         --}}
         <div
-            class="space-y-6 transition-opacity duration-150"
+            class="fixed inset-y-0 left-0 z-50 w-80 max-w-[85vw] space-y-6 overflow-y-auto bg-white p-4 shadow-xl transition-transform duration-150 lg:static lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0 lg:overflow-visible lg:bg-transparent lg:p-0 lg:shadow-none dark:bg-zinc-900 lg:dark:bg-transparent"
+            :class="filtersOpen ? 'translate-x-0' : '-translate-x-full'"
             wire:loading.class="opacity-50"
             wire:target="search,category,brand,minPrice,maxPrice,toggleAttributeTerm,resetFilters"
         >
+            <div class="flex items-center justify-between lg:hidden">
+                <h2 class="text-lg font-semibold">{{ __('Filters') }}</h2>
+                <button type="button" @click="filtersOpen = false" aria-label="{{ __('Close') }}" class="p-1 text-zinc-500 dark:text-zinc-400">
+                    <x-app-icon name="x-circle" class="size-6" />
+                </button>
+            </div>
             <x-card>
                 <x-input wire:model.live.debounce.400ms="search" type="search" :placeholder="__('Search products…')" />
             </x-card>

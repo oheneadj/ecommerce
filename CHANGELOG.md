@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed — Product filters are a slide-over on mobile
+- The filter sidebar (search/category/brand/attributes/price) previously just stacked above the product grid, forcing a long scroll past every filter group before reaching a single product on mobile. Below `lg:`, it's now a fixed slide-over panel opened via a new "Filters" button (funnel icon) next to the page heading, with a tap-to-close backdrop and an in-panel close button — the exact same filter controls, just presented as an overlay instead of forcing the scroll. Unchanged at `lg:+` (still the always-visible static sidebar).
+- 1 new test (`ProductListingPageTest`) confirming the trigger/open-state/backdrop markup renders.
+
+
 ### Changed — Mobile navigation redesign
 - **Cart dropdown no longer auto-disappears.** It opened on add-to-cart and auto-closed after 4 seconds regardless of whether the customer had actually seen/used it — on mobile, scrolling down to find the nav could easily eat that whole window, so the "View cart"/"Checkout" buttons vanished before they were reachable. It now only closes on an explicit outside click, same as every other dropdown in the app.
 - **Search redesigned for mobile** — was squeezed into the same row as the logo and 5 nav icons, collapsing to an unusable sliver (`min-w-0` letting it shrink almost to nothing) or hidden entirely depending on viewport. Now gets its own full-width row directly under the header on mobile, with the results dropdown sized to match — both properly usable instead of "very small."

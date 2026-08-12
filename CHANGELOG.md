@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — "Copy code" row action on the admin Coupons table
+- A new row action on `CouponsTable` copies the coupon's code to the clipboard in a single click, with a success/error toast — no need to open the edit form just to grab a code. Fully client-side (`Action::alpineClickHandler()` + `navigator.clipboard.writeText()` + `FilamentNotification`), no server round trip.
+- 2 new tests (`CouponCopyCodeActionTest`).
+
 ### Added — "Apply" button for the checkout coupon code
 - The coupon code field at checkout was a bare input with no way to actually apply it — whatever was typed only got validated (or silently ignored) the moment "Place order" was clicked, with no feedback beforehand and no visible discount. Added an explicit "Apply" button next to the input; on success the input is replaced with a green "Coupon ':code' applied" confirmation and a "Remove" link, and a Discount line appears in the order summary with the total recalculated live — all before the order is ever placed.
 - New `App\Actions\Checkout\PreviewCouponDiscount` validates the code against the current cart and calculates the discount with **no persistence** (no `CouponUsage` row, no order mutation) — a cart isn't an order yet, so there's nothing to commit to. The authoritative, row-locked check still happens via the existing `ApplyCouponToOrder` when the order is actually placed; this preview is optimistic and can still be rejected there (e.g. a shared usage limit exhausted in between), same as every other "preview vs. final" pattern in this app.

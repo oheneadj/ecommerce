@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Coupons\Tables;
 
 use App\Enums\CouponType;
+use App\Models\Coupon;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
@@ -45,6 +47,17 @@ class CouponsTable
                 TernaryFilter::make('active'),
             ])
             ->recordActions([
+                Action::make('copyCode')
+                    ->label('Copy code')
+                    ->icon(Heroicon::OutlinedClipboard)
+                    ->color('gray')
+                    ->alpineClickHandler(fn (Coupon $record): string => '
+                        navigator.clipboard.writeText('.json_encode($record->code).').then(() => {
+                            new FilamentNotification().title('.json_encode(__('Coupon code copied')).').success().send();
+                        }).catch(() => {
+                            new FilamentNotification().title('.json_encode(__('Could not copy code')).').danger().send();
+                        });
+                    '),
                 EditAction::make()
                     ->button(),
             ])

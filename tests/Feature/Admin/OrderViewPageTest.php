@@ -18,6 +18,7 @@ use App\Models\Order;
 use App\Models\ShippingMethod;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -84,6 +85,43 @@ class OrderViewPageTest extends TestCase
             ->assertHasNoActionErrors();
 
         $this->assertSame('TRACK1', $order->fresh()->shipment->tracking_number);
+    }
+
+    /**
+     * Regression: `invoice_path` being set on the order doesn't guarantee
+     * the file is still actually on disk (storage lost/reset without the
+     * DB following along, previously an uncaught Flysystem
+     * UnableToRetrieveMetadata 500). GenerateOrderInvoice renders
+     * exclusively from the order's own permanently-snapshotted data, so
+     * the download action regenerates it on the fly instead of crashing.
+     */
+    public function test_downloading_an_invoice_whose_file_is_missing_regenerates_it_instead_of_crashing(): void
+    {
+        Storage::fake('local');
+        $this->actingAs($this->admin());
+
+        $order = Order::factory()->create(['invoice_path' => 'invoices/ORD-MISSING.pdf']);
+        Storage::disk('local')->assertMissing($order->invoice_path);
+
+        Livewire::test(ViewOrder::class, ['record' => $order->getRouteKey()])
+            ->callAction('downloadInvoice');
+
+        Storage::disk('local')->assertExists($order->fresh()->invoice_path);
+    }
+
+    public function test_downloading_an_existing_invoice_does_not_regenerate_it(): void
+    {
+        Storage::fake('local');
+        $this->actingAs($this->admin());
+
+        $order = Order::factory()->create();
+        Storage::disk('local')->put('invoices/original.pdf', 'original-content');
+        $order->update(['invoice_path' => 'invoices/original.pdf']);
+
+        Livewire::test(ViewOrder::class, ['record' => $order->getRouteKey()])
+            ->callAction('downloadInvoice');
+
+        $this->assertSame('original-content', Storage::disk('local')->get('invoices/original.pdf'));
     }
 
     public function test_the_view_page_renders_shipping_details_from_the_address_snapshot(): void

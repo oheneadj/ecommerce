@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — downloading an order's invoice 500'd if the PDF file was missing
+- `orders.invoice_path` being set doesn't guarantee the file is still actually on disk (storage lost/reset independently of the database) — the admin "Download invoice" action crashed with an uncaught `League\Flysystem\UnableToRetrieveMetadata` instead of handling it. `GenerateOrderInvoice` renders exclusively from the order's own permanently-snapshotted data and is explicitly documented as safe to re-run, so the action now regenerates the file on the fly when it's missing rather than 500ing.
+- 2 new tests.
+
 ### Fixed — Ghana Cedi Sign (₵) rendered as "?" on the PDF invoice
 - `resources/views/pdf/order-invoice.blade.php` set `body { font-family: sans-serif; }` — a generic CSS keyword that left DomPDF's font resolution ambiguous. Confirmed via `fc-query` against the actual bundled font file that DejaVu Sans (shipped with `barryvdh/laravel-dompdf`) genuinely covers the full Unicode Currency Symbols block (`U+20A0`–`U+20B5`, including the Cedi Sign) — so this was never a missing-glyph problem, just an unnamed one. Naming the font explicitly (`font-family: 'DejaVu Sans', sans-serif;`) fixes it with no new font asset needed.
 - Verified with a real generated PDF, extracted via `pdftotext`: the total line now reads `GH₵450.00` correctly, matching the exact amount from the original bug report (previously `GH?450.00`).

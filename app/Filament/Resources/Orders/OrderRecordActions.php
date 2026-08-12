@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Orders;
 
 use App\Actions\Order\AssignShipment;
+use App\Actions\Order\GenerateOrderInvoice;
 use App\Actions\Order\UpdateOrderStatus;
 use App\Enums\OrderStatus;
 use App\Models\Order;
@@ -83,11 +84,26 @@ class OrderRecordActions
             });
     }
 
+    /**
+     * `invoice_path` being set doesn't guarantee the file is still actually
+     * on disk (e.g. storage lost/reset without the DB following along) —
+     * regenerated on the fly rather than a raw 500 if it's gone.
+     * `GenerateOrderInvoice` renders exclusively from the order's own
+     * permanently-snapshotted data, so this is always safe to re-run and
+     * produces an identical result to the original.
+     */
     public static function downloadInvoice(): Action
     {
         return Action::make('downloadInvoice')
             ->label('Download invoice')
             ->visible(fn (Order $record) => $record->invoice_path !== null)
-            ->action(fn (Order $record) => Storage::disk('local')->download($record->invoice_path, "{$record->order_number}.pdf"));
+            ->action(function (Order $record) {
+                if (Storage::disk('local')->missing($record->invoice_path)) {
+                    GenerateOrderInvoice::run($record);
+                    $record->refresh();
+                }
+
+                return Storage::disk('local')->download($record->invoice_path, "{$record->order_number}.pdf");
+            });
     }
 }

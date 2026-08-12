@@ -33,6 +33,26 @@ class PhoneLogin extends Component
     public bool $codeSent = false;
 
     /**
+     * `codeSent`/`phone` are otherwise plain in-memory component
+     * properties — a real page reload (the user's own refresh, or a
+     * mobile browser discarding a backgrounded tab) would silently
+     * re-mount this component from scratch and strand the customer back
+     * on the phone-entry step, even though their already-requested code
+     * is still valid server-side. The session is the one thing that
+     * survives a reload, so it's what carries "which step am I on, for
+     * which number" across one.
+     */
+    public function mount(): void
+    {
+        $pendingPhone = session('otp_login_phone');
+
+        if (is_string($pendingPhone)) {
+            $this->phone = $pendingPhone;
+            $this->codeSent = true;
+        }
+    }
+
+    /**
      * Send a login code to the given phone number.
      */
     public function sendCode(): void
@@ -47,6 +67,7 @@ class PhoneLogin extends Component
             return;
         }
 
+        session(['otp_login_phone' => $this->phone]);
         $this->codeSent = true;
     }
 
@@ -65,7 +86,20 @@ class PhoneLogin extends Component
             return;
         }
 
+        session()->forget('otp_login_phone');
+
         $this->redirectIntended(default: route('account.show', absolute: false), navigate: true);
+    }
+
+    /**
+     * Explicit escape hatch back to the phone-entry step — the only other
+     * way `otp_login_phone` gets cleared besides a successful login.
+     */
+    public function useDifferentNumber(): void
+    {
+        session()->forget('otp_login_phone');
+        $this->codeSent = false;
+        $this->code = '';
     }
 
     public function render(): View

@@ -33,7 +33,7 @@
                     {{ __('Verify & log in') }}
                 </x-button>
 
-                <button type="button" wire:click="$set('codeSent', false)" class="text-center text-sm text-zinc-500 hover:underline dark:text-zinc-400">
+                <button type="button" wire:click="useDifferentNumber" class="text-center text-sm text-zinc-500 hover:underline dark:text-zinc-400">
                     {{ __('Use a different number') }}
                 </button>
             </form>

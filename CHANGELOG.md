@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — phone login lost its place on a page reload
+- `PhoneLogin`'s "which step am I on" (`codeSent`) and `phone` were plain in-memory Livewire properties with no persistence, so a real page reload — the customer's own refresh, or a mobile browser discarding a backgrounded tab — silently re-mounted the component from scratch and stranded them back on the phone-entry step, even though their already-requested code was still valid server-side (and re-requesting risks hitting the resend rate limit). The pending phone number now survives via the session; a fresh `mount()` restores the verify step for it. Cleared on a successful login or via the existing "Use a different number" link (now a proper method instead of a bare `$set`).
+- 4 new tests.
+
 ### Added — "Regenerate invoice" admin action
 - `downloadInvoice` only re-renders the PDF when the file is *missing* — a deliberate resilience fallback for lost storage, never a way to refresh an existing invoice after a template/branding fix (like the Cedi Sign font fix above). An order whose invoice already existed on disk had no way to pick up such a fix short of manually deleting the file or reaching for tinker.
 - New `OrderRecordActions::regenerateInvoice()` — explicitly re-renders and overwrites the existing PDF from the order's current template/branding, always. Added to both the Orders table row actions and the order's own view page, alongside `downloadInvoice`.

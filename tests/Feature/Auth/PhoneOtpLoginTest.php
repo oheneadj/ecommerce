@@ -9,6 +9,7 @@ use App\Actions\Auth\VerifyOtp;
 use App\Exceptions\InvalidOtpException;
 use App\Exceptions\OtpRateLimitedException;
 use App\Exceptions\TooManyOtpVerificationAttemptsException;
+use App\Livewire\Auth\PhoneLogin;
 use App\Models\OtpCode;
 use App\Models\SmsApiLog;
 use App\Models\User;
@@ -17,6 +18,7 @@ use App\Sms\SmsSendResult;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class PhoneOtpLoginTest extends TestCase
@@ -249,5 +251,70 @@ class PhoneOtpLoginTest extends TestCase
             ->assertOk()
             ->assertSee('Continue with Google')
             ->assertSeeHtml('viewBox="0 0 488 512"');
+    }
+
+    /**
+     * Regression: a real page reload while waiting for the code (the
+     * customer's own refresh, or a mobile browser discarding a
+     * backgrounded tab) re-mounted this component from scratch, silently
+     * stranding the customer back on the phone-entry step even though
+     * their already-requested code was still valid server-side. The
+     * pending phone number now survives via the session.
+     */
+    public function test_reloading_the_page_after_sending_a_code_stays_on_the_verify_step(): void
+    {
+        $this->fakeSmsGateway();
+
+        Livewire::test(PhoneLogin::class)
+            ->set('phone', '+233201234567')
+            ->call('sendCode')
+            ->assertSet('codeSent', true);
+
+        // A fresh component instance, exactly as a real page reload
+        // produces — mount() must restore state from the session alone.
+        Livewire::test(PhoneLogin::class)
+            ->assertSet('codeSent', true)
+            ->assertSet('phone', '+233201234567');
+    }
+
+    public function test_a_fresh_visit_with_no_pending_code_starts_on_the_phone_entry_step(): void
+    {
+        Livewire::test(PhoneLogin::class)
+            ->assertSet('codeSent', false)
+            ->assertSet('phone', '');
+    }
+
+    public function test_using_a_different_number_clears_the_pending_session_state(): void
+    {
+        $this->fakeSmsGateway();
+
+        Livewire::test(PhoneLogin::class)
+            ->set('phone', '+233201234567')
+            ->call('sendCode')
+            ->assertSet('codeSent', true)
+            ->call('useDifferentNumber')
+            ->assertSet('codeSent', false);
+
+        // Reloading again must not resurrect the step it just backed out of.
+        Livewire::test(PhoneLogin::class)->assertSet('codeSent', false);
+    }
+
+    public function test_a_successful_login_clears_the_pending_session_state(): void
+    {
+        $phone = '+233201234567';
+        $code = '123456';
+        OtpCode::query()->create([
+            'identifier' => $phone,
+            'code_hash' => Hash::make($code),
+            'purpose' => 'login',
+            'expires_at' => now()->addMinutes(10),
+        ]);
+        session(['otp_login_phone' => $phone]);
+
+        Livewire::test(PhoneLogin::class)
+            ->set('code', $code)
+            ->call('verify');
+
+        $this->assertNull(session('otp_login_phone'));
     }
 }

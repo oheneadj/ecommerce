@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — "Attribute value" image scope listed every term an attribute has ever had
+- The Product Images tab's "Attribute value" scope select (e.g. "Color: Green") listed every term the attached attribute has ever had catalog-wide, not just the ones this specific product's own variants actually carry — a product with only Red/Blue variants still showed every color in the system, including ones no variant of this product would ever match. Since an attribute-value-scoped image only ever renders on a variant carrying that exact term, offering an unused one was never a meaningful choice. Now scoped to `AttributeTerm::whereHas('productVariants', ...)` against this product specifically.
+- 1 new test; 3 existing tests updated to attach the term to an actual variant, matching how the feature is really used.
+
 ### Fixed — variant Edit form's `stock` field bypassed the stock-movement ledger
 - Editing a product variant let an admin type a new `stock` value directly, saved as a raw column update — bypassing `RecordStockMovement` (no audit trail entry) and `AdjustStockWithReservationCheck` (no check against active reservations), both of which `docs/technical-design-ecommerce.md` explicitly requires for every write to a variant's stock. `stock` is now editable only at creation (there's no ledger yet to route an initial count through); editing an existing variant shows it as a read-only `Placeholder` instead, pointing to the proper action.
 - Added a single-row **"Adjust stock"** action (the counterpart to the existing bulk one) to each variant's row-actions menu, so adjusting one variant's stock no longer requires selecting it via the bulk-actions checkbox first.

@@ -146,6 +146,7 @@ class ProductImagesTest extends TestCase
         $color = Attribute::factory()->create(['name' => 'Color']);
         $product->attributes()->attach($color->id);
         $green = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Green']);
+        ProductVariant::factory()->create(['product_id' => $product->id])->attributeTerms()->attach($green->id);
 
         Livewire::test(ImagesRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
             ->callTableAction('create', data: [
@@ -174,6 +175,7 @@ class ProductImagesTest extends TestCase
         $color = Attribute::factory()->create(['name' => 'Color']);
         $product->attributes()->attach($color->id);
         $green = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Green']);
+        ProductVariant::factory()->create(['product_id' => $product->id])->attributeTerms()->attach($green->id);
 
         Livewire::test(ImagesRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
             ->callTableAction('create', data: [
@@ -210,6 +212,7 @@ class ProductImagesTest extends TestCase
         $color = Attribute::factory()->create(['name' => 'Color']);
         $product->attributes()->attach($color->id);
         $green = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Green']);
+        $variant->attributeTerms()->attach($green->id);
 
         Livewire::test(ImagesRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
             ->callTableAction('create', data: [
@@ -228,6 +231,40 @@ class ProductImagesTest extends TestCase
         $this->assertCount(2, $images);
         $this->assertTrue($images->every(fn (ProductImage $image) => $image->attribute_term_id === $green->id));
         $this->assertTrue($images->every(fn (ProductImage $image) => $image->product_variant_id === null));
+    }
+
+    /**
+     * Regression: the "Attribute value" scope select used to list every
+     * term the attached attribute has ever had globally (e.g. every color
+     * in the catalog), not just the ones this product's own variants
+     * actually carry. An attribute-value-scoped image only ever shows on a
+     * variant carrying that exact term, so an unused term was never a
+     * meaningful choice here — offering it was just confusing. Scoping a
+     * new image to a term none of this product's variants actually use is
+     * now rejected as an invalid option, the same way Filament rejects any
+     * value outside a select's option list.
+     */
+    public function test_the_attribute_value_scope_rejects_a_term_this_products_variants_do_not_carry(): void
+    {
+        Storage::fake('public');
+        $this->actingAs($this->admin());
+
+        $product = Product::factory()->create();
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $product->attributes()->attach($color->id);
+        $unusedGreen = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Green']);
+        // Some other variant uses this term, but not one belonging to this product.
+        ProductVariant::factory()->create()->attributeTerms()->attach($unusedGreen->id);
+
+        Livewire::test(ImagesRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
+            ->callTableAction('create', data: [
+                'images' => [UploadedFile::fake()->image('green.jpg')],
+                'scope_type' => 'attribute_term',
+                'attribute_term_id' => $unusedGreen->id,
+            ])
+            ->assertHasTableActionErrors(['attribute_term_id']);
+
+        $this->assertSame(0, $product->images()->count());
     }
 
     public function test_an_upload_over_the_configured_size_limit_is_rejected(): void

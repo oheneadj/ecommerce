@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Products\RelationManagers;
 
 use App\Actions\Catalog\ConvertImageToWebp;
+use App\Models\AttributeTerm;
 use App\Models\Product;
 use App\Models\ProductImage;
 use Filament\Actions\CreateAction;
@@ -95,19 +96,20 @@ class ImagesRelationManager extends RelationManager
                         /** @var Product $product */
                         $product = $this->getOwnerRecord();
 
-                        // Not `flatMap()` — it collapses like `array_merge`,
-                        // which re-indexes integer keys and would lose the
-                        // actual term ids that `Select` needs to validate
-                        // against. `+` (union) preserves them.
-                        $options = [];
-
-                        foreach ($product->attributes()->with('terms')->get() as $attribute) {
-                            $options += $attribute->terms->mapWithKeys(fn ($term) => [
-                                $term->id => "{$attribute->name}: {$term->value}",
-                            ])->all();
-                        }
-
-                        return $options;
+                        // Only terms this product's own variants actually
+                        // carry — not every term the attribute has ever
+                        // had globally (e.g. "Color" having 20 values
+                        // catalog-wide when this product only has Red and
+                        // Blue variants). An attribute-value-scoped image
+                        // only ever shows on a variant carrying that exact
+                        // term, so offering an unused one here is a choice
+                        // that could never actually apply to anything.
+                        return AttributeTerm::query()
+                            ->whereHas('productVariants', fn (Builder $query): Builder => $query->where('product_variants.product_id', $product->id))
+                            ->with('attribute')
+                            ->get()
+                            ->mapWithKeys(fn (AttributeTerm $term): array => [$term->id => "{$term->attribute->name}: {$term->value}"])
+                            ->all();
                     })
                     ->searchable()
                     ->required(fn (Get $get): bool => $get('scope_type') === 'attribute_term'),

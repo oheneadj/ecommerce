@@ -127,6 +127,15 @@
                         @endforeach
                     </p>
                 @endif
+                @if ($store->socialLinks() !== [])
+                    <p class="mt-4 flex flex-wrap gap-x-4">
+                        @foreach ($store->socialLinks() as $platform => $url)
+                            <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ ucfirst($platform) }}" class="transition-colors hover:text-brand-primary">
+                                <x-app-icon :name="$platform" class="size-5" />
+                            </a>
+                        @endforeach
+                    </p>
+                @endif
             </div>
         </footer>
 

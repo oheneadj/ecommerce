@@ -34,6 +34,11 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $contact_email
  * @property string|null $contact_phone
  * @property string|null $contact_address
+ * @property string|null $facebook_url
+ * @property string|null $instagram_url
+ * @property string|null $x_url
+ * @property string|null $tiktok_url
+ * @property string|null $whatsapp_url
  * @property int $tax_rate
  * @property int $stock_reservation_minutes
  * @property int $low_stock_threshold
@@ -48,6 +53,11 @@ use Illuminate\Support\Facades\Storage;
     'contact_email',
     'contact_phone',
     'contact_address',
+    'facebook_url',
+    'instagram_url',
+    'x_url',
+    'tiktok_url',
+    'whatsapp_url',
     'tax_rate',
     'stock_reservation_minutes',
     'low_stock_threshold',
@@ -104,5 +114,24 @@ class StoreSetting extends Model
         $settings = self::query()->firstOrCreate([]);
 
         return $settings->wasRecentlyCreated ? ($settings->fresh() ?? $settings) : $settings;
+    }
+
+    /**
+     * Only the social platforms actually set, keyed by the icon name
+     * `<x-app-icon>` already knows (same names used for the product-share
+     * icons) — keeps the storefront footer a plain loop instead of one
+     * `@if` per platform.
+     *
+     * @return array<string, string>
+     */
+    public function socialLinks(): array
+    {
+        return array_filter([
+            'facebook' => $this->facebook_url,
+            'instagram' => $this->instagram_url,
+            'x' => $this->x_url,
+            'tiktok' => $this->tiktok_url,
+            'whatsapp' => $this->whatsapp_url,
+        ]);
     }
 }

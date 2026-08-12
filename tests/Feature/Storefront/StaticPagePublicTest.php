@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Storefront;
 
 use App\Models\StaticPage;
+use App\Models\StoreSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -51,5 +52,29 @@ class StaticPagePublicTest extends TestCase
         $this->get("/pages/{$terms->slug}")
             ->assertOk()
             ->assertDontSee('Draft Page');
+    }
+
+    public function test_footer_shows_social_links_when_set(): void
+    {
+        StoreSetting::current()->update([
+            'facebook_url' => 'https://facebook.com/acme',
+            'whatsapp_url' => 'https://wa.me/233200000000',
+        ]);
+        $page = StaticPage::factory()->create(['slug' => 'about-us', 'is_published' => true]);
+
+        $this->get("/pages/{$page->slug}")
+            ->assertOk()
+            ->assertSee('https://facebook.com/acme', false)
+            ->assertSee('https://wa.me/233200000000', false);
+    }
+
+    public function test_footer_hides_social_links_when_unset(): void
+    {
+        $page = StaticPage::factory()->create(['slug' => 'about-us', 'is_published' => true]);
+
+        $this->get("/pages/{$page->slug}")
+            ->assertOk()
+            ->assertDontSee('facebook.com')
+            ->assertDontSee('wa.me');
     }
 }

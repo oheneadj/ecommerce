@@ -86,6 +86,45 @@ class ManageStoreSettingsTest extends TestCase
         Storage::disk('public')->assertExists($settings->logo_path);
     }
 
+    public function test_super_admin_can_update_social_links(): void
+    {
+        $this->actingAs($this->superAdmin());
+
+        Livewire::test(ManageStoreSettings::class)
+            ->fillForm([
+                'facebook_url' => 'https://facebook.com/acme',
+                'instagram_url' => 'https://instagram.com/acme',
+                'x_url' => 'https://x.com/acme',
+                'tiktok_url' => 'https://tiktok.com/@acme',
+                'whatsapp_url' => 'https://wa.me/233200000000',
+                'tax_rate' => 15,
+                'stock_reservation_minutes' => 15,
+                'low_stock_threshold' => 5,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $settings = StoreSetting::current();
+        $this->assertSame('https://facebook.com/acme', $settings->facebook_url);
+        $this->assertSame('https://wa.me/233200000000', $settings->whatsapp_url);
+        $this->assertSame(['facebook', 'instagram', 'x', 'tiktok', 'whatsapp'], array_keys($settings->socialLinks()));
+    }
+
+    public function test_invalid_social_url_is_rejected(): void
+    {
+        $this->actingAs($this->superAdmin());
+
+        Livewire::test(ManageStoreSettings::class)
+            ->fillForm([
+                'facebook_url' => 'not-a-url',
+                'tax_rate' => 15,
+                'stock_reservation_minutes' => 15,
+                'low_stock_threshold' => 5,
+            ])
+            ->call('save')
+            ->assertHasFormErrors(['facebook_url' => 'url']);
+    }
+
     public function test_tax_rate_over_100_percent_is_rejected(): void
     {
         $this->actingAs($this->superAdmin());

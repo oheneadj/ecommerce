@@ -58,6 +58,11 @@ class ManageStoreSettings extends Page implements HasForms
         'contact_email',
         'contact_phone',
         'contact_address',
+        'facebook_url',
+        'instagram_url',
+        'x_url',
+        'tiktok_url',
+        'whatsapp_url',
         'tax_rate',
         'stock_reservation_minutes',
         'low_stock_threshold',
@@ -120,6 +125,44 @@ class ManageStoreSettings extends Page implements HasForms
 
                                 TextInput::make('contact_address')
                                     ->maxLength(255),
+                            ]),
+                    ]),
+
+                Section::make('Social media')
+                    ->description('Shown as icon links in the storefront footer. Leave any blank to hide it — only the ones you fill in appear.')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('facebook_url')
+                                    ->label('Facebook')
+                                    ->url()
+                                    ->maxLength(255)
+                                    ->placeholder('https://facebook.com/yourstore'),
+
+                                TextInput::make('instagram_url')
+                                    ->label('Instagram')
+                                    ->url()
+                                    ->maxLength(255)
+                                    ->placeholder('https://instagram.com/yourstore'),
+
+                                TextInput::make('x_url')
+                                    ->label('X (Twitter)')
+                                    ->url()
+                                    ->maxLength(255)
+                                    ->placeholder('https://x.com/yourstore'),
+
+                                TextInput::make('tiktok_url')
+                                    ->label('TikTok')
+                                    ->url()
+                                    ->maxLength(255)
+                                    ->placeholder('https://tiktok.com/@yourstore'),
+
+                                TextInput::make('whatsapp_url')
+                                    ->label('WhatsApp')
+                                    ->url()
+                                    ->maxLength(255)
+                                    ->placeholder('https://wa.me/233200000000')
+                                    ->helperText('A wa.me link, not a phone number.'),
                             ]),
                     ]),
 

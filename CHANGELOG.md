@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Store social media links, shown in the storefront footer
+- Store Settings gained a "Social media" section (Facebook, Instagram, X, TikTok, WhatsApp — each a `->url()`-validated text input) so the Super Admin can set the store's social links without a deploy. `StoreSetting::socialLinks()` returns only the ones actually set, keyed by icon name.
+- The storefront footer now renders a row of brand-icon links for whichever platforms are set (`target="_blank" rel="noopener noreferrer"`), hidden entirely when none are set. Added `instagram` and `tiktok` brand icons to `<x-app-icon>` (joining the existing `facebook`/`x`/`whatsapp`).
+- New migration adds 5 nullable `*_url` columns to `store_settings`.
+- 4 new tests (`ManageStoreSettingsTest`), 2 new tests (`StaticPagePublicTest`).
+
 ### Added — "Copy code" row action on the admin Coupons table
 - A new row action on `CouponsTable` copies the coupon's code to the clipboard in a single click, with a success/error toast — no need to open the edit form just to grab a code. Fully client-side (`Action::alpineClickHandler()` + `navigator.clipboard.writeText()` + `FilamentNotification`), no server round trip.
 - 2 new tests (`CouponCopyCodeActionTest`).

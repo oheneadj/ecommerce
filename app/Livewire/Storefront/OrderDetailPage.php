@@ -41,7 +41,14 @@ class OrderDetailPage extends Component
     }
 
     /**
-     * Only a *Failed* payment is retryable from here — a Pending one is
+     * Only offered when the *most recent* payment attempt is the failed
+     * one — not merely "a failed payment exists somewhere in this order's
+     * history". A retry that later succeeds (e.g. the webhook settling a
+     * second attempt after the first failed) leaves that original Failed
+     * row in place as an accurate record of what happened, but it must
+     * stop being retryable the moment a later attempt supersedes it —
+     * otherwise a fully paid order still shows a "Retry payment" button.
+     * A Pending latest attempt is likewise never retryable here — it's
      * already being chased by the webhook/polling fallback, and
      * InitiatePayment's own idempotency would just hand back that same
      * still-pending attempt anyway rather than starting a fresh one.
@@ -49,9 +56,9 @@ class OrderDetailPage extends Component
     #[Computed]
     public function latestFailedPayment(): ?Payment
     {
-        return $this->order->payments
-            ->sortByDesc('id')
-            ->first(fn (Payment $payment): bool => $payment->status === PaymentStatus::Failed);
+        $latestPayment = $this->order->payments->sortByDesc('id')->first();
+
+        return $latestPayment?->status === PaymentStatus::Failed ? $latestPayment : null;
     }
 
     /**

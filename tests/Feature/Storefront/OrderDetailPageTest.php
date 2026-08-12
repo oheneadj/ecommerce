@@ -106,6 +106,29 @@ class OrderDetailPageTest extends TestCase
         $this->get("/account/orders/{$order->ulid}")->assertDontSee('Retry payment');
     }
 
+    /**
+     * Regression: an order whose first payment attempt failed, then whose
+     * retry (or a late webhook confirmation on a second attempt) actually
+     * succeeded, previously still showed "Retry payment" — latestFailedPayment()
+     * found the earlier Failed row regardless of the later Success one. Both
+     * payment rows still show in the list (an accurate record of what
+     * happened), but the button must reflect the *current* state, not stale
+     * history.
+     */
+    public function test_a_failed_payment_superseded_by_a_later_success_shows_no_retry_button(): void
+    {
+        $user = User::factory()->create();
+        $order = Order::factory()->create(['user_id' => $user->id]);
+        Payment::factory()->create(['order_id' => $order->id, 'provider' => 'moolre', 'status' => PaymentStatus::Failed]);
+        Payment::factory()->create(['order_id' => $order->id, 'provider' => 'moolre', 'status' => PaymentStatus::Success]);
+        $this->actingAs($user);
+
+        $this->get("/account/orders/{$order->ulid}")
+            ->assertSee('Failed')
+            ->assertSee('Success')
+            ->assertDontSee('Retry payment');
+    }
+
     public function test_retrying_a_failed_payment_starts_a_new_attempt_on_the_same_order(): void
     {
         $this->enableFakeProvider();

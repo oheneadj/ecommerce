@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — order detail page showed "Retry payment" on an already-paid order
+- `OrderDetailPage::latestFailedPayment()` found the most recent *Failed* payment on the order, ignoring that a later payment attempt (e.g. a retry, or a webhook confirming a second attempt) had already succeeded — so an order with one failed then one successful payment still showed a "Retry payment" button, even though the order was already paid. Both payment rows still show in the list (an accurate record of every attempt), but the button now only appears when the *most recent* attempt overall is the failed one.
+
 ### Fixed — Paystack popup checkout never actually opened
 - `resumeTransaction(accessCode, options)` takes the access code as a **positional string argument**, not a key inside the options object — `resources/js/paystack-popup.js` was calling `popup.resumeTransaction({ accessCode, onSuccess, onCancel, onError })`, passing everything bundled into a single object as the first argument. Paystack's SDK received that whole object where it expected a plain string, so the access code was effectively garbage and the popup silently failed to open — confirmed by inspecting `@paystack/inline-js`'s own bundled source (v2.24.0), since Paystack's docs site couldn't be reached for a live-verified example. Fixed to `resumeTransaction(accessCode, { onSuccess, onCancel, onLoad, onError })`.
 

@@ -4,7 +4,15 @@
     <meta charset="utf-8">
     <title>Invoice {{ $order->order_number }}</title>
     <style>
-        body { font-family: sans-serif; font-size: 12px; color: #111; }
+        {{--
+            "sans-serif" alone left DomPDF's font-family resolution
+            ambiguous — the Ghana Cedi Sign (₵, U+20B5) rendered as "?"
+            on the invoice, even though the bundled DejaVu Sans font
+            (confirmed via `fc-query`) genuinely has that glyph. Naming
+            it explicitly removes the ambiguity, no new font asset
+            needed.
+        --}}
+        body { font-family: 'DejaVu Sans', sans-serif; font-size: 12px; color: #111; }
         h1 { font-size: 18px; }
         table { width: 100%; border-collapse: collapse; margin-top: 16px; }
         th, td { padding: 6px 8px; border-bottom: 1px solid #ddd; text-align: left; }

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — Ghana Cedi Sign (₵) rendered as "?" on the PDF invoice
+- `resources/views/pdf/order-invoice.blade.php` set `body { font-family: sans-serif; }` — a generic CSS keyword that left DomPDF's font resolution ambiguous. Confirmed via `fc-query` against the actual bundled font file that DejaVu Sans (shipped with `barryvdh/laravel-dompdf`) genuinely covers the full Unicode Currency Symbols block (`U+20A0`–`U+20B5`, including the Cedi Sign) — so this was never a missing-glyph problem, just an unnamed one. Naming the font explicitly (`font-family: 'DejaVu Sans', sans-serif;`) fixes it with no new font asset needed.
+- Verified with a real generated PDF, extracted via `pdftotext`: the total line now reads `GH₵450.00` correctly, matching the exact amount from the original bug report (previously `GH?450.00`).
+- New `GenerateOrderInvoiceTest` — confirms the action actually produces a stored PDF, and guards against the font declaration being reverted to the bare generic keyword later.
+
 ### Changed — OTP input is a single field instead of 6 separate boxes
 - `<x-otp-input>` (phone login, two-factor challenge, account security) was 6 individual single-character `<input>` boxes driven by Alpine — auto-advance/backspace/paste-splitting logic to keep them in sync. Replaced with one plain text input (`maxlength` = code length, digits-only via a single `input` listener), bound the same way via `x-model`/`wire:model` — same visual affordance (`autocomplete="one-time-code"` still lets the OS/browser offer autofill), far less code. Also fixes a latent bug where the component never merged `$attributes` onto its root element, so callers passing `class="mx-auto"` had it silently dropped.
 

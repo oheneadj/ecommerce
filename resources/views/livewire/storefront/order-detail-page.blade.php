@@ -81,6 +81,15 @@
                             </div>
                         @endforeach
                     </div>
+
+                    @if ($this->latestFailedPayment)
+                        <x-button wire:click="retryPayment" wire:target="retryPayment" variant="primary" class="mt-4 w-full justify-center">
+                            {{ __('Retry payment') }}
+                        </x-button>
+                        @error('retryPayment')
+                            <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                        @enderror
+                    @endif
                 </x-card>
             @endif
         </div>

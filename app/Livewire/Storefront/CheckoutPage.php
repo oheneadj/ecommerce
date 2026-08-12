@@ -19,6 +19,7 @@ use App\Exceptions\CouponUsageLimitExceededException;
 use App\Exceptions\EmptyCartException;
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidCouponException;
+use App\Livewire\Storefront\Concerns\RespondsToPaymentInitiation;
 use App\Models\Address;
 use App\Models\Cart;
 use App\Models\Coupon;
@@ -50,6 +51,8 @@ use Livewire\Component;
 #[Lazy]
 class CheckoutPage extends Component
 {
+    use RespondsToPaymentInitiation;
+
     public ?int $selectedAddressId = null;
 
     public ?int $selectedShippingMethodId = null;
@@ -86,8 +89,21 @@ class CheckoutPage extends Component
 
     public string $guestRegion = '';
 
+    /**
+     * An empty cart is already rejected server-side in `placeOrder()`, so
+     * this redirect is purely a UX guard, not a security one — nothing
+     * about the checkout form itself is reachable/useful with nothing to
+     * pay for, so send the customer straight back to their cart instead
+     * of showing them a confusing empty page.
+     */
     public function mount(): void
     {
+        if ($this->cart->items->isEmpty()) {
+            $this->redirectRoute('cart.show', navigate: true);
+
+            return;
+        }
+
         if (Auth::check()) {
             $this->selectedAddressId = Auth::user()->addresses()->where('is_default', true)->value('id')
                 ?? Auth::user()->addresses()->value('id');
@@ -320,35 +336,7 @@ class CheckoutPage extends Component
             return;
         }
 
-        $providerSetting = PaymentProviderSetting::query()->where('provider', $this->paymentProvider)->first();
-        $accessCode = $payment->metadata['access_code'] ?? null;
-
-        // Popup checkout never leaves this page — the JS side (see
-        // resources/js/paystack-popup.js) opens Paystack's popup and
-        // navigates to the confirmation page itself once it closes,
-        // regardless of what the popup itself reports, since only the
-        // webhook + VerifyPendingPayments polling fallback are trusted to
-        // confirm payment actually succeeded.
-        if ($providerSetting?->usesPaystackPopup() && $accessCode !== null) {
-            $this->dispatch(
-                'paystack-popup-ready',
-                accessCode: $accessCode,
-                publicKey: config('payments.providers.paystack.public_key'),
-                confirmationUrl: route('orders.confirmation', ['order' => $order]),
-            );
-
-            return;
-        }
-
-        $redirectUrl = $payment->metadata['redirect_url'] ?? null;
-
-        if ($redirectUrl) {
-            $this->redirect($redirectUrl, navigate: false);
-
-            return;
-        }
-
-        $this->redirectRoute('orders.confirmation', ['order' => $order], navigate: true);
+        $this->respondToPaymentInitiation($payment, $order);
     }
 
     private function validateGuestDetails(): bool

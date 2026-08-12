@@ -9,15 +9,20 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Storefront;
 
+use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Livewire\Storefront\OrderDetailPage;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
 use App\Models\Payment;
 use App\Models\User;
+use App\Payments\PaymentManager;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use Tests\Feature\Payment\FakePaymentGateway;
 use Tests\TestCase;
 
 class OrderDetailPageTest extends TestCase
@@ -66,5 +71,84 @@ class OrderDetailPageTest extends TestCase
         $this->expectException(ModelNotFoundException::class);
 
         Livewire::test(OrderDetailPage::class, ['orderUlid' => $otherOrder->ulid]);
+    }
+
+    private function enableFakeProvider(): void
+    {
+        FakePaymentGateway::reset();
+        $this->app->make(PaymentManager::class)->extend('moolre', fn () => new FakePaymentGateway);
+        DB::table('payment_provider_settings')->insert([
+            'provider' => 'moolre',
+            'enabled' => true,
+            'sort_order' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    public function test_a_failed_payment_shows_a_retry_button(): void
+    {
+        $user = User::factory()->create();
+        $order = Order::factory()->create(['user_id' => $user->id]);
+        Payment::factory()->create(['order_id' => $order->id, 'provider' => 'moolre', 'status' => PaymentStatus::Failed]);
+        $this->actingAs($user);
+
+        $this->get("/account/orders/{$order->ulid}")->assertSee('Retry payment');
+    }
+
+    public function test_a_successful_payment_shows_no_retry_button(): void
+    {
+        $user = User::factory()->create();
+        $order = Order::factory()->create(['user_id' => $user->id]);
+        Payment::factory()->create(['order_id' => $order->id, 'provider' => 'moolre', 'status' => PaymentStatus::Success]);
+        $this->actingAs($user);
+
+        $this->get("/account/orders/{$order->ulid}")->assertDontSee('Retry payment');
+    }
+
+    public function test_retrying_a_failed_payment_starts_a_new_attempt_on_the_same_order(): void
+    {
+        $this->enableFakeProvider();
+        $user = User::factory()->create();
+        $order = Order::factory()->create(['user_id' => $user->id]);
+        Payment::factory()->create(['order_id' => $order->id, 'provider' => 'moolre', 'status' => PaymentStatus::Failed]);
+        $this->actingAs($user);
+
+        Livewire::test(OrderDetailPage::class, ['orderUlid' => $order->ulid])
+            ->call('retryPayment')
+            ->assertRedirect('https://fake-gateway.test/pay/fake-ref-1');
+
+        $this->assertSame(2, $order->fresh()->payments()->count());
+        $this->assertSame(1, Order::query()->count());
+    }
+
+    public function test_retrying_when_the_order_is_already_paid_does_nothing(): void
+    {
+        $this->enableFakeProvider();
+        $user = User::factory()->create();
+        $order = Order::factory()->create(['user_id' => $user->id, 'status' => OrderStatus::Paid]);
+        Payment::factory()->create(['order_id' => $order->id, 'provider' => 'moolre', 'status' => PaymentStatus::Failed]);
+        $this->actingAs($user);
+
+        Livewire::test(OrderDetailPage::class, ['orderUlid' => $order->ulid])
+            ->call('retryPayment')
+            ->assertNoRedirect();
+
+        $this->assertSame(1, $order->fresh()->payments()->count());
+    }
+
+    public function test_retrying_with_no_failed_payment_does_nothing(): void
+    {
+        $this->enableFakeProvider();
+        $user = User::factory()->create();
+        $order = Order::factory()->create(['user_id' => $user->id]);
+        Payment::factory()->create(['order_id' => $order->id, 'provider' => 'moolre', 'status' => PaymentStatus::Pending]);
+        $this->actingAs($user);
+
+        Livewire::test(OrderDetailPage::class, ['orderUlid' => $order->ulid])
+            ->call('retryPayment')
+            ->assertNoRedirect();
+
+        $this->assertSame(1, $order->fresh()->payments()->count());
     }
 }

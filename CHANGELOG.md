@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — Paystack popup checkout never actually opened
+- `resumeTransaction(accessCode, options)` takes the access code as a **positional string argument**, not a key inside the options object — `resources/js/paystack-popup.js` was calling `popup.resumeTransaction({ accessCode, onSuccess, onCancel, onError })`, passing everything bundled into a single object as the first argument. Paystack's SDK received that whole object where it expected a plain string, so the access code was effectively garbage and the popup silently failed to open — confirmed by inspecting `@paystack/inline-js`'s own bundled source (v2.24.0), since Paystack's docs site couldn't be reached for a live-verified example. Fixed to `resumeTransaction(accessCode, { onSuccess, onCancel, onLoad, onError })`.
+
+### Added — faster payment confirmation on the order confirmation page
+- Paystack's `callback_url` convention appends `?reference=` to the redirect target after a completed transaction. Previously nothing on `OrderConfirmationPage` read it — payment confirmation relied entirely on the webhook or the `VerifyPendingPayments` polling sweep (~2 minutes), so a customer could land on the confirmation page having genuinely just paid, but see "Pending" for up to 2 minutes even though Paystack had already told the browser to check. `OrderConfirmationPage::mount()` now dispatches `VerifyPaymentWithGateway` immediately when a `reference` is present and the order's payment is still Pending — this only ever speeds up confirmation for a customer already on the page; the webhook/polling fallback remain the only trusted source of truth, exactly as before. A reference alone is never treated as proof of anything.
+
+### Added — checkout redirects away when the cart is empty
+- `/checkout` previously rendered a confusing, non-functional form when reached with nothing in the cart — `placeOrder()` already rejected an empty cart server-side, so this is purely a UX fix, not a security one. `CheckoutPage::mount()` now redirects straight to the cart page when the cart has no items.
+- Updated several existing tests that constructed the component before adding a cart item (`AddItemToCart::run()` called *after* `Livewire::test()`) — `mount()` runs the moment the component is instantiated, so those tests were relying on order-of-operations that the new redirect now short-circuits. Reordered to add the item first, matching the pattern already used correctly elsewhere in the file. `test_placing_an_order_with_an_empty_cart_is_rejected` — whose original premise (reaching the form with an empty cart) is now structurally unreachable through the UI — restructured into `test_placing_an_order_with_a_cart_emptied_after_page_load_is_rejected`, covering the real remaining scenario: the cart was non-empty at page load but emptied before submit (e.g. in another tab). `placeOrder()`'s own guard is unchanged, still catching exactly that race.
+
+### Added — retry payment on a failed order, from the order detail page
+- Orders whose latest payment attempt is `Failed` now show a "Retry payment" button on `/account/orders/{order}` — starts a brand-new payment attempt against the **same order** (same order number, no duplicate order created), using the same provider the failed attempt used. Re-validates the order isn't already `Paid` before doing anything, guarding the same "don't trust a stale page" race `CheckoutPage::placeOrder()` already guards against.
+- Extracted the popup-vs-redirect-vs-confirmation response handling (previously inline in `CheckoutPage::placeOrder()`) into a new `App\Livewire\Storefront\Concerns\RespondsToPaymentInitiation` trait, shared by `CheckoutPage` and `OrderDetailPage` — avoids duplicating that branching logic across both call sites.
+- 8 new tests across `CheckoutPageTest`, `OrderConfirmationPageTest`, and `OrderDetailPageTest`.
+
 ### Fixed — payment provider logo too small on checkout
 - Bumped the checkout payment-method logo from `h-6` to `h-10` so it's actually legible next to the provider label.
 

@@ -1,17 +1,12 @@
 <div
     class="relative"
-    x-data="{ visible: false, autoCloseTimer: null }"
-    x-on:click.outside="visible = false"
-    x-on:cart-item-added.window="
-        visible = true;
-        clearTimeout(autoCloseTimer);
-        autoCloseTimer = setTimeout(() => visible = false, 4000);
-    "
+    x-data="autoDismissPanel('cart-item-added')"
+    x-on:click.outside="close()"
 >
     <button
         type="button"
         wire:click="toggle"
-        x-on:click="visible = ! visible"
+        x-on:click="toggle()"
         class="relative flex items-center gap-1.5 text-zinc-700 hover:text-brand-primary dark:text-zinc-300"
         aria-label="{{ __('Cart') }}"
     >

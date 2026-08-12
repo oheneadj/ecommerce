@@ -41,6 +41,8 @@ use Livewire\Component;
  * @property-read float $averageRating
  * @property-read bool $isWishlisted
  * @property-read string $shareText
+ * @property-read string $shareUrl
+ * @property-read array<int, array{label: string, url?: string}> $breadcrumbs
  */
 class ProductDetailPage extends Component
 {
@@ -358,6 +360,50 @@ class ProductDetailPage extends Component
             'product' => $this->product->name,
             'store' => $businessName,
         ]);
+    }
+
+    /**
+     * The product's public, shareable URL — same value used for the
+     * WhatsApp/X/Facebook share links and the copy-link button, kept in
+     * one place so the view never derives it itself.
+     */
+    #[Computed]
+    public function shareUrl(): string
+    {
+        return route('products.show', $this->product);
+    }
+
+    /**
+     * Home → (parent category) → category → product, skipping any level
+     * that doesn't apply. The last entry deliberately has no `url` key —
+     * the view renders it as plain text, not a link, since it's the
+     * current page.
+     *
+     * @return array<int, array{label: string, url?: string}>
+     */
+    #[Computed]
+    public function breadcrumbs(): array
+    {
+        $breadcrumbs = [['label' => __('Home'), 'url' => route('home')]];
+        $category = $this->product->category;
+
+        if ($category) {
+            if ($category->parent) {
+                $breadcrumbs[] = [
+                    'label' => $category->parent->name,
+                    'url' => route('products.index', ['category' => $category->parent->slug]),
+                ];
+            }
+
+            $breadcrumbs[] = [
+                'label' => $category->name,
+                'url' => route('products.index', ['category' => $category->slug]),
+            ];
+        }
+
+        $breadcrumbs[] = ['label' => $this->product->name];
+
+        return $breadcrumbs;
     }
 
     /**

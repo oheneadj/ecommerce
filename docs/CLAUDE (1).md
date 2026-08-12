@@ -37,6 +37,8 @@ At the start of every session:
 After every successfully implemented and verified unit of work (tests/Pint/PHPStan green):
 - Add the corresponding `CHANGELOG.md` entry first
 - Then create a git commit covering that implementation + its CHANGELOG entry (Conventional Commits format, per Section 23) — don't batch multiple unrelated pieces of work into one commit, and don't leave completed, verified work uncommitted
+- Make the git commit so long as you made a change. This will help us to revert that change later incase there is the need to.
+- After the end of every session, mention "Hey Master OT, I am done. I have read the Claude.MD for this session and implemented all the instructions in it!"
 
 ## 2. Commands
 
@@ -239,6 +241,38 @@ Rules:
 - Loading states required on any action with perceptible delay
 - Check for reusable components first (see Section 10)
 - No inline `<script>`/`<style>` — use dedicated JS/CSS files or Alpine directives
+
+### Separation of Design from Logic (mandatory, enforced app-wide)
+
+Blade views (markup, layout, CSS/Tailwind classes — the "design" layer) must never
+carry business logic or non-trivial behavior directly. This is a stricter, explicit
+extension of "no business logic in components" above, and applies to every Blade
+file in the project, not just Livewire component roots:
+
+- **No inline computation in Blade.** A view may only read values already exposed
+  by its component class (public properties, `#[Computed]` methods). Deriving a
+  value in the view itself (building a URL via `route()`, computing text, running
+  any non-trivial expression inside `@php`) belongs on the component class instead —
+  the view should say "display `$this->shareUrl`", never "compute the share URL and
+  display it."
+- **No inline non-trivial Alpine/JS behavior.** A one-off `x-show`/`x-transition`
+  toggle is fine inline. Anything with actual logic — timers, clipboard access,
+  fetch calls, debouncing, anything that could have a bug — must be extracted into
+  a named, reusable Alpine component (`Alpine.data('name', () => ({...}))`) in a
+  dedicated shared JS file (e.g. `resources/js/*-behaviors.js`), and the Blade view
+  references it by name (`x-data="autoDismissPanel()"`) rather than inlining the
+  implementation.
+- **Why this is mandatory, not a style preference**: it keeps the design layer
+  (markup/CSS, and only markup/CSS) fully swappable/redesignable — per brand, per
+  client, per theme, or otherwise — without ever risking that a redesign silently
+  drops a bug fix, or that a future bug fix silently reverts a redesign. Logic lives
+  in exactly one place (component class or shared JS file) and is reused by however
+  many different designs consume it; design lives in exactly one place (the Blade
+  view) and never contains logic a redesign could accidentally break.
+- Applies to every project using this ruleset, not only ones built as a
+  multi-client/multi-tenant template — it's good separation of concerns regardless,
+  and becomes load-bearing the moment more than one visual design needs to share
+  the same underlying behavior.
 
 ## 12. Security
 

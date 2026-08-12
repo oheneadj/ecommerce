@@ -1,12 +1,3 @@
-@php
-    $addressLines = collect([
-        $order->address_snapshot['line1'] ?? null,
-        $order->address_snapshot['line2'] ?? null,
-        $order->address_snapshot['city'] ?? null,
-        $order->address_snapshot['region'] ?? null,
-    ])->filter()->implode(', ');
-@endphp
-
 <div class="space-y-6">
     <div class="flex items-center justify-between">
         <div>
@@ -75,7 +66,7 @@
                 <p class="mt-2 text-sm">
                     {{ $order->address_snapshot['recipient_name'] ?? '' }}<br>
                     {{ $order->address_snapshot['phone'] ?? '' }}<br>
-                    {{ $addressLines }}
+                    {{ $this->addressLines }}
                 </p>
             </x-card>
 

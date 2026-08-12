@@ -1,24 +1,10 @@
 @php
     $variant = $this->selectedVariant;
     $galleryImages = $variant?->galleryImages() ?? $product->images;
-
-    $breadcrumbs = [['label' => __('Home'), 'url' => route('home')]];
-
-    if ($product->category) {
-        if ($product->category->parent) {
-            $breadcrumbs[] = ['label' => $product->category->parent->name, 'url' => route('products.index', ['category' => $product->category->parent->slug])];
-        }
-
-        $breadcrumbs[] = ['label' => $product->category->name, 'url' => route('products.index', ['category' => $product->category->slug])];
-    }
-
-    $breadcrumbs[] = ['label' => $product->name];
-
-    $shareUrl = route('products.show', $product);
 @endphp
 
 <div class="space-y-8">
-    <x-breadcrumbs :items="$breadcrumbs" />
+    <x-breadcrumbs :items="$this->breadcrumbs" />
 
     <div class="grid gap-8 lg:grid-cols-2">
         <div
@@ -237,37 +223,12 @@
 
             <div
                 class="flex items-center gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-700"
-                x-data="{
-                    copied: false,
-                    async copyLink() {
-                        const url = '{{ $shareUrl }}';
-
-                        try {
-                            if (navigator.clipboard) {
-                                await navigator.clipboard.writeText(url);
-                            } else {
-                                const input = document.createElement('textarea');
-                                input.value = url;
-                                input.style.position = 'fixed';
-                                input.style.opacity = '0';
-                                document.body.appendChild(input);
-                                input.select();
-                                document.execCommand('copy');
-                                document.body.removeChild(input);
-                            }
-
-                            this.copied = true;
-                            setTimeout(() => this.copied = false, 1500);
-                        } catch (e) {
-                            window.dispatchEvent(new CustomEvent('toast', { detail: { variant: 'error', message: '{{ __('Could not copy link.') }}' } }));
-                        }
-                    },
-                }"
+                x-data="copyToClipboard({{ \Illuminate\Support\Js::from($this->shareUrl) }}, {{ \Illuminate\Support\Js::from(__('Could not copy link.')) }})"
             >
                 <span class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Share') }}</span>
 
                 <a
-                    href="https://wa.me/?text={{ urlencode($this->shareText.' '.$shareUrl) }}"
+                    href="https://wa.me/?text={{ urlencode($this->shareText.' '.$this->shareUrl) }}"
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="{{ __('Share on WhatsApp') }}"
@@ -277,7 +238,7 @@
                 </a>
 
                 <a
-                    href="https://twitter.com/intent/tweet?url={{ urlencode($shareUrl) }}&text={{ urlencode($this->shareText) }}"
+                    href="https://twitter.com/intent/tweet?url={{ urlencode($this->shareUrl) }}&text={{ urlencode($this->shareText) }}"
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="{{ __('Share on X') }}"
@@ -287,7 +248,7 @@
                 </a>
 
                 <a
-                    href="https://www.facebook.com/sharer/sharer.php?u={{ urlencode($shareUrl) }}"
+                    href="https://www.facebook.com/sharer/sharer.php?u={{ urlencode($this->shareUrl) }}"
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="{{ __('Share on Facebook') }}"
@@ -298,7 +259,7 @@
 
                 <button
                     type="button"
-                    @click="copyLink()"
+                    @click="copy()"
                     aria-label="{{ __('Copy link') }}"
                     class="text-zinc-400 hover:text-brand-primary"
                 >

@@ -1,3 +1,5 @@
+import './storefront-behaviors';
+
 document.addEventListener('livewire:navigating', () => {
     document.documentElement.setAttribute('data-navigating', '');
 });

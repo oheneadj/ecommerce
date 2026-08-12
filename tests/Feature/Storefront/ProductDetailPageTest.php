@@ -90,8 +90,7 @@ class ProductDetailPageTest extends TestCase
 
         $this->get("/products/{$product->slug}")
             ->assertOk()
-            ->assertSeeHtml("const url = '{$shareUrl}'")
-            ->assertSeeHtml('navigator.clipboard.writeText(url)');
+            ->assertSeeHtml('x-data="copyToClipboard('.\Illuminate\Support\Js::from($shareUrl).',');
     }
 
     public function test_the_products_category_and_brand_are_shown_and_link_to_the_filtered_listing(): void

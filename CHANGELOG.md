@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — step-by-step docs for adding a payment/SMS provider
+- `docs/HOWTO-add-payment-provider.md` and `docs/HOWTO-add-sms-provider.md` — walk through every step for adding a new driver (driver class, `config/*.php` entry, `PaymentManager`/`SmsManager` registration, the `PaymentProvider`/`SmsProvider` enum case, `.env`/`.env.example`, tests, verification), each with a checklist and a worked example against a real driver already in the codebase.
+
 ### Added — admin-selectable payment & SMS providers, GiantSMS support
 - Both Paystack and Moolre now accept card payments, and a Super Admin can choose which one is the *active* payment provider from Store Settings — the old checkout-time `mobile_money`/`card` channel split is gone; a single active provider now handles every checkout until an admin switches it. Same pattern for SMS, with a new **GiantSMS** driver joining Moolre.
 - New `App\Enums\PaymentProvider` (Paystack, Moolre) and `App\Enums\SmsProvider` (Moolre, GiantSMS) back two new Store Settings `Select` fields (`active_payment_provider`, `active_sms_provider`), each validated on save against whether that provider actually has credentials configured in `.env` — picking an unconfigured provider is rejected with a clear message instead of silently failing at checkout later.

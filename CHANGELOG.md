@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed — Add-to-cart feedback: persistent "View Checkout" button, mini-cart auto-dismiss restored
 - The "View Checkout" button on the product detail page (shown after adding an item) was auto-hiding itself after 4 seconds, disappearing before the customer could act on it. It now stays visible once shown.
 - The mini-cart dropdown's auto-close-after-4-seconds behavior is restored (opens on add-to-cart, auto-dismisses on its own after 4s, still closeable via outside click) — it's a quick-access preview, not a destination, so it shouldn't require a deliberate dismissal.
+- **Root cause of the auto-close not actually firing**: visibility was driven by a Livewire server property (`$wire.open`), so every open/close was a network round trip — racing against the `cart-updated` request that add-to-cart also fires. A stale response could silently override the timer's close. Switched to a purely client-side Alpine boolean (`visible`, matching the `x-dropdown` component's pattern used everywhere else in the app), so the timer closes it instantly with no server round trip involved. `CartIndicator`'s `open`/`toggle()` are left in place for the button's server-driven affordance and existing test coverage, but no longer gate the dropdown's actual visibility.
 
 
 ### Added — Cookie consent banner

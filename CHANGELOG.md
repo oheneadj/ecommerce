@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Cookie consent banner
+- New `<x-cookie-consent-banner>`, present on every storefront and auth page (same footprint as `<x-toast-container>`) — a simple accept/dismiss notice, not a granular consent manager, since the store doesn't set any analytics/marketing cookies today (only the session/auth cookies required to function, which don't legally require consent). Dismissal is remembered in `localStorage` so it never nags a visitor who already accepted it. Revisit as a real category-based consent flow if/when tracking cookies are ever added.
+- 3 new tests (`CookieConsentBannerTest`).
+
 ### Fixed — Mobile viewport audit (Sprint 10 / E12.7)
 - Systematically screenshotted every major storefront page (home, product listing/detail, cart, checkout, account dashboard/orders/addresses/notifications, wishlist, order confirmation, a static page) at 375px and 768px, logged in as a real customer, checking for horizontal overflow and visual breakage — the story's actual AC ("tested on common mobile viewport widths"). Found and fixed three real bugs:
   - **Cart item rows overflowed off-screen at 375px** — the row's quantity controls/line total/remove button didn't fit next to the product name alongside a fixed-width thumbnail, pushing the whole page wider than the viewport. Now wraps onto a second line (`flex-wrap`) with the product info truncating instead of forcing width.

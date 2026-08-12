@@ -18,6 +18,7 @@
             </div>
 
             <x-toast-container />
+            <x-cookie-consent-banner />
         </div>
     </body>
 </html>

@@ -8,7 +8,8 @@
         },
     }"
     x-on:toast.window="add($event.detail)"
-    class="fixed bottom-4 end-4 z-[100] flex flex-col gap-2"
+    {{-- bottom-20 on mobile clears the fixed bottom tab bar (partials.mobile-bottom-nav) — sm:bottom-4 since that bar doesn't exist at sm:+. --}}
+    class="fixed bottom-20 end-4 z-[100] flex flex-col gap-2 sm:bottom-4"
 >
     <template x-for="toast in toasts" :key="toast.id">
         <div

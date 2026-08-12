@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed — Mobile navigation redesign
+- **Cart dropdown no longer auto-disappears.** It opened on add-to-cart and auto-closed after 4 seconds regardless of whether the customer had actually seen/used it — on mobile, scrolling down to find the nav could easily eat that whole window, so the "View cart"/"Checkout" buttons vanished before they were reachable. It now only closes on an explicit outside click, same as every other dropdown in the app.
+- **Search redesigned for mobile** — was squeezed into the same row as the logo and 5 nav icons, collapsing to an unusable sliver (`min-w-0` letting it shrink almost to nothing) or hidden entirely depending on viewport. Now gets its own full-width row directly under the header on mobile, with the results dropdown sized to match — both properly usable instead of "very small."
+- **New fixed bottom tab bar (mobile only)**: Home / Shop / Wishlist / Account, with the active destination highlighted (`aria-current="page"`, filled icon, brand-primary color) — the "add a button navigation for mobile" ask. Bell and Cart stay in the top row at every width, since they're quick-access-with-preview-dropdown controls, not primary destinations. `<main>` gains bottom padding on mobile so page content never sits behind the fixed bar; the cookie-consent banner and toast container were also repositioned to clear it rather than overlap it.
+- **Fixed a real icon/label mismatch**: the "Shop" nav link used the magnifying-glass (search) icon — search already has its own dedicated icon/input elsewhere, so reusing it for "browse all products" was confusing. Added a proper `squares-2x2` (grid/browse) icon to `<x-app-icon>` and used it consistently in both the top nav and the new bottom tab bar.
+- 3 new tests (`MobileBottomNavTest`). Full suite (787 tests) green, no regressions.
+
+
 ### Added — Cookie consent banner
 - New `<x-cookie-consent-banner>`, present on every storefront and auth page (same footprint as `<x-toast-container>`) — a simple accept/dismiss notice, not a granular consent manager, since the store doesn't set any analytics/marketing cookies today (only the session/auth cookies required to function, which don't legally require consent). Dismissal is remembered in `localStorage` so it never nags a visitor who already accepted it. Revisit as a real category-based consent flow if/when tracking cookies are ever added.
 - 3 new tests (`CookieConsentBannerTest`).

@@ -28,26 +28,28 @@
                     @endif
                 </a>
 
-                {{--
-                    Hidden below sm: — logo + this + the icon nav don't fit
-                    a narrow phone viewport without squeezing the search
-                    box down to an unusable sliver (min-w-0 lets it shrink
-                    that far). The "Shop" nav icon (magnifying glass) is
-                    still a real search entry point on mobile — it lands on
-                    /products, which has its own search box in the sidebar.
-                --}}
+                {{-- Full width at sm:+; on mobile it moves to its own row below (see the second header row). --}}
                 <div class="hidden min-w-0 flex-1 sm:block">
                     <livewire:storefront.search-autosuggest />
                 </div>
 
+                {{--
+                    Shop/Wishlist/Account move to the bottom tab bar on
+                    mobile (their own dedicated navigation surface, per
+                    "add a button navigation for mobile") — kept here,
+                    with labels, at sm:+ where there's room and no bottom
+                    bar exists. Bell/Cart stay in the top row at every
+                    width since they're quick-access-with-preview-dropdown
+                    controls, not primary destinations.
+                --}}
                 <nav class="flex shrink-0 items-center gap-5 text-sm font-medium">
-                    <a href="{{ route('products.index') }}" wire:navigate class="flex items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary dark:text-zinc-300">
-                        <x-app-icon name="magnifying-glass" class="size-5" />
-                        <span class="hidden sm:inline">{{ __('Shop') }}</span>
+                    <a href="{{ route('products.index') }}" wire:navigate class="hidden items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary sm:flex dark:text-zinc-300">
+                        <x-app-icon name="squares-2x2" class="size-5" />
+                        <span>{{ __('Shop') }}</span>
                     </a>
-                    <a href="{{ route('wishlist.show') }}" wire:navigate class="flex items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary dark:text-zinc-300">
+                    <a href="{{ route('wishlist.show') }}" wire:navigate class="hidden items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary sm:flex dark:text-zinc-300">
                         <x-app-icon name="heart" class="size-5" />
-                        <span class="hidden sm:inline">{{ __('Wishlist') }}</span>
+                        <span>{{ __('Wishlist') }}</span>
                     </a>
                     @auth
                         <livewire:storefront.notification-indicator />
@@ -55,38 +57,52 @@
                     <livewire:storefront.cart-indicator />
 
                     @auth
-                        <x-dropdown align="end">
-                            <x-slot:trigger>
-                                <button type="button" class="flex items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary dark:text-zinc-300">
-                                    <x-app-icon name="user" class="size-5" />
-                                    <span class="hidden sm:inline">{{ __('Account') }}</span>
-                                </button>
-                            </x-slot:trigger>
+                        <div class="hidden sm:block">
+                            <x-dropdown align="end">
+                                <x-slot:trigger>
+                                    <button type="button" class="flex items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary dark:text-zinc-300">
+                                        <x-app-icon name="user" class="size-5" />
+                                        <span>{{ __('Account') }}</span>
+                                    </button>
+                                </x-slot:trigger>
 
-                            <x-menu-item :href="route('account.show')" icon="home" wire:navigate>
-                                {{ __('My Account') }}
-                            </x-menu-item>
-
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <x-menu-item type="submit" icon="arrow-right-start">
-                                    {{ __('Log out') }}
+                                <x-menu-item :href="route('account.show')" icon="home" wire:navigate>
+                                    {{ __('My Account') }}
                                 </x-menu-item>
-                            </form>
-                        </x-dropdown>
+
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <x-menu-item type="submit" icon="arrow-right-start">
+                                        {{ __('Log out') }}
+                                    </x-menu-item>
+                                </form>
+                            </x-dropdown>
+                        </div>
                     @else
-                        <a href="{{ route('account.show') }}" wire:navigate class="flex items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary dark:text-zinc-300">
+                        <a href="{{ route('account.show') }}" wire:navigate class="hidden items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary sm:flex dark:text-zinc-300">
                             <x-app-icon name="user" class="size-5" />
-                            <span class="hidden sm:inline">{{ __('Account') }}</span>
+                            <span>{{ __('Account') }}</span>
                         </a>
                     @endauth
                 </nav>
             </div>
+
+            {{-- Full-width, properly-sized search row — mobile only. --}}
+            <div class="border-t border-zinc-200 px-4 py-3 sm:hidden dark:border-zinc-700">
+                <livewire:storefront.search-autosuggest />
+            </div>
         </header>
 
-        <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        {{--
+            pb-24 reserves room for the fixed bottom tab bar below so the
+            last bit of page content is never hidden behind it — sm:pb-0
+            since the bar itself doesn't exist at sm:+.
+        --}}
+        <main class="mx-auto max-w-6xl px-4 py-8 pb-24 sm:px-6 sm:pb-8">
             {{ $slot }}
         </main>
+
+        @include('partials.mobile-bottom-nav')
 
         <footer class="border-t border-zinc-200 dark:border-zinc-700">
             <div class="mx-auto max-w-6xl px-4 py-6 text-sm text-zinc-500 sm:px-6 dark:text-zinc-400">

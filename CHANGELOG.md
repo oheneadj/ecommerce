@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed — OTP input is a single field instead of 6 separate boxes
+- `<x-otp-input>` (phone login, two-factor challenge, account security) was 6 individual single-character `<input>` boxes driven by Alpine — auto-advance/backspace/paste-splitting logic to keep them in sync. Replaced with one plain text input (`maxlength` = code length, digits-only via a single `input` listener), bound the same way via `x-model`/`wire:model` — same visual affordance (`autocomplete="one-time-code"` still lets the OS/browser offer autofill), far less code. Also fixes a latent bug where the component never merged `$attributes` onto its root element, so callers passing `class="mx-auto"` had it silently dropped.
+
 ### Fixed — "Attribute value" image scope listed every term an attribute has ever had
 - The Product Images tab's "Attribute value" scope select (e.g. "Color: Green") listed every term the attached attribute has ever had catalog-wide, not just the ones this specific product's own variants actually carry — a product with only Red/Blue variants still showed every color in the system, including ones no variant of this product would ever match. Since an attribute-value-scoped image only ever renders on a variant carrying that exact term, offering an unused one was never a meaningful choice. Now scoped to `AttributeTerm::whereHas('productVariants', ...)` against this product specifically.
 - 1 new test; 3 existing tests updated to attach the term to an actual variant, matching how the feature is really used.

@@ -5,7 +5,6 @@
 >
     <button
         type="button"
-        wire:click="toggle"
         x-on:click="toggle()"
         class="relative flex items-center gap-1.5 text-zinc-700 hover:text-brand-primary dark:text-zinc-300"
         aria-label="{{ __('Cart') }}"

@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed — hardened root and public `.htaccess` (deployment config)
+- Compared against a sibling Laravel/Filament/Livewire project on the same host that had already been through production WAF troubleshooting, and brought this project's Apache config up to the same standard:
+  - Added `SecRuleRemoveById` exclusions (`400011`, `400012`, `200003`, `210492`) in both `.htaccess` and `public/.htaccess` for ModSecurity rules known to false-positive on Livewire/Filament request payloads on Hostinger — proactive, since this app uses the identical stack.
+  - Root `.htaccess`: block `TRACE`/`TRACK` HTTP methods (XST vector), 301-redirect any URL that already contains `/public/` back to the clean path instead of just skipping the rewrite, add `Options -Indexes`.
+  - `public/.htaccess`: **real bug fix** — `Options -MultiViews -Indexes` was wrapped in `<IfModule mod_negotiation.c>`, so if that module isn't loaded on a given host, directory listing protection silently never applies either. Un-nested it so it's enforced unconditionally. Also added the `NE` (noescape) flag to the trailing-slash redirect to prevent double-encoding special characters in the redirect target.
+- No automated test coverage — these are Apache-level rewrite/security rules with no equivalent in the local `php artisan serve` dev environment (which ignores `.htaccess` entirely); verified by direct comparison against the working reference file, only exercised for real once deployed to Apache/Hostinger.
+
 ### Added — multiple simultaneously-enabled payment providers, chosen by the customer at checkout
 - Payment provider is no longer a single Super-Admin-chosen "active" setting — a new **Payment Providers** admin screen (`/admin` → Settings → Payment Providers, Super-Admin-only) lets multiple providers be enabled at once, with drag-to-reorder for display order. The customer picks one of the *enabled* providers at checkout (a real radio choice again), instead of every order silently going through one hardcoded provider.
 - New `App\Models\PaymentProviderSetting` — one row per `PaymentProvider` enum case, auto-seeded (never admin-created; no Create/Edit page, everything is inline toggle + reorder on the list). A provider's toggle is disabled in the UI (with a tooltip explaining why) when it has no `.env` credentials configured, or when it's the only currently-enabled provider — checkout must always have at least one option.

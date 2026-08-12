@@ -1,7 +1,25 @@
+# ModSecurity rule exclusions for the Filament admin panel + Livewire.
+# SecRuleEngine Off is NOT supported in .htaccess context on Hostinger —
+# only SecRuleRemoveById works here. Add any new rule IDs from the hPanel
+# error log when a new 403 appears.
+<IfModule mod_security.c>
+    SecRuleRemoveById 400011
+    SecRuleRemoveById 400012
+    SecRuleRemoveById 200003
+    SecRuleRemoveById 210492
+</IfModule>
+
+<IfModule mod_security2.c>
+    SecRuleRemoveById 400011
+    SecRuleRemoveById 400012
+    SecRuleRemoveById 200003
+    SecRuleRemoveById 210492
+</IfModule>
+
 <IfModule mod_rewrite.c>
-    <IfModule mod_negotiation.c>
-        Options -MultiViews -Indexes
-    </IfModule>
+    # Always disable directory listing and content negotiation quirks —
+    # not conditional on mod_negotiation so it's enforced regardless.
+    Options -MultiViews -Indexes
 
     RewriteEngine On
 
@@ -13,12 +31,12 @@
     RewriteCond %{HTTP:x-xsrf-token} .
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
-    # Redirect Trailing Slashes If Not A Folder...
+    # Redirect trailing slashes on non-directory requests.
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
-    RewriteRule ^ %1 [L,R=301]
+    RewriteRule ^ %1 [L,R=301,NE]
 
-    # Send Requests To Front Controller...
+    # Send all other requests to the Laravel front controller.
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]

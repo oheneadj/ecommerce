@@ -85,6 +85,7 @@ class InitiatePayment
             $providerReference = $result->providerReference;
             $paymentStatus = $result->success ? PaymentStatus::Pending : PaymentStatus::Failed;
             $redirectUrl = $result->redirectUrl;
+            $accessCode = $result->accessCode;
             $errorMessage = $result->errorMessage;
         } catch (Throwable $e) {
             Log::error('Payment initiation failed', [
@@ -99,6 +100,7 @@ class InitiatePayment
             $providerReference = null;
             $paymentStatus = PaymentStatus::Failed;
             $redirectUrl = null;
+            $accessCode = null;
             $errorMessage = 'Payment could not be started. Please try again or choose a different payment method.';
         }
 
@@ -120,6 +122,7 @@ class InitiatePayment
             'status' => $paymentStatus,
             'metadata' => [
                 'redirect_url' => $redirectUrl,
+                'access_code' => $accessCode,
                 'error' => $errorMessage,
             ],
         ]);

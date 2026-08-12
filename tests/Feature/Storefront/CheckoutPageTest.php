@@ -389,6 +389,75 @@ class CheckoutPageTest extends TestCase
             ->assertRedirect(route('orders.confirmation', ['order' => Order::query()->sole()]));
     }
 
+    /**
+     * Popup checkout mode never redirects the page at all — it dispatches
+     * a browser event carrying the access code, and the JS side (not
+     * exercised by this backend test) opens Paystack's popup and navigates
+     * to the confirmation page itself once it closes.
+     */
+    public function test_paystack_popup_mode_dispatches_a_browser_event_instead_of_redirecting(): void
+    {
+        $this->app->make(PaymentManager::class)->extend('paystack', fn () => new class implements PaymentGateway
+        {
+            public function initiate(Order $order): PaymentInitiationResult
+            {
+                return new PaymentInitiationResult(success: true, providerReference: 'ref-1', accessCode: 'access-code-1');
+            }
+
+            public function verify(string $providerReference): PaymentVerificationResult
+            {
+                return new PaymentVerificationResult(status: PaymentStatus::Pending, providerReference: $providerReference);
+            }
+
+            public function refund(Payment $payment, int $amount, ?string $reason = null): RefundResult
+            {
+                return new RefundResult(success: true);
+            }
+
+            public function verifyWebhookSignature(Request $request): bool
+            {
+                return true;
+            }
+
+            public function webhookEventId(Request $request): string
+            {
+                return 'event-1';
+            }
+
+            public function paymentReferenceFromWebhook(Request $request): ?string
+            {
+                return null;
+            }
+        });
+        DB::table('payment_provider_settings')->insert([
+            'provider' => 'paystack',
+            'checkout_mode' => 'popup',
+            'enabled' => true,
+            'sort_order' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+        AddItemToCart::run(GetCurrentCart::run($user), $variant, 1);
+        $address = Address::factory()->create(['user_id' => $user->id, 'is_default' => true]);
+        $shippingMethod = ShippingMethod::factory()->create(['active' => true]);
+
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
+            ->set('selectedAddressId', $address->id)
+            ->set('selectedShippingMethodId', $shippingMethod->id)
+            ->set('paymentProvider', 'paystack')
+            ->call('placeOrder')
+            ->assertDispatched(
+                'paystack-popup-ready',
+                accessCode: 'access-code-1',
+                confirmationUrl: route('orders.confirmation', ['order' => Order::query()->sole()]),
+            )
+            ->assertNoRedirect();
+    }
+
     public function test_a_failed_payment_initiation_shows_an_error_instead_of_redirecting(): void
     {
         FakePaymentGateway::$initiateSucceeds = false;

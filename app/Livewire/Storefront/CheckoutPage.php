@@ -320,6 +320,26 @@ class CheckoutPage extends Component
             return;
         }
 
+        $providerSetting = PaymentProviderSetting::query()->where('provider', $this->paymentProvider)->first();
+        $accessCode = $payment->metadata['access_code'] ?? null;
+
+        // Popup checkout never leaves this page — the JS side (see
+        // resources/js/paystack-popup.js) opens Paystack's popup and
+        // navigates to the confirmation page itself once it closes,
+        // regardless of what the popup itself reports, since only the
+        // webhook + VerifyPendingPayments polling fallback are trusted to
+        // confirm payment actually succeeded.
+        if ($providerSetting?->usesPaystackPopup() && $accessCode !== null) {
+            $this->dispatch(
+                'paystack-popup-ready',
+                accessCode: $accessCode,
+                publicKey: config('payments.providers.paystack.public_key'),
+                confirmationUrl: route('orders.confirmation', ['order' => $order]),
+            );
+
+            return;
+        }
+
         $redirectUrl = $payment->metadata['redirect_url'] ?? null;
 
         if ($redirectUrl) {

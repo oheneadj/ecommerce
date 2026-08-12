@@ -42,6 +42,16 @@ readonly class PaystackGateway implements PaymentGateway
             'currency' => 'GHS',
             'reference' => $order->order_number.'-'.now()->timestamp,
             'metadata' => ['order_id' => $order->id, 'order_number' => $order->order_number],
+            // Set explicitly rather than relying on the Paystack Dashboard's
+            // account-level Callback URL setting — this way redirect-mode
+            // checkout works correctly for every deployment out of the box,
+            // with zero required dashboard configuration. The dashboard
+            // setting still works as a fallback if this were ever omitted;
+            // Paystack's own docs are explicit that arriving at this URL
+            // does not itself prove the payment succeeded, which is exactly
+            // why `verify()` (via the webhook + VerifyPendingPayments
+            // polling fallback) stays the real source of truth regardless.
+            'callback_url' => route('orders.confirmation', ['order' => $order]),
         ]);
 
         if ($response->failed() || $response->json('status') !== true) {
@@ -56,6 +66,8 @@ readonly class PaystackGateway implements PaymentGateway
             success: true,
             providerReference: $response->json('data.reference'),
             redirectUrl: $response->json('data.authorization_url'),
+            // For popup checkout — see PaymentInitiationResult::$accessCode.
+            accessCode: $response->json('data.access_code'),
             rawResponse: $response->json() ?? [],
         );
     }

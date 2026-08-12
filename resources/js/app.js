@@ -1,4 +1,5 @@
 import './storefront-behaviors';
+import './paystack-popup';
 
 document.addEventListener('livewire:navigating', () => {
     document.documentElement.setAttribute('data-navigating', '');

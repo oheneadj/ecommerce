@@ -156,6 +156,8 @@ Corresponds to story E13.3.
 - [ ] Payment providers configured **[health: `PaymentProvidersConfigured`, presence only]** and tested with a real low-value transaction, refunded afterwards **[attestation: `real_payment_transaction_tested`]**
 - [ ] SMS sending verified end-to-end on **each** network (MTN, Telecel, AirtelTigo) **[attestation: `sms_verified_all_networks`]**
 - [ ] Webhook URLs registered with Moolre and Paystack; signature verification confirmed working **[attestation: `webhook_signature_verified`]**
+  - **Paystack**: no dashboard step needed — `PaystackGateway::initiate()` passes `callback_url` explicitly on every transaction (`route('orders.confirmation', ...)`), so redirect-mode checkout works correctly with zero webhook/callback configuration in the Paystack dashboard. The actual payment webhook (`POST /webhooks/payments/paystack`) can still optionally be set in the dashboard as a defence-in-depth fallback, but isn't required for the callback redirect itself to work.
+  - **Moolre**: the webhook `callback` URL is **account-level, not per-transaction** — Moolre's Mobile Money Collection API has no per-request callback parameter. Set it once when creating/configuring the Moolre merchant account (`callback: Webhook URL for processing real-time transaction callbacks`), pointing at `https://your-domain.com/webhooks/payments/moolre`. This step genuinely can't be automated from this codebase — confirm it's set on Moolre's side before go-live.
 
 **Operational (the steps most often forgotten)**
 - [ ] **Cron entry added and verified running** — see §3 **[health: `ScheduleCheck`, heartbeat]**

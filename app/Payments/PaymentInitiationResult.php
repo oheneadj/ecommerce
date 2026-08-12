@@ -21,6 +21,14 @@ final readonly class PaymentInitiationResult
         public bool $success,
         public ?string $providerReference = null,
         public ?string $redirectUrl = null,
+        /**
+         * Paystack-specific: the `access_code` from `/transaction/initialize`,
+         * used by the frontend to open Paystack's popup checkout via
+         * `PaystackPop.resumeTransaction(accessCode)` instead of redirecting.
+         * Always null for every provider/flow that doesn't support popup
+         * checkout (currently everything except Paystack).
+         */
+        public ?string $accessCode = null,
         public ?string $errorMessage = null,
         public array $rawResponse = [],
     ) {}

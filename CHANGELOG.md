@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — branded email template for all notifications
+- Every `App\Notifications\*::toMail()` renders through Laravel's shared Markdown mail layer — publishing and customizing it once (`resources/views/vendor/mail/`) brands all 8 notification classes at once, no per-notification duplication.
+- **Header**: shows the store's logo image (from Store Settings) if one's uploaded, else the business name as styled text — same fallback pattern already used for the storefront header and PDF invoice letterhead.
+- **Footer**: business name, tagline, contact email/phone (on one line, only the ones actually set), contact address, and a copyright line.
+- **Brand color**: the theme's accent color (action buttons, headings, links, panel borders) is generated from `StoreSetting::current()->primary_color`. Since the theme is a raw `.css` file (not Blade-rendered, can't read the database directly), added `App\Actions\Mail\GenerateMailThemeCss`, which substitutes the color into an immutable source template (`default.source.css`) and writes the result to the file Laravel's mailer actually loads (`default.css`) — regenerating from the untouched source every time, never from the previous output, so a second color change doesn't leave nothing left to substitute.
+- Regenerates automatically whenever Store Settings saves, via the same `StoreSetting::booted()` hook already used to invalidate the storefront's `/theme.css` cache.
+- **Found and fixed a real, separate bug while wiring this up**: that hook's existing `Cache::forget(...)` listener returned `Cache::forget()`'s own boolean result directly — `false` whenever the given cache key simply hadn't been populated yet, which is an entirely normal case, not a failure. Laravel's event dispatcher halts propagation to any listener registered *after* one that returns exactly `false`, so this was silently preventing this session's new mail-theme listener (and would silently break any future third listener) from running whenever `/theme.css` hadn't been requested yet. Fixed by wrapping every listener to explicitly return `void`.
+- 8 new tests across `GenerateMailThemeCssTest` and `BrandedMailTemplateTest` (the latter renders a real notification and inspects the actual HTML output).
+
 ### Fixed — phone login lost its place on a page reload
 - `PhoneLogin`'s "which step am I on" (`codeSent`) and `phone` were plain in-memory Livewire properties with no persistence, so a real page reload — the customer's own refresh, or a mobile browser discarding a backgrounded tab — silently re-mounted the component from scratch and stranded them back on the phone-entry step, even though their already-requested code was still valid server-side (and re-requesting risks hitting the resend rate limit). The pending phone number now survives via the session; a fresh `mount()` restores the verify step for it. Cleared on a successful login or via the existing "Use a different number" link (now a proper method instead of a bare `$set`).
 - 4 new tests.

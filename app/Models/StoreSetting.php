@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Actions\Mail\GenerateMailThemeCss;
 use App\Concerns\LogsAdminActivity;
 use App\Enums\SmsProvider;
 use App\Http\Controllers\Storefront\ThemeCssController;
@@ -87,10 +88,26 @@ class StoreSetting extends Model
      * this row saves instead. The old logo file is deleted the same way,
      * whenever it's replaced or cleared, since this singleton row is
      * never itself deleted.
+     *
+     * Every `static::saved()` listener here is wrapped to explicitly
+     * return `void`, never the wrapped call's own return value — Laravel's
+     * event dispatcher halts propagation to any *later* listener the
+     * moment one returns exactly `false` (`Dispatcher::dispatch()`).
+     * `Cache::forget()` returns `false` whenever the given key wasn't
+     * already cached — a completely normal, expected case here, not a
+     * failure — so leaving that return value unguarded would silently
+     * stop the branded email theme below from ever regenerating whenever
+     * `/theme.css` simply hadn't been requested yet.
      */
     protected static function booted(): void
     {
-        static::saved(fn (): bool => Cache::forget(ThemeCssController::CACHE_KEY));
+        static::saved(function (): void {
+            Cache::forget(ThemeCssController::CACHE_KEY);
+        });
+
+        static::saved(function (): void {
+            GenerateMailThemeCss::run();
+        });
 
         static::saving(function (self $settings): void {
             if (! $settings->isDirty('logo_path')) {

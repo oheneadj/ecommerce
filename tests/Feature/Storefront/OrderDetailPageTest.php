@@ -21,6 +21,7 @@ use App\Payments\PaymentManager;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\Feature\Payment\FakePaymentGateway;
 use Tests\TestCase;
@@ -217,5 +218,70 @@ class OrderDetailPageTest extends TestCase
             ->assertNoRedirect();
 
         $this->assertSame(1, $order->fresh()->payments()->count());
+    }
+
+    public function test_a_paid_orders_invoice_can_be_downloaded(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->create();
+        $path = 'invoices/ORD-DOWNLOAD-TEST.pdf';
+        Storage::disk('local')->put($path, 'fake-pdf-content');
+        $order = Order::factory()->create(['user_id' => $user->id, 'status' => OrderStatus::Paid, 'invoice_path' => $path]);
+        Payment::factory()->create(['order_id' => $order->id, 'status' => PaymentStatus::Success]);
+        $this->actingAs($user);
+
+        Livewire::test(OrderDetailPage::class, ['orderUlid' => $order->ulid])
+            ->assertSee('Download invoice')
+            ->call('downloadInvoice')
+            ->assertFileDownloaded("{$order->order_number}.pdf");
+    }
+
+    public function test_an_unpaid_orders_invoice_button_is_hidden(): void
+    {
+        $user = User::factory()->create();
+        $order = Order::factory()->create(['user_id' => $user->id, 'status' => OrderStatus::Pending, 'invoice_path' => null]);
+        $this->actingAs($user);
+
+        Livewire::test(OrderDetailPage::class, ['orderUlid' => $order->ulid])
+            ->assertDontSee('Download invoice');
+    }
+
+    /**
+     * A customer must never be able to trigger a download via a direct
+     * component method call just because the button happens to be
+     * server-side reachable — the same status/invoice_path guard the
+     * button's visibility relies on is re-checked inside the action
+     * itself, exactly like every other "don't trust the button was
+     * clickable" guard already in this class (retryPayment).
+     */
+    public function test_downloading_an_unpaid_orders_invoice_is_rejected(): void
+    {
+        $user = User::factory()->create();
+        $order = Order::factory()->create(['user_id' => $user->id, 'status' => OrderStatus::Pending, 'invoice_path' => null]);
+        $this->actingAs($user);
+
+        $response = Livewire::test(OrderDetailPage::class, ['orderUlid' => $order->ulid])
+            ->call('downloadInvoice');
+
+        $response->assertNoRedirect();
+    }
+
+    /**
+     * Regression: `invoice_path` being set doesn't guarantee the file is
+     * still actually on disk — regenerated on the fly instead of a raw
+     * 404, mirroring the admin panel's own resilience fallback.
+     */
+    public function test_downloading_a_paid_orders_invoice_whose_file_is_missing_regenerates_it(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->create();
+        $order = Order::factory()->create(['user_id' => $user->id, 'status' => OrderStatus::Paid, 'invoice_path' => 'invoices/ORD-MISSING.pdf']);
+        Storage::disk('local')->assertMissing($order->invoice_path);
+        $this->actingAs($user);
+
+        Livewire::test(OrderDetailPage::class, ['orderUlid' => $order->ulid])
+            ->call('downloadInvoice');
+
+        Storage::disk('local')->assertExists($order->fresh()->invoice_path);
     }
 }

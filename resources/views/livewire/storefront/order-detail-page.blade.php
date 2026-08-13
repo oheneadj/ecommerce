@@ -90,6 +90,12 @@
                             <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                         @enderror
                     @endif
+
+                    @if ($this->canDownloadInvoice)
+                        <x-button wire:click="downloadInvoice" wire:target="downloadInvoice" variant="outline" icon="document-duplicate" class="mt-4 w-full justify-center">
+                            {{ __('Download invoice') }}
+                        </x-button>
+                    @endif
                 </x-card>
             @endif
         </div>

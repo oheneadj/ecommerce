@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — customers can download their own invoice once paid
+- Invoice download was admin-only. Added `OrderDetailPage::downloadInvoice()`, gated by a new `canDownloadInvoice` computed property (order status `Paid` and `invoice_path` actually set) — a "Download invoice" button now appears on the customer's own order detail page (`/account/orders/{order}`) only once payment has genuinely settled, never for a pending/failed order.
+- Mirrors the admin panel's existing resilience fallback: if `invoice_path` is set but the file is missing from storage, it's regenerated on the fly (`GenerateOrderInvoice` renders exclusively from the order's own permanently-snapshotted data, so this is always safe to re-run) rather than a raw 404.
+- The same guard is re-checked server-side inside `downloadInvoice()` itself, not just used to hide the button — matches this class's existing "don't trust the button was clickable" pattern already used for `retryPayment()`.
+- 4 new tests.
+
 ### Added — branded email template for all notifications
 - Every `App\Notifications\*::toMail()` renders through Laravel's shared Markdown mail layer — publishing and customizing it once (`resources/views/vendor/mail/`) brands all 8 notification classes at once, no per-notification duplication.
 - **Header**: shows the store's logo image (from Store Settings) if one's uploaded, else the business name as styled text — same fallback pattern already used for the storefront header and PDF invoice letterhead.

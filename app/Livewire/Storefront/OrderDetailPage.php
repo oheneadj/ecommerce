@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Storefront;
 
+use App\Actions\Order\GenerateOrderInvoice;
 use App\Actions\Payment\InitiatePayment;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
@@ -17,13 +18,16 @@ use App\Models\Order;
 use App\Models\Payment;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * @property-read string $addressLines
  * @property-read Payment|null $latestFailedPayment
+ * @property-read bool $canDownloadInvoice
  * @property-read bool $hasPendingPayment
  */
 #[Title('Order detail')]
@@ -113,6 +117,40 @@ class OrderDetailPage extends Component
         }
 
         $this->respondToPaymentInitiation($payment, $this->order);
+    }
+
+    /**
+     * Gates the "Download invoice" button — only shown once the order
+     * has actually settled. Downloading an "invoice" for something not
+     * yet paid for would be misleading, and `invoice_path` isn't even
+     * populated until `SettlePaymentSuccess` dispatches
+     * `GenerateOrderInvoicePdf`.
+     */
+    #[Computed]
+    public function canDownloadInvoice(): bool
+    {
+        return $this->order->status === OrderStatus::Paid && $this->order->invoice_path !== null;
+    }
+
+    /**
+     * Mirrors the admin panel's own resilience fallback
+     * (`OrderRecordActions::downloadInvoice()`): regenerates the PDF on
+     * the fly if the file went missing from storage, rather than a raw
+     * 404 — `GenerateOrderInvoice` renders exclusively from the order's
+     * own permanently-snapshotted data, so this is always safe to re-run.
+     */
+    public function downloadInvoice(): ?StreamedResponse
+    {
+        if (! $this->canDownloadInvoice) {
+            return null;
+        }
+
+        if (Storage::disk('local')->missing($this->order->invoice_path)) {
+            GenerateOrderInvoice::run($this->order);
+            $this->order->refresh();
+        }
+
+        return Storage::disk('local')->download($this->order->invoice_path, "{$this->order->order_number}.pdf");
     }
 
     /**

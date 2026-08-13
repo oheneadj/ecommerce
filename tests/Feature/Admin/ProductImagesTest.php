@@ -340,6 +340,28 @@ class ProductImagesTest extends TestCase
         $this->assertSame(3, $image->sort_order);
     }
 
+    /**
+     * Regression: the table only ever exposed `sort_order` as a manually-
+     * typed number on the edit form — there was no actual drag-and-drop,
+     * despite the column existing specifically to control gallery display
+     * order. `->reorderable('sort_order')` wires up Filament's native
+     * drag handles, tested here via the same `reorderTable` call the
+     * generated JS drag interaction itself triggers.
+     */
+    public function test_dragging_to_reorder_persists_the_new_sort_order(): void
+    {
+        $this->actingAs($this->admin());
+
+        $product = Product::factory()->create();
+        $first = ProductImage::factory()->create(['product_id' => $product->id, 'sort_order' => 0]);
+        $second = ProductImage::factory()->create(['product_id' => $product->id, 'sort_order' => 1]);
+
+        Livewire::test(ImagesRelationManager::class, ['ownerRecord' => $product, 'pageClass' => EditProduct::class])
+            ->call('reorderTable', [(string) $second->getKey(), (string) $first->getKey()]);
+
+        $this->assertTrue($second->fresh()->sort_order < $first->fresh()->sort_order);
+    }
+
     public function test_adding_an_image_from_a_variant_row_scopes_it_to_that_variant(): void
     {
         Storage::fake('public');
@@ -401,7 +423,7 @@ class ProductImagesTest extends TestCase
             ])
             ->assertHasNoTableActionErrors();
 
-        $newest = $variant->images()->orderByDesc('sort_order')->first();
+        $newest = $variant->images()->reorder('sort_order', 'desc')->first();
 
         $this->assertSame(3, $newest->sort_order);
     }

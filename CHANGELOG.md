@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — product images ignored their admin-configured display order
+- `Product::images()` and `ProductVariant::images()` never applied `orderBy('sort_order')`, so the storefront gallery, `ProductVariant::galleryImages()`, and every other consumer showed images in whatever order the database happened to return them (effectively insertion order) — regardless of how an admin had actually ordered them. Both relations now order by `sort_order`.
+- The admin Images tab never actually had drag-and-drop — only a manually-typed `sort_order` number field and a sortable-by-click column header, despite the column existing specifically to control display order. Added `->reorderable('sort_order')` (Filament's native drag handles), matching the pattern already used on the Payment Providers screen.
+- 5 new tests.
+
 ### Added — customers can download their own invoice once paid
 - Invoice download was admin-only. Added `OrderDetailPage::downloadInvoice()`, gated by a new `canDownloadInvoice` computed property (order status `Paid` and `invoice_path` actually set) — a "Download invoice" button now appears on the customer's own order detail page (`/account/orders/{order}`) only once payment has genuinely settled, never for a pending/failed order.
 - Mirrors the admin panel's existing resilience fallback: if `invoice_path` is set but the file is missing from storage, it's regenerated on the fly (`GenerateOrderInvoice` renders exclusively from the order's own permanently-snapshotted data, so this is always safe to re-run) rather than a raw 404.

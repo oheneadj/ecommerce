@@ -96,11 +96,15 @@ class ProductVariant extends Model
     /**
      * Images specific to this variant.
      *
+     * Images uploaded directly to this variant, in the admin-configured
+     * display order (`sort_order`) — see `Product::images()`'s docblock
+     * for why the ordering lives here rather than at each call site.
+     *
      * @return HasMany<ProductImage, $this>
      */
     public function images(): HasMany
     {
-        return $this->hasMany(ProductImage::class);
+        return $this->hasMany(ProductImage::class)->orderBy('sort_order');
     }
 
     /**

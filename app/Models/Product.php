@@ -107,13 +107,16 @@ class Product extends Model
     }
 
     /**
-     * Images belonging directly to this product (not a specific variant).
+     * Images belonging directly to this product (not a specific variant),
+     * in the admin-configured display order (`sort_order`) — the storefront
+     * gallery and every other consumer of this relation relies on that
+     * order being applied here, not re-specified at each call site.
      *
      * @return HasMany<ProductImage, $this>
      */
     public function images(): HasMany
     {
-        return $this->hasMany(ProductImage::class);
+        return $this->hasMany(ProductImage::class)->orderBy('sort_order');
     }
 
     /**

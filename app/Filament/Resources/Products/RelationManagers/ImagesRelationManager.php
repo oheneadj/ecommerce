@@ -276,12 +276,12 @@ class ImagesRelationManager extends RelationManager
                     })
                     ->color(fn (ProductImage $record): string => $record->product_variant_id === null && $record->attribute_term_id === null ? 'gray' : 'info'),
                 TextColumn::make('sort_order')
-                    ->label('Order')
-                    ->sortable(),
+                    ->label('Order'),
                 IconColumn::make('is_primary')
                     ->label('Primary')
                     ->boolean(),
             ])
+            ->reorderable('sort_order')
             ->defaultSort('sort_order')
             ->headerActions([
                 $this->createAction(),

@@ -15,6 +15,7 @@ use App\Actions\Wishlist\AddToWishlist;
 use App\Actions\Wishlist\RemoveFromWishlist;
 use App\Enums\ProductStatus;
 use App\Enums\ReviewStatus;
+use App\Enums\UserRole;
 use App\Enums\VariantStatus;
 use App\Exceptions\CartQuantityExceedsStockException;
 use App\Models\Attribute;
@@ -43,6 +44,7 @@ use Livewire\Component;
  * @property-read string $shareText
  * @property-read string $shareUrl
  * @property-read array<int, array{label: string, url?: string}> $breadcrumbs
+ * @property-read string|null $editUrl
  */
 class ProductDetailPage extends Component
 {
@@ -404,6 +406,23 @@ class ProductDetailPage extends Component
         $breadcrumbs[] = ['label' => $this->product->name];
 
         return $breadcrumbs;
+    }
+
+    /**
+     * The admin edit-page URL for this product, shown as a shortcut for
+     * staff viewing the live storefront page — `null` (and hidden by the
+     * view) for anyone who isn't a super-admin/admin, mirroring the
+     * "View live" action's own round trip in the other direction from
+     * `EditProduct`.
+     */
+    #[Computed]
+    public function editUrl(): ?string
+    {
+        if (! Auth::check() || ! Auth::user()->hasAnyRole([UserRole::SuperAdmin->value, UserRole::Admin->value])) {
+            return null;
+        }
+
+        return route('filament.admin.resources.products.edit', ['record' => $this->product]);
     }
 
     /**

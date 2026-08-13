@@ -5,9 +5,11 @@ namespace App\Filament\Resources\Products\Pages;
 use App\Actions\Catalog\DeleteProduct;
 use App\Actions\Catalog\DeleteProductImageFiles;
 use App\Actions\Catalog\UpdateProduct;
+use App\Enums\ProductStatus;
 use App\Exceptions\ProductRequiresVariantException;
 use App\Filament\Resources\Products\ProductResource;
 use App\Models\Product;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
@@ -23,6 +25,12 @@ class EditProduct extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('viewLive')
+                ->label('View live')
+                ->icon('heroicon-o-eye')
+                ->url(fn (Product $record): string => route('products.show', $record))
+                ->openUrlInNewTab()
+                ->visible(fn (Product $record): bool => $record->status === ProductStatus::Active && $record->variants()->exists()),
             DeleteAction::make()
                 ->using(function (Product $record): bool {
                     DeleteProduct::run($record);

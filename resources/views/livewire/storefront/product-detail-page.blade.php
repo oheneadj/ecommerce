@@ -4,7 +4,15 @@
 @endphp
 
 <div class="space-y-8">
-    <x-breadcrumbs :items="$this->breadcrumbs" />
+    <div class="flex items-center justify-between gap-4">
+        <x-breadcrumbs :items="$this->breadcrumbs" />
+
+        @if ($this->editUrl)
+            <x-button href="{{ $this->editUrl }}" variant="outline" icon="pencil-square" class="shrink-0">
+                {{ __('Edit product') }}
+            </x-button>
+        @endif
+    </div>
 
     <div class="grid gap-8 lg:grid-cols-2">
         <div

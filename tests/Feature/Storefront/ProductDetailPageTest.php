@@ -13,6 +13,7 @@ use App\Actions\Cart\AddItemToCart;
 use App\Actions\Cart\ResolveCurrentCart;
 use App\Enums\ProductStatus;
 use App\Enums\ReviewStatus;
+use App\Enums\UserRole;
 use App\Livewire\Storefront\ProductDetailPage;
 use App\Models\Attribute;
 use App\Models\AttributeTerm;
@@ -29,6 +30,7 @@ use App\Models\WishlistItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Js;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class ProductDetailPageTest extends TestCase
@@ -668,5 +670,39 @@ class ProductDetailPageTest extends TestCase
         Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
             ->call('toggleWishlist')
             ->assertRedirect(route('login.phone'));
+    }
+
+    public function test_an_admin_sees_an_edit_link_to_the_products_admin_page(): void
+    {
+        Role::findOrCreate(UserRole::Admin->value, 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole(UserRole::Admin->value);
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        ProductVariant::factory()->create(['product_id' => $product->id]);
+        $this->actingAs($admin);
+
+        Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->assertSee('Edit product')
+            ->assertSee(route('filament.admin.resources.products.edit', ['record' => $product]));
+    }
+
+    public function test_a_regular_customer_does_not_see_the_edit_link(): void
+    {
+        $customer = User::factory()->create();
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        ProductVariant::factory()->create(['product_id' => $product->id]);
+        $this->actingAs($customer);
+
+        Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->assertDontSee('Edit product');
+    }
+
+    public function test_a_guest_does_not_see_the_edit_link(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active]);
+        ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        Livewire::test(ProductDetailPage::class, ['productSlug' => $product->slug])
+            ->assertDontSee('Edit product');
     }
 }

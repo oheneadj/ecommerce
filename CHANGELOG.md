@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — round trip between the admin edit page and the live product page
+- `EditProduct` (admin) gained a "View live" header action, opening the storefront product page in a new tab — only shown once the product is actually reachable there (status `Active` and at least one variant), matching `ProductDetailPage::mount()`'s own visibility query.
+- `ProductDetailPage` (storefront) gained an "Edit product" link next to the breadcrumbs, shown only to super-admins/admins, linking to that same product's admin edit page — the reverse direction of the same round trip.
+- 7 new tests.
+
 ### Fixed — product images ignored their admin-configured display order
 - `Product::images()` and `ProductVariant::images()` never applied `orderBy('sort_order')`, so the storefront gallery, `ProductVariant::galleryImages()`, and every other consumer showed images in whatever order the database happened to return them (effectively insertion order) — regardless of how an admin had actually ordered them. Both relations now order by `sort_order`.
 - The admin Images tab never actually had drag-and-drop — only a manually-typed `sort_order` number field and a sortable-by-click column header, despite the column existing specifically to control display order. Added `->reorderable('sort_order')` (Filament's native drag handles), matching the pattern already used on the Payment Providers screen.

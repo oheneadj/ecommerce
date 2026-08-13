@@ -113,4 +113,40 @@ class HomePageTest extends TestCase
             ->assertSee('Acme Store')
             ->assertSee('https://facebook.com/acme', false);
     }
+
+    public function test_the_whatsapp_chat_bubble_shows_when_enabled_with_a_link_set(): void
+    {
+        StoreSetting::current()->update([
+            'whatsapp_url' => 'https://wa.me/233200000000',
+            'whatsapp_chat_enabled' => true,
+        ]);
+
+        $this->get('/')->assertOk()->assertSee('Chat with us on WhatsApp');
+    }
+
+    /**
+     * The wa.me link itself can legitimately still appear elsewhere on the
+     * page (the footer's social icon reads `whatsapp_url` independently of
+     * this toggle), so this asserts on the chat-bubble-specific aria-label
+     * rather than the raw URL, which the toggle alone doesn't control.
+     */
+    public function test_the_whatsapp_chat_bubble_is_hidden_when_disabled(): void
+    {
+        StoreSetting::current()->update([
+            'whatsapp_url' => 'https://wa.me/233200000000',
+            'whatsapp_chat_enabled' => false,
+        ]);
+
+        $this->get('/')->assertOk()->assertDontSee('Chat with us on WhatsApp');
+    }
+
+    public function test_the_whatsapp_chat_bubble_is_hidden_when_enabled_with_no_link_set(): void
+    {
+        StoreSetting::current()->update([
+            'whatsapp_url' => null,
+            'whatsapp_chat_enabled' => true,
+        ]);
+
+        $this->get('/')->assertOk()->assertDontSee('Chat with us on WhatsApp');
+    }
 }

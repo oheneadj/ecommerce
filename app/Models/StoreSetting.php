@@ -41,6 +41,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $x_url
  * @property string|null $tiktok_url
  * @property string|null $whatsapp_url
+ * @property bool $whatsapp_chat_enabled
  * @property SmsProvider|null $active_sms_provider
  * @property int $tax_rate
  * @property int $stock_reservation_minutes
@@ -61,6 +62,7 @@ use Illuminate\Support\Facades\Storage;
     'x_url',
     'tiktok_url',
     'whatsapp_url',
+    'whatsapp_chat_enabled',
     'active_sms_provider',
     'tax_rate',
     'stock_reservation_minutes',
@@ -79,6 +81,7 @@ class StoreSetting extends Model
         return [
             'health_alerts_snoozed_until' => 'datetime',
             'active_sms_provider' => SmsProvider::class,
+            'whatsapp_chat_enabled' => 'boolean',
         ];
     }
 
@@ -154,5 +157,16 @@ class StoreSetting extends Model
             'tiktok' => $this->tiktok_url,
             'whatsapp' => $this->whatsapp_url,
         ]);
+    }
+
+    /**
+     * The floating storefront chat bubble is only ever shown when an admin
+     * has both switched it on AND actually provided a wa.me link to send
+     * customers to — flipping the toggle on with no link set would render
+     * a button with nowhere to go.
+     */
+    public function showsWhatsappChatBubble(): bool
+    {
+        return $this->whatsapp_chat_enabled && filled($this->whatsapp_url);
     }
 }

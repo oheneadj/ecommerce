@@ -160,6 +160,7 @@
             </div>
         </footer>
 
+        <x-whatsapp-chat-bubble :store="$store" />
         <x-toast-container />
         <x-cookie-consent-banner />
     </body>

@@ -111,6 +111,24 @@ class ManageStoreSettingsTest extends TestCase
         $this->assertSame(['facebook', 'instagram', 'x', 'tiktok', 'whatsapp'], array_keys($settings->socialLinks()));
     }
 
+    public function test_super_admin_can_toggle_the_whatsapp_chat_bubble(): void
+    {
+        $this->actingAs($this->superAdmin());
+
+        Livewire::test(ManageStoreSettings::class)
+            ->fillForm([
+                'whatsapp_url' => 'https://wa.me/233200000000',
+                'whatsapp_chat_enabled' => true,
+                'tax_rate' => 15,
+                'stock_reservation_minutes' => 15,
+                'low_stock_threshold' => 5,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertTrue(StoreSetting::current()->whatsapp_chat_enabled);
+    }
+
     public function test_invalid_social_url_is_rejected(): void
     {
         $this->actingAs($this->superAdmin());

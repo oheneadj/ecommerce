@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — WhatsApp chat bubble
+- New floating WhatsApp button on every storefront page (bottom-left, clears the mobile tab bar and never collides with the toast container on the opposite corner), linking to the existing `whatsapp_url` wa.me link already used for the footer's social icon.
+- Store Settings gained a "WhatsApp chat bubble" toggle (`whatsapp_chat_enabled`, new migration) — off by default, and has no effect until a WhatsApp link is actually set, so flipping it on with an empty link can't render a button with nowhere to go (`StoreSetting::showsWhatsappChatBubble()`).
+- 6 new tests.
+
 ### Added — modernized homepage and footer template
 - Homepage now shows, in order: a hero banner (store logo/name/tagline from Store Settings, linking to the full catalog), "Shop by brand" (logo tiles, only brands that actually have a logo and at least one active product, linking to the filtered listing), "Shop by category" (restyled), then "New arrivals" (unchanged data, restyled cards).
 - `HomeController` now also queries brands (`whereNotNull('logo_path')`, `whereHas('products', ...active...)`, ordered by name, capped at 8) alongside the existing categories/new-arrivals queries.

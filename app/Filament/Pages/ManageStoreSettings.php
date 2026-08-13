@@ -18,6 +18,7 @@ use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
@@ -66,6 +67,7 @@ class ManageStoreSettings extends Page implements HasForms
         'x_url',
         'tiktok_url',
         'whatsapp_url',
+        'whatsapp_chat_enabled',
         'active_sms_provider',
         'tax_rate',
         'stock_reservation_minutes',
@@ -168,6 +170,14 @@ class ManageStoreSettings extends Page implements HasForms
                                     ->placeholder('https://wa.me/233200000000')
                                     ->helperText('A wa.me link, not a phone number.'),
                             ]),
+                    ]),
+
+                Section::make('WhatsApp chat bubble')
+                    ->description('Adds a floating WhatsApp button to every storefront page, linking straight to the wa.me link set above.')
+                    ->schema([
+                        Toggle::make('whatsapp_chat_enabled')
+                            ->label('Show the chat bubble on the storefront')
+                            ->helperText('Has no effect until a WhatsApp link is set above.'),
                     ]),
 
                 Section::make('SMS provider')

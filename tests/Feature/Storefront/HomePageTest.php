@@ -10,9 +10,11 @@ namespace Tests\Feature\Storefront;
 
 use App\Enums\ProductStatus;
 use App\Enums\VariantStatus;
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\StoreSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -72,5 +74,43 @@ class HomePageTest extends TestCase
         ProductVariant::factory()->create(['product_id' => $product->id, 'status' => VariantStatus::Active, 'stock' => 5]);
 
         $this->get('/')->assertOk()->assertDontSee('Draft Item');
+    }
+
+    public function test_the_homepage_shows_a_brand_that_has_a_logo_and_an_active_product(): void
+    {
+        $brand = Brand::factory()->create(['name' => 'Acme Gear', 'logo_path' => 'brands/acme.png']);
+        $product = Product::factory()->create(['status' => ProductStatus::Active, 'brand_id' => $brand->id]);
+        ProductVariant::factory()->create(['product_id' => $product->id, 'status' => VariantStatus::Active, 'stock' => 5]);
+
+        $this->get('/')->assertOk()->assertSee('Acme Gear');
+    }
+
+    public function test_the_homepage_never_shows_a_brand_with_no_logo(): void
+    {
+        $brand = Brand::factory()->create(['name' => 'Logoless Co', 'logo_path' => null]);
+        $product = Product::factory()->create(['status' => ProductStatus::Active, 'brand_id' => $brand->id]);
+        ProductVariant::factory()->create(['product_id' => $product->id, 'status' => VariantStatus::Active, 'stock' => 5]);
+
+        $this->get('/')->assertOk()->assertDontSee('Logoless Co');
+    }
+
+    public function test_the_homepage_never_shows_a_brand_with_no_active_products(): void
+    {
+        Brand::factory()->create(['name' => 'Idle Brand', 'logo_path' => 'brands/idle.png']);
+
+        $this->get('/')->assertOk()->assertDontSee('Idle Brand');
+    }
+
+    public function test_the_footer_shows_the_stores_business_name_and_socials(): void
+    {
+        StoreSetting::current()->update([
+            'business_name' => 'Acme Store',
+            'facebook_url' => 'https://facebook.com/acme',
+        ]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Acme Store')
+            ->assertSee('https://facebook.com/acme', false);
     }
 }

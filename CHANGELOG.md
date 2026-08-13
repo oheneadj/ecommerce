@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — modernized homepage and footer template
+- Homepage now shows, in order: a hero banner (store logo/name/tagline from Store Settings, linking to the full catalog), "Shop by brand" (logo tiles, only brands that actually have a logo and at least one active product, linking to the filtered listing), "Shop by category" (restyled), then "New arrivals" (unchanged data, restyled cards).
+- `HomeController` now also queries brands (`whereNotNull('logo_path')`, `whereHas('products', ...active...)`, ordered by name, capped at 8) alongside the existing categories/new-arrivals queries.
+- Footer rebuilt as a 3-column layout (business branding + socials, quick links, contact details) plus a copyright line — same `StoreSetting` fields as before (business name, logo, tagline, contact, socials), just reorganized and given the store logo a spot in the footer too.
+- 4 new tests.
+
 ### Added — round trip between the admin edit page and the live product page
 - `EditProduct` (admin) gained a "View live" header action, opening the storefront product page in a new tab — only shown once the product is actually reachable there (status `Active` and at least one variant), matching `ProductDetailPage::mount()`'s own visibility query.
 - `ProductDetailPage` (storefront) gained an "Edit product" link next to the breadcrumbs, shown only to super-admins/admins, linking to that same product's admin edit page — the reverse direction of the same round trip.

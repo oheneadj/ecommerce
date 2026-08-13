@@ -104,37 +104,59 @@
         @include('partials.mobile-bottom-nav')
 
         <footer class="border-t border-zinc-200 dark:border-zinc-700">
-            <div class="mx-auto max-w-6xl px-4 py-6 text-sm text-zinc-500 sm:px-6 dark:text-zinc-400">
-                @if ($store->tagline)
-                    <p class="mb-2">{{ $store->tagline }}</p>
-                @endif
-                <p class="flex flex-wrap gap-x-4">
-                    @if ($store->contact_email)
-                        <span>{{ $store->contact_email }}</span>
+            <div class="mx-auto grid max-w-6xl gap-8 px-4 py-10 text-sm text-zinc-500 sm:grid-cols-3 sm:px-6 dark:text-zinc-400">
+                <div>
+                    <div class="flex items-center gap-2">
+                        @if ($store->logo_path)
+                            <img src="{{ Illuminate\Support\Facades\Storage::disk('public')->url($store->logo_path) }}" alt="{{ $store->business_name }}" class="h-7 w-auto">
+                        @else
+                            <span class="text-base font-semibold text-zinc-900 dark:text-zinc-100">{{ $store->business_name ?? config('app.name') }}</span>
+                        @endif
+                    </div>
+                    @if ($store->tagline)
+                        <p class="mt-3">{{ $store->tagline }}</p>
                     @endif
-                    @if ($store->contact_phone)
-                        <span>{{ $store->contact_phone }}</span>
+                    @if ($store->socialLinks() !== [])
+                        <p class="mt-4 flex flex-wrap gap-3">
+                            @foreach ($store->socialLinks() as $platform => $url)
+                                <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ ucfirst($platform) }}" class="transition-colors hover:text-brand-primary">
+                                    <x-app-icon :name="$platform" class="size-5" />
+                                </a>
+                            @endforeach
+                        </p>
                     @endif
-                    @if ($store->contact_address)
-                        <span>{{ $store->contact_address }}</span>
-                    @endif
-                </p>
-                @if ($footerPages->isNotEmpty())
-                    <p class="mt-4 flex flex-wrap gap-x-4">
+                </div>
+
+                <div>
+                    <p class="font-medium text-zinc-900 dark:text-zinc-100">{{ __('Shop') }}</p>
+                    <ul class="mt-3 space-y-2">
+                        <li><a href="{{ route('products.index') }}" wire:navigate class="transition-colors hover:text-brand-primary">{{ __('All products') }}</a></li>
+                        <li><a href="{{ route('wishlist.show') }}" wire:navigate class="transition-colors hover:text-brand-primary">{{ __('Wishlist') }}</a></li>
+                        <li><a href="{{ route('account.show') }}" wire:navigate class="transition-colors hover:text-brand-primary">{{ __('My account') }}</a></li>
                         @foreach ($footerPages as $footerPage)
-                            <a href="{{ route('pages.show', $footerPage) }}" wire:navigate class="transition-colors hover:text-brand-primary">{{ $footerPage->title }}</a>
+                            <li><a href="{{ route('pages.show', $footerPage) }}" wire:navigate class="transition-colors hover:text-brand-primary">{{ $footerPage->title }}</a></li>
                         @endforeach
-                    </p>
-                @endif
-                @if ($store->socialLinks() !== [])
-                    <p class="mt-4 flex flex-wrap gap-x-4">
-                        @foreach ($store->socialLinks() as $platform => $url)
-                            <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ ucfirst($platform) }}" class="transition-colors hover:text-brand-primary">
-                                <x-app-icon :name="$platform" class="size-5" />
-                            </a>
-                        @endforeach
-                    </p>
-                @endif
+                    </ul>
+                </div>
+
+                <div>
+                    <p class="font-medium text-zinc-900 dark:text-zinc-100">{{ __('Contact') }}</p>
+                    <ul class="mt-3 space-y-2">
+                        @if ($store->contact_email)
+                            <li>{{ $store->contact_email }}</li>
+                        @endif
+                        @if ($store->contact_phone)
+                            <li>{{ $store->contact_phone }}</li>
+                        @endif
+                        @if ($store->contact_address)
+                            <li>{{ $store->contact_address }}</li>
+                        @endif
+                    </ul>
+                </div>
+            </div>
+
+            <div class="border-t border-zinc-200 px-4 py-4 text-center text-xs text-zinc-400 sm:px-6 dark:border-zinc-700 dark:text-zinc-500">
+                &copy; {{ now()->year }} {{ $store->business_name ?? config('app.name') }}. {{ __('All rights reserved.') }}
             </div>
         </footer>
 

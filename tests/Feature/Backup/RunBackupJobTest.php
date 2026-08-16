@@ -16,13 +16,18 @@ declare(strict_types=1);
 namespace Tests\Feature\Backup;
 
 use App\Enums\BackupStatus;
+use App\Enums\UserRole;
+use App\Exceptions\RemoteStorageNotConfiguredException;
 use App\Jobs\RunBackupJob;
 use App\Models\BackupRun;
 use App\Models\StoreSetting;
 use App\Models\User;
+use App\Notifications\BackupFailed;
 use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Notification;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class RunBackupJobTest extends TestCase
@@ -31,17 +36,38 @@ class RunBackupJobTest extends TestCase
 
     public function test_it_fails_immediately_when_no_remote_storage_is_configured(): void
     {
+        Notification::fake();
         config(['filesystems.disks.gdrive.serviceAccountJson' => null, 'filesystems.disks.gdrive.folder' => null]);
 
         (new RunBackupJob)->handle();
 
         $run = BackupRun::query()->sole();
         $this->assertSame(BackupStatus::Failed, $run->status);
-        $this->assertSame('RemoteStorageNotConfigured', $run->error_message);
+        $this->assertSame(RemoteStorageNotConfiguredException::class, $run->error_message);
+    }
+
+    /**
+     * Never worth retrying (a missing credential doesn't fix itself), so
+     * this alerts immediately rather than waiting for spatie's own
+     * tries/retry_delay to be exhausted — unlike a real connection
+     * failure partway through an actual backup:run attempt.
+     */
+    public function test_it_notifies_super_admins_immediately_when_no_remote_storage_is_configured(): void
+    {
+        Notification::fake();
+        config(['filesystems.disks.gdrive.serviceAccountJson' => null, 'filesystems.disks.gdrive.folder' => null]);
+        Role::findOrCreate(UserRole::SuperAdmin->value, 'web');
+        $superAdmin = User::factory()->create();
+        $superAdmin->assignRole(UserRole::SuperAdmin->value);
+
+        (new RunBackupJob)->handle();
+
+        Notification::assertSentTo($superAdmin, BackupFailed::class);
     }
 
     public function test_it_never_calls_artisan_when_no_remote_storage_is_configured(): void
     {
+        Notification::fake();
         config(['filesystems.disks.gdrive.serviceAccountJson' => null, 'filesystems.disks.gdrive.folder' => null]);
 
         Artisan::shouldReceive('call')->never();
@@ -71,6 +97,18 @@ class RunBackupJobTest extends TestCase
         (new RunBackupJob)->handle();
 
         $this->assertSame(45, config('backup.cleanup.default_strategy.keep_all_backups_for_days'));
+    }
+
+    /**
+     * A transient connection failure mid-upload must be retried by
+     * spatie/laravel-backup internally (config/backup.php) before it's
+     * ever treated as a real failure — see BackupEventListenersTest for
+     * the "retries exhausted, now notify" side of this.
+     */
+    public function test_spatie_backup_retries_before_giving_up(): void
+    {
+        $this->assertSame(3, config('backup.backup.tries'));
+        $this->assertSame(30, config('backup.backup.retry_delay'));
     }
 
     public function test_a_permanent_failure_marks_the_running_row_as_failed(): void

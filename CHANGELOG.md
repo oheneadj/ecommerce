@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — retry transient backup failures before alerting, notify immediately when unrecoverable
+- A backup run that fails mid-upload for a transient reason (e.g. a dropped connection to Google Drive) is now retried automatically by `spatie/laravel-backup` — up to 3 attempts, 30 seconds apart (`config/backup.php`) — before `App\Listeners\RecordFailedBackup` ever marks the run `Failed` or emails a Super Admin. A single blip no longer pages anyone.
+- A backup attempted with no remote storage credentials configured at all is never worth retrying (nothing about retrying fixes a missing credential) — that case now alerts every Super Admin immediately, closing a gap where it previously failed the run silently with no notification at all. Reuses `RecordFailedBackup` (via `Spatie\Backup\Events\BackupHasFailed`) rather than duplicating the alert logic, and gets its own named `App\Exceptions\RemoteStorageNotConfiguredException`.
+- 2 new tests.
+
 ### Added — database + file backups to Google Drive
 - Full database + uploaded-files (`storage/app/public`, `storage/app/private`) backups via `spatie/laravel-backup` targeting a new `gdrive` Flysystem disk (`masbug/flysystem-google-drive-ext`, authenticated with a Google Cloud service account — no OAuth consent screen for unattended scheduled runs). Both automatic and manual triggers dispatch the same queued `App\Jobs\RunBackupJob`.
 - **Automatic** — off by default. Store Settings → Backups gained an enable toggle, a Daily/Weekly frequency select, and a retention-days field (30-day floor); `App\Actions\Backup\RunScheduledBackup` (scheduled daily in `routes/console.php`) decides whether one is actually due, self-guarding per the chosen frequency the same way `SendCriticalHealthAlert` already guards its own snooze.

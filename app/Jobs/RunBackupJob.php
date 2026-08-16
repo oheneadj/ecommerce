@@ -10,12 +10,15 @@ namespace App\Jobs;
 
 use App\Enums\BackupStatus;
 use App\Enums\RemoteStorageProvider;
+use App\Exceptions\RemoteStorageNotConfiguredException;
 use App\Models\BackupRun;
 use App\Models\StoreSetting;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
+use Spatie\Backup\Events\BackupHasFailed;
 use Throwable;
 
 /**
@@ -54,10 +57,22 @@ class RunBackupJob implements ShouldQueue
             BackupRun::query()->create([
                 'status' => BackupStatus::Failed,
                 'triggered_by' => $this->triggeredBy,
-                'error_message' => 'RemoteStorageNotConfigured',
+                'error_message' => RemoteStorageNotConfiguredException::class,
                 'started_at' => now(),
                 'completed_at' => now(),
             ]);
+
+            // Never worth retrying — a missing credential doesn't fix
+            // itself — so this alerts immediately rather than going
+            // through spatie's own retry-then-fail path (see
+            // config/backup.php's 'tries'/'retry_delay', which only apply
+            // to a real backup:run attempt actually getting underway).
+            // Reuses App\Listeners\RecordFailedBackup for the actual
+            // alert rather than duplicating that logic here — it no-ops
+            // on the BackupRun update (nothing is Running yet, since the
+            // Failed row above was written directly) but still sends the
+            // notification.
+            Event::dispatch(new BackupHasFailed(new RemoteStorageNotConfiguredException));
 
             return;
         }

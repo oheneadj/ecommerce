@@ -214,15 +214,19 @@ return [
         'verify_backup' => false,
 
         /*
-         * The number of attempts, in case the backup command encounters an exception
+         * A transient failure (e.g. a dropped connection to Google Drive
+         * mid-upload) gets retried internally by spatie/laravel-backup
+         * BEFORE it ever fires the BackupHasFailed event — App\Listeners\
+         * RecordFailedBackup (and the Super Admin email it sends) only
+         * ever sees a failure once every one of these attempts is
+         * exhausted, not on the first blip.
          */
-        'tries' => 1,
+        'tries' => 3,
 
         /*
-         * The number of seconds to wait before attempting a new backup if the previous try failed
-         * Set to `0` for none
+         * Seconds to wait between attempts above.
          */
-        'retry_delay' => 0,
+        'retry_delay' => 30,
     ],
 
     /*

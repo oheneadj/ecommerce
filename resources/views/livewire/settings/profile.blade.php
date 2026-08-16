@@ -37,6 +37,37 @@
                 </form>
             </x-card>
 
+            <x-card>
+                <h2 class="flex items-center gap-2 text-lg font-medium">
+                    <x-app-icon name="phone" class="size-5 text-zinc-400" />
+                    {{ __('Phone number') }}
+                </h2>
+
+                @if ($this->verifiedPhone)
+                    <p class="mt-1 text-sm text-zinc-500">{{ __('Verified') }}: {{ $this->verifiedPhone }}</p>
+                @else
+                    <p class="mt-1 text-sm text-zinc-500">{{ __('Add and verify a phone number to also sign in with it, or receive SMS updates.') }}</p>
+
+                    @if (! $phoneCodeSent)
+                        <form wire:submit="sendPhoneVerificationCode" class="mt-6 flex items-end gap-4">
+                            <x-input wire:model="newPhone" :label="__('Phone number')" type="tel" class="flex-1" />
+                            <x-button variant="primary" type="submit">{{ __('Send code') }}</x-button>
+                        </form>
+                    @else
+                        <form wire:submit="verifyPhoneCode" class="mt-6 space-y-4">
+                            <p class="text-sm text-zinc-500">{{ __('Enter the code sent to :phone.', ['phone' => $newPhone]) }}</p>
+                            <x-input wire:model="phoneOtpCode" :label="__('Verification code')" type="text" inputmode="numeric" autofocus />
+                            <div class="flex items-center gap-4">
+                                <x-button variant="primary" type="submit">{{ __('Verify') }}</x-button>
+                                <button type="button" wire:click="cancelPhoneVerification" class="text-sm text-zinc-500 hover:underline">
+                                    {{ __('Use a different number') }}
+                                </button>
+                            </div>
+                        </form>
+                    @endif
+                @endif
+            </x-card>
+
             @if ($this->showDeleteUser)
                 <livewire:settings.delete-user-form />
             @endif

@@ -3,14 +3,29 @@
 namespace Tests\Feature\Settings;
 
 use App\Livewire\Settings\Profile;
+use App\Models\OtpCode;
 use App\Models\User;
+use App\Sms\Contracts\SmsGateway;
+use App\Sms\SmsSendResult;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 class ProfileUpdateTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function fakeSmsGateway(): void
+    {
+        $this->app->bind(SmsGateway::class, fn () => new class implements SmsGateway
+        {
+            public function send(string $to, string $message): SmsSendResult
+            {
+                return new SmsSendResult(success: true, providerReference: 'fake-ref');
+            }
+        });
+    }
 
     public function test_profile_page_is_displayed(): void
     {
@@ -123,5 +138,99 @@ class ProfileUpdateTest extends TestCase
         $response->assertHasErrors(['password']);
 
         $this->assertNotNull($user->fresh());
+    }
+
+    public function test_an_email_password_customer_can_request_a_code_to_add_a_phone_number(): void
+    {
+        $this->fakeSmsGateway();
+        $user = User::factory()->create(['phone' => null]);
+        $this->actingAs($user);
+
+        Livewire::test(Profile::class)
+            ->set('newPhone', '+233201234567')
+            ->call('sendPhoneVerificationCode')
+            ->assertHasNoErrors()
+            ->assertSet('phoneCodeSent', true);
+
+        $this->assertNotNull(OtpCode::query()->where('identifier', '+233201234567')->where('purpose', 'link_phone')->first());
+    }
+
+    public function test_requesting_a_code_for_a_phone_already_used_by_another_account_is_rejected(): void
+    {
+        $this->fakeSmsGateway();
+        User::factory()->create(['phone' => '+233201234567']);
+        $user = User::factory()->create(['phone' => null]);
+        $this->actingAs($user);
+
+        Livewire::test(Profile::class)
+            ->set('newPhone', '+233201234567')
+            ->call('sendPhoneVerificationCode')
+            ->assertHasErrors(['newPhone']);
+    }
+
+    public function test_verifying_the_correct_code_attaches_the_phone_number_to_the_account(): void
+    {
+        $user = User::factory()->create(['phone' => null]);
+        $this->actingAs($user);
+        OtpCode::query()->create([
+            'identifier' => '+233201234567',
+            'code_hash' => Hash::make('123456'),
+            'purpose' => 'link_phone',
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        Livewire::test(Profile::class)
+            ->set('newPhone', '+233201234567')
+            ->set('phoneOtpCode', '123456')
+            ->call('verifyPhoneCode')
+            ->assertHasNoErrors()
+            ->assertSet('phoneCodeSent', false);
+
+        $user->refresh();
+        $this->assertSame('+233201234567', $user->phone);
+        $this->assertNotNull($user->phone_verified_at);
+    }
+
+    public function test_verifying_the_wrong_code_does_not_attach_the_phone_number(): void
+    {
+        $user = User::factory()->create(['phone' => null]);
+        $this->actingAs($user);
+        OtpCode::query()->create([
+            'identifier' => '+233201234567',
+            'code_hash' => Hash::make('123456'),
+            'purpose' => 'link_phone',
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        Livewire::test(Profile::class)
+            ->set('newPhone', '+233201234567')
+            ->set('phoneOtpCode', '000000')
+            ->call('verifyPhoneCode')
+            ->assertHasErrors(['phoneOtpCode']);
+
+        $this->assertNull($user->refresh()->phone);
+    }
+
+    public function test_a_login_otp_code_cannot_be_used_to_link_a_phone_number(): void
+    {
+        // The purpose scoping on OtpCode must isolate these two flows —
+        // a code sent for a totally different phone login must never
+        // double as proof of ownership for this linking flow.
+        $user = User::factory()->create(['phone' => null]);
+        $this->actingAs($user);
+        OtpCode::query()->create([
+            'identifier' => '+233201234567',
+            'code_hash' => Hash::make('123456'),
+            'purpose' => 'login',
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        Livewire::test(Profile::class)
+            ->set('newPhone', '+233201234567')
+            ->set('phoneOtpCode', '123456')
+            ->call('verifyPhoneCode')
+            ->assertHasErrors(['phoneOtpCode']);
+
+        $this->assertNull($user->refresh()->phone);
     }
 }

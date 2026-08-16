@@ -10,12 +10,9 @@ namespace App\Actions\Auth;
 
 use App\Exceptions\InvalidOtpException;
 use App\Exceptions\TooManyOtpVerificationAttemptsException;
-use App\Models\OtpCode;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\RateLimiter;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
@@ -38,34 +35,15 @@ class VerifyOtp
      */
     public function handle(string $phone, string $code): User
     {
-        $this->assertNotRateLimited($phone);
+        // Deliberately outside the transaction below: a failed attempt
+        // (wrong code) must still persist its incremented attempts count
+        // even though nothing else happens — wrapping it in the same
+        // transaction as user creation would roll that increment back
+        // the moment ConsumeOtpCode throws, silently defeating the
+        // per-code attempt lockout.
+        ConsumeOtpCode::run($phone, $code, 'login');
 
-        RateLimiter::hit("otp-verify:{$phone}", 600);
-
-        $otp = OtpCode::query()
-            ->where('identifier', $phone)
-            ->where('purpose', 'login')
-            ->latest('id')
-            ->first();
-
-        if (! $otp || ! $otp->isUsable()) {
-            throw new InvalidOtpException;
-        }
-
-        if (! Hash::check($code, $otp->code_hash)) {
-            $otp->increment('attempts');
-
-            throw new InvalidOtpException;
-        }
-
-        // Two rows (the OTP code and the User) that must move together —
-        // consuming the code without the user ending up created/verified
-        // (or vice versa) would leave either a burnt code with no
-        // account, or a "verified" account whose code was never marked
-        // consumed and could in principle be reused.
-        $user = DB::transaction(function () use ($otp, $phone): User {
-            $otp->forceFill(['consumed_at' => now()])->save();
-
+        $user = DB::transaction(function () use ($phone): User {
             $user = User::query()->firstOrCreate(['phone' => $phone]);
 
             if ($user->phone_verified_at === null) {
@@ -78,15 +56,5 @@ class VerifyOtp
         Auth::login($user, remember: true);
 
         return $user;
-    }
-
-    /**
-     * @throws TooManyOtpVerificationAttemptsException
-     */
-    private function assertNotRateLimited(string $phone): void
-    {
-        if (RateLimiter::tooManyAttempts("otp-verify:{$phone}", 10)) {
-            throw new TooManyOtpVerificationAttemptsException(RateLimiter::availableIn("otp-verify:{$phone}"));
-        }
     }
 }

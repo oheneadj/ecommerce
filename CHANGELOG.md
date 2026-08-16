@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — let email+password customers add and verify a phone number
+- Profile settings gained a "Phone number" card: an email+password customer with no phone on file can now add one, receive a 6-digit OTP (reusing the existing SMS OTP infrastructure), and verify it — after which it's attached to their account (`phone` + `phone_verified_at`), enabling phone+OTP login and SMS notifications for an account that started as email-only.
+- The phone number is rejected up front if it already belongs to a different account (checked before sending the SMS, and again via the column's unique constraint as a race-condition backstop) — never silently reassigned or merged, per this project's no-unverified-account-linking rule; linking here is safe specifically because the phone is independently OTP-verified.
+- OTP codes are now scoped by `purpose` (`login` vs `link_phone`), so a code issued for one flow can never verify the other. Extracted the shared hash-check/attempts/expiry/rate-limit logic into `App\Actions\Auth\ConsumeOtpCode`, used by both `VerifyOtp` (login) and the new `App\Actions\Auth\LinkPhoneToAccount`.
+- New `App\Exceptions\PhoneAlreadyLinkedException`; added a `phone` icon to `<x-app-icon>`.
+- 5 new tests, plus all existing OTP/profile tests re-verified green.
+
 ### Added — click-to-read customer notifications with unread indicators
 - Customer notifications (`/account/notifications` and the header bell dropdown) are now click-to-read instead of auto-marked-as-read on view. Clicking an order-related notification (`OrderPlaced`, `OrderShipped`, `PaymentSucceeded`, `PaymentFailed` — identified by the `order_id` carried in its stored data) marks it read and navigates to that order's detail page; clicking anything else (e.g. a staff broadcast) marks it read and expands the row in place to reveal its full message.
 - Unread notifications now have a visible indicator (a dot + tinted row) on both the full history page and the bell preview — previously read and unread were visually indistinguishable, undermined further by the page/dropdown marking everything read just by opening it.

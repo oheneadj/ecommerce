@@ -37,7 +37,7 @@ class RequestOtp
     /**
      * @throws OtpRateLimitedException when the phone (or its source IP) has requested too many codes too recently
      */
-    public function handle(string $phone, ?string $ip = null): void
+    public function handle(string $phone, ?string $ip = null, string $purpose = 'login'): void
     {
         $this->assertNotRateLimited($phone, $ip);
 
@@ -46,11 +46,14 @@ class RequestOtp
         OtpCode::query()->create([
             'identifier' => $phone,
             'code_hash' => Hash::make($code),
-            'purpose' => 'login',
+            'purpose' => $purpose,
             'expires_at' => now()->addMinutes(10),
         ]);
 
-        $message = BrandedMessage::sms("Your login code is {$code}. It expires in 10 minutes.");
+        $text = $purpose === 'login'
+            ? "Your login code is {$code}. It expires in 10 minutes."
+            : "Your phone verification code is {$code}. It expires in 10 minutes.";
+        $message = BrandedMessage::sms($text);
         $result = $this->sms->send($phone, $message);
 
         SmsApiLog::query()->create([

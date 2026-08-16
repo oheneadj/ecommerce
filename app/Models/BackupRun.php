@@ -74,12 +74,18 @@ class BackupRun extends Model
      */
     public function sizeFormatted(): ?string
     {
-        if ($this->size_bytes === null) {
-            return null;
-        }
+        return $this->size_bytes === null ? null : self::formatBytes($this->size_bytes);
+    }
 
+    /**
+     * Shared by sizeFormatted() above and App\Notifications\BackupSucceeded
+     * (which has a size in bytes but no BackupRun instance handy at the
+     * point it's constructed).
+     */
+    public static function formatBytes(int $bytes): string
+    {
         $units = ['B', 'KB', 'MB', 'GB'];
-        $size = (float) $this->size_bytes;
+        $size = (float) $bytes;
         $unitIndex = 0;
 
         while ($size >= 1024 && $unitIndex < count($units) - 1) {

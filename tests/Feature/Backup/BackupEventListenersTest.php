@@ -17,6 +17,7 @@ use App\Enums\UserRole;
 use App\Models\BackupRun;
 use App\Models\User;
 use App\Notifications\BackupFailed;
+use App\Notifications\BackupSucceeded;
 use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -42,6 +43,7 @@ class BackupEventListenersTest extends TestCase
 
     public function test_a_successful_backup_transitions_the_running_run_to_success(): void
     {
+        Notification::fake();
         Storage::fake('gdrive');
         Storage::disk('gdrive')->put('TestApp/2026-01-01-00-00-00.zip', str_repeat('x', 1024));
         $run = BackupRun::factory()->running()->create();
@@ -54,6 +56,21 @@ class BackupEventListenersTest extends TestCase
         $this->assertNotNull($run->remote_path);
         $this->assertSame(1024, $run->size_bytes);
         $this->assertNotNull($run->completed_at);
+    }
+
+    public function test_a_successful_backup_notifies_every_super_admin(): void
+    {
+        Notification::fake();
+        Storage::fake('gdrive');
+        Storage::disk('gdrive')->put('TestApp/2026-01-01-00-00-00.zip', str_repeat('x', 1024));
+        $superAdmin = $this->superAdmin();
+        $nonAdmin = User::factory()->create();
+        BackupRun::factory()->running()->create();
+
+        Event::dispatch(new BackupWasSuccessful(diskName: 'gdrive', backupName: 'TestApp'));
+
+        Notification::assertSentTo($superAdmin, BackupSucceeded::class);
+        Notification::assertNotSentTo($nonAdmin, BackupSucceeded::class);
     }
 
     public function test_a_failed_backup_transitions_the_running_run_to_failed(): void
@@ -85,6 +102,7 @@ class BackupEventListenersTest extends TestCase
 
     public function test_a_successful_event_with_no_running_run_does_not_error(): void
     {
+        Notification::fake();
         Storage::fake('gdrive');
 
         Event::dispatch(new BackupWasSuccessful(diskName: 'gdrive', backupName: 'TestApp'));

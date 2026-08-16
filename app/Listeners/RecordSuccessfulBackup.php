@@ -9,7 +9,11 @@ declare(strict_types=1);
 namespace App\Listeners;
 
 use App\Enums\BackupStatus;
+use App\Enums\UserRole;
 use App\Models\BackupRun;
+use App\Notifications\BackupSucceeded;
+use App\Notifications\Support\SafeNotifier;
+use App\Notifications\Support\StaffRecipients;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Backup\BackupDestination\BackupDestination;
 use Spatie\Backup\Events\BackupWasSuccessful;
@@ -33,13 +37,20 @@ class RecordSuccessfulBackup
 
         $destination = new BackupDestination(Storage::disk($event->diskName), $event->backupName, $event->diskName);
         $backup = $destination->newestBackup();
+        $sizeBytes = $backup === null ? null : (int) $backup->sizeInBytes();
 
         $run->update([
             'status' => BackupStatus::Success,
             'disk' => $event->diskName,
             'remote_path' => $backup?->path(),
-            'size_bytes' => $backup === null ? null : (int) $backup->sizeInBytes(),
+            'size_bytes' => $sizeBytes,
             'completed_at' => now(),
         ]);
+
+        $notification = new BackupSucceeded($sizeBytes);
+
+        foreach (StaffRecipients::forRole(UserRole::SuperAdmin->value) as $superAdmin) {
+            SafeNotifier::send($superAdmin, $notification);
+        }
     }
 }

@@ -37,6 +37,12 @@ class ReconcileStockCacheCommand extends Command
 
     protected $description = 'Backfill missing stock_movements rows for variants where stock has drifted from the ledger (StockCacheMatchesMovements remediation).';
 
+    /**
+     * Finds every variant whose `stock` disagrees with its movement sum
+     * (same query the health check itself runs), shows what a backfill
+     * would write, and only actually writes it once `--force` is passed
+     * and the operator confirms — never on a bare run.
+     */
     public function handle(): int
     {
         $mismatches = DB::table('product_variants')

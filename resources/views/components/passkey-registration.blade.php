@@ -66,7 +66,7 @@
     }"
 >
     <template x-if="!supported">
-        <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Passkeys are not supported in this browser.') }}</p>
+        <p class="text-sm text-zinc-500">{{ __('Passkeys are not supported in this browser.') }}</p>
     </template>
 
     <template x-if="supported && !showForm">
@@ -82,7 +82,7 @@
     </template>
 
     <template x-if="supported && showForm">
-        <div class="space-y-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-4">
+        <div class="space-y-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4">
             <x-input
                 label="{{ __('Passkey name') }}"
                 x-model="name"
@@ -91,9 +91,9 @@
                 x-ref="passkeyNameInput"
                 x-init="$nextTick(() => $refs.passkeyNameInput?.focus())"
             />
-            <p class="!mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ __('Give this passkey a name to help you identify it later.') }}</p>
+            <p class="!mt-1 text-sm text-zinc-500">{{ __('Give this passkey a name to help you identify it later.') }}</p>
 
-            <p x-show="error" x-text="error" x-cloak class="text-sm text-red-600 dark:text-red-400"></p>
+            <p x-show="error" x-text="error" x-cloak class="text-sm text-red-600"></p>
 
             <div class="flex gap-2">
                 <x-button

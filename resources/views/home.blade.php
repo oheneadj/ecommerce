@@ -30,7 +30,7 @@
                 <h2 class="text-lg font-medium">{{ __('Shop by brand') }}</h2>
                 <div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
                     @foreach ($brands as $brand)
-                        <a href="{{ route('products.index', ['brand' => $brand->slug]) }}" wire:navigate wire:key="brand-{{ $brand->id }}" class="flex aspect-square items-center justify-center rounded-lg border border-zinc-200 bg-white p-4 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg dark:border-zinc-700 dark:bg-zinc-800 dark:hover:border-zinc-600">
+                        <a href="{{ route('products.index', ['brand' => $brand->slug]) }}" wire:navigate wire:key="brand-{{ $brand->id }}" class="flex aspect-square items-center justify-center rounded-lg border border-zinc-200 bg-white p-4 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg">
                             <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($brand->logo_path) }}" alt="{{ $brand->name }}" loading="lazy" class="max-h-10 w-full object-contain">
                         </a>
                     @endforeach
@@ -43,7 +43,7 @@
                 <h2 class="text-lg font-medium">{{ __('Shop by category') }}</h2>
                 <div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
                     @foreach ($categories as $category)
-                        <a href="{{ route('products.index', ['category' => $category->slug]) }}" wire:navigate wire:key="category-{{ $category->id }}" class="flex flex-col items-center gap-2 rounded-lg border border-zinc-200 p-4 text-center transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg dark:border-zinc-700 dark:hover:border-zinc-600">
+                        <a href="{{ route('products.index', ['category' => $category->slug]) }}" wire:navigate wire:key="category-{{ $category->id }}" class="flex flex-col items-center gap-2 rounded-lg border border-zinc-200 p-4 text-center transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-lg">
                             <x-app-icon name="squares-2x2" class="size-6 text-brand-primary" />
                             <span class="text-sm font-medium">{{ $category->name }}</span>
                         </a>
@@ -59,7 +59,7 @@
             </div>
 
             @if ($newProducts->isEmpty())
-                <p class="mt-4 text-sm text-zinc-500 dark:text-zinc-400">{{ __('No products available yet.') }}</p>
+                <p class="mt-4 text-sm text-zinc-500">{{ __('No products available yet.') }}</p>
             @else
                 <div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                     @foreach ($newProducts as $product)

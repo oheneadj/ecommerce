@@ -2,7 +2,7 @@
     <h1 class="text-2xl font-semibold">{{ __('Checkout') }}</h1>
 
     @error('cart')
-        <div class="rounded-lg bg-red-50 p-4 text-sm text-red-700 dark:bg-red-900/40 dark:text-red-300">{{ $message }}</div>
+        <div class="rounded-lg bg-red-50 p-4 text-sm text-red-700">{{ $message }}</div>
     @enderror
 
     <div class="grid gap-6 lg:grid-cols-3">
@@ -15,14 +15,14 @@
                     </div>
 
                     @if ($this->addresses->isEmpty())
-                        <p class="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+                        <p class="mt-4 text-sm text-zinc-500">
                             {{ __('You have no saved addresses.') }}
                             <a href="{{ route('account.addresses') }}" wire:navigate class="font-medium text-brand-primary hover:underline">{{ __('Add one') }}</a>
                         </p>
                     @else
                         <div class="mt-4 space-y-2">
                             @foreach ($this->addresses as $address)
-                                <label wire:key="checkout-address-{{ $address->id }}" class="flex cursor-pointer items-start gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <label wire:key="checkout-address-{{ $address->id }}" class="flex cursor-pointer items-start gap-3 rounded-lg border border-zinc-200 p-3">
                                     <input type="radio" wire:model="selectedAddressId" value="{{ $address->id }}" class="mt-1">
                                     <span class="text-sm">
                                         <span class="font-medium">{{ $address->label ?: $address->recipient_name }}</span><br>
@@ -34,7 +34,7 @@
                         </div>
                     @endif
                     @error('selectedAddressId')
-                        <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </x-card>
             @else
@@ -74,11 +74,11 @@
                 <h2 class="text-lg font-medium">{{ __('Shipping method') }}</h2>
 
                 @if ($this->shippingMethods->isEmpty())
-                    <p class="mt-4 text-sm text-zinc-500 dark:text-zinc-400">{{ __('No shipping methods are currently available.') }}</p>
+                    <p class="mt-4 text-sm text-zinc-500">{{ __('No shipping methods are currently available.') }}</p>
                 @else
                     <div class="mt-4 space-y-2">
                         @foreach ($this->shippingMethods as $method)
-                            <label wire:key="checkout-shipping-{{ $method->id }}" class="flex cursor-pointer items-center justify-between rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                            <label wire:key="checkout-shipping-{{ $method->id }}" class="flex cursor-pointer items-center justify-between rounded-lg border border-zinc-200 p-3">
                                 <span class="flex items-center gap-3 text-sm">
                                     <input type="radio" wire:model.live="selectedShippingMethodId" value="{{ $method->id }}">
                                     {{ $method->name }}
@@ -89,18 +89,18 @@
                     </div>
                 @endif
                 @error('selectedShippingMethodId')
-                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </x-card>
 
             <x-card>
                 <h2 class="text-lg font-medium">{{ __('Payment method') }}</h2>
                 @if ($this->enabledPaymentProviders->isEmpty())
-                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ __('No payment method is available right now. Please contact us to place your order.') }}</p>
+                    <p class="mt-2 text-sm text-red-600">{{ __('No payment method is available right now. Please contact us to place your order.') }}</p>
                 @else
                     <div class="mt-4 space-y-2">
                         @foreach ($this->enabledPaymentProviders as $setting)
-                            <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-700">
+                            <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 p-3 text-sm">
                                 <input type="radio" wire:model="paymentProvider" value="{{ $setting->provider->value }}">
                                 @if ($setting->logo_url)
                                     <img src="{{ $setting->logo_url }}" alt="{{ $setting->provider->label() }}" class="h-10 w-auto shrink-0">
@@ -111,7 +111,7 @@
                     </div>
                 @endif
                 @error('paymentProvider')
-                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </x-card>
         </div>
@@ -129,9 +129,9 @@
                     @endforeach
                 </div>
 
-                <div class="mt-4 space-y-2 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-700">
+                <div class="mt-4 space-y-2 border-t border-zinc-200 pt-4 text-sm">
                     @if ($this->appliedCoupon)
-                        <div class="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
+                        <div class="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
                             <span class="font-medium">{{ __('Coupon ":code" applied', ['code' => $this->appliedCoupon->code]) }}</span>
                             <button type="button" wire:click="removeCoupon" class="text-xs font-medium underline">
                                 {{ __('Remove') }}
@@ -150,10 +150,10 @@
                     @endif
                 </div>
 
-                <div class="mt-4 space-y-2 border-t border-zinc-200 pt-4 text-sm transition-opacity duration-150 dark:border-zinc-700" wire:loading.class="opacity-50" wire:target="selectedShippingMethodId,applyCoupon,removeCoupon">
+                <div class="mt-4 space-y-2 border-t border-zinc-200 pt-4 text-sm transition-opacity duration-150" wire:loading.class="opacity-50" wire:target="selectedShippingMethodId,applyCoupon,removeCoupon">
                     <div class="flex justify-between"><span>{{ __('Subtotal') }}</span><span><x-money :amount="$this->subtotal" /></span></div>
                     @if ($this->discountAmount > 0)
-                        <div class="flex justify-between text-emerald-600 dark:text-emerald-400">
+                        <div class="flex justify-between text-emerald-600">
                             <span>{{ __('Discount') }}</span>
                             <span>-<x-money :amount="$this->discountAmount" /></span>
                         </div>

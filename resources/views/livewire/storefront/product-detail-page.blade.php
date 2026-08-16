@@ -26,7 +26,7 @@
                 prev() { this.selected = (this.selected - 1 + this.images.length) % this.images.length; },
             }"
         >
-            <div class="flex aspect-square items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
+            <div class="flex aspect-square items-center justify-center rounded-lg bg-zinc-100">
                 @if ($galleryImages->isNotEmpty())
                     <img
                         :src="images[selected]"
@@ -47,7 +47,7 @@
                         <button
                             type="button"
                             @click="selected = {{ $index }}"
-                            class="flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-zinc-100 ring-2 ring-offset-2 ring-offset-white dark:bg-zinc-800 dark:ring-offset-zinc-900"
+                            class="flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-zinc-100 ring-2 ring-offset-2 ring-offset-white"
                             :class="selected === {{ $index }} ? 'ring-brand-primary' : 'ring-transparent'"
                         >
                             <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($image->path) }}" alt="{{ $product->name }}" loading="lazy" class="h-full w-full object-cover">
@@ -100,7 +100,7 @@
         <div class="space-y-4">
             <div>
                 @if ($product->category || $product->brand)
-                    <div class="flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400">
+                    <div class="flex items-center gap-1.5 text-sm text-zinc-500">
                         @if ($product->category)
                             <a href="{{ route('products.index', ['category' => $product->category->slug]) }}" wire:navigate class="hover:text-brand-primary hover:underline">{{ $product->category->name }}</a>
                         @endif
@@ -119,7 +119,7 @@
                 @endif
                 <h1 class="text-2xl font-semibold">{{ $product->name }}</h1>
                 @if ($this->reviews->isNotEmpty())
-                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                    <p class="mt-1 text-sm text-zinc-500">
                         {{ __('★ :rating (:count reviews)', ['rating' => $this->averageRating, 'count' => $this->reviews->count()]) }}
                     </p>
                 @endif
@@ -127,17 +127,17 @@
 
             @if ($variant)
                 <p class="text-2xl font-semibold">{{ $variant->price_formatted }}</p>
-                <p class="text-sm {{ $variant->stock > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
+                <p class="text-sm {{ $variant->stock > 0 ? 'text-green-600' : 'text-red-600' }}">
                     {{ $variant->stock > 0 ? __(':count in stock', ['count' => $variant->stock]) : __('Out of stock') }}
                 </p>
             @elseif ($this->hasAttributeSelector && $this->missingAttributes->isNotEmpty())
                 {{-- Selection isn't finished yet — this is not the same as
                      "unavailable," so it gets its own, less alarming message. --}}
-                <p class="text-sm text-zinc-500 dark:text-zinc-400">
+                <p class="text-sm text-zinc-500">
                     {{ __('Select a :attributes to see price and availability.', ['attributes' => $this->missingAttributes->pluck('name')->implode(' / ')]) }}
                 </p>
             @else
-                <p class="text-sm text-red-600 dark:text-red-400">{{ __('Currently unavailable') }}</p>
+                <p class="text-sm text-red-600">{{ __('Currently unavailable') }}</p>
             @endif
 
             @if ($this->hasAttributeSelector)
@@ -164,8 +164,8 @@
                                     @class([
                                         'rounded-lg border px-3 py-1.5 text-sm',
                                         'border-brand-primary text-brand-primary' => $isSelected,
-                                        'border-zinc-300 dark:border-zinc-600' => ! $isSelected && $isAvailable,
-                                        'border-zinc-200 text-zinc-400 line-through cursor-not-allowed dark:border-zinc-700 dark:text-zinc-600' => ! $isSelected && ! $isAvailable,
+                                        'border-zinc-300' => ! $isSelected && $isAvailable,
+                                        'border-zinc-200 text-zinc-400 line-through cursor-not-allowed' => ! $isSelected && ! $isAvailable,
                                     ])
                                 >
                                     {{ $term->value }}
@@ -186,7 +186,7 @@
                                 type="button"
                                 wire:key="variant-option-{{ $productVariant->id }}"
                                 wire:click="selectVariant({{ $productVariant->id }})"
-                                class="rounded-lg border px-3 py-1.5 text-sm {{ $variant?->id === $productVariant->id ? 'border-brand-primary text-brand-primary' : 'border-zinc-300 dark:border-zinc-600' }}"
+                                class="rounded-lg border px-3 py-1.5 text-sm {{ $variant?->id === $productVariant->id ? 'border-brand-primary text-brand-primary' : 'border-zinc-300' }}"
                             >
                                 {{ $productVariant->display_label }}
                             </button>
@@ -224,16 +224,16 @@
             </div>
 
             @if ($product->description)
-                <div class="border-t border-zinc-200 pt-4 text-sm text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">
+                <div class="border-t border-zinc-200 pt-4 text-sm text-zinc-700">
                     {{ $product->description }}
                 </div>
             @endif
 
             <div
-                class="flex items-center gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-700"
+                class="flex items-center gap-3 border-t border-zinc-200 pt-4"
                 x-data="copyToClipboard({{ \Illuminate\Support\Js::from($this->shareUrl) }}, {{ \Illuminate\Support\Js::from(__('Could not copy link.')) }})"
             >
-                <span class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Share') }}</span>
+                <span class="text-sm font-medium text-zinc-500">{{ __('Share') }}</span>
 
                 <a
                     href="https://wa.me/?text={{ urlencode($this->shareText.' '.$this->shareUrl) }}"
@@ -272,7 +272,7 @@
                     class="text-zinc-400 hover:text-brand-primary"
                 >
                     <x-app-icon x-show="!copied" name="document-duplicate" class="size-5" />
-                    <x-app-icon x-show="copied" x-cloak name="check" class="size-5 text-green-600 dark:text-green-400" />
+                    <x-app-icon x-show="copied" x-cloak name="check" class="size-5 text-green-600" />
                 </button>
             </div>
         </div>
@@ -281,19 +281,19 @@
     <div>
         <h2 class="text-lg font-medium">{{ __('Reviews') }}</h2>
         @if ($this->reviews->isEmpty())
-            <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{{ __('No reviews yet.') }}</p>
+            <p class="mt-2 text-sm text-zinc-500">{{ __('No reviews yet.') }}</p>
         @else
-            <div class="mt-4 space-y-4 divide-y divide-zinc-200 dark:divide-zinc-700">
+            <div class="mt-4 space-y-4 divide-y divide-zinc-200">
                 @foreach ($this->reviews as $review)
                     <div wire:key="review-{{ $review->id }}" class="pt-4 first:pt-0">
                         <div class="flex items-center justify-between">
                             <p class="text-sm font-medium">{{ $review->user->name ?? __('Anonymous') }}</p>
-                            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ str_repeat('★', $review->rating) }}{{ str_repeat('☆', 5 - $review->rating) }}</p>
+                            <p class="text-sm text-zinc-500">{{ str_repeat('★', $review->rating) }}{{ str_repeat('☆', 5 - $review->rating) }}</p>
                         </div>
                         @if ($review->title)
                             <p class="mt-1 text-sm font-medium">{{ $review->title }}</p>
                         @endif
-                        <p class="mt-1 text-sm text-zinc-700 dark:text-zinc-300">{{ $review->body }}</p>
+                        <p class="mt-1 text-sm text-zinc-700">{{ $review->body }}</p>
                     </div>
                 @endforeach
             </div>

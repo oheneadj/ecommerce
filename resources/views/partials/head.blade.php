@@ -24,13 +24,5 @@
 
 @fonts
 
-<script>
-    (function () {
-        const stored = localStorage.getItem('appearance') ?? 'system';
-        const isDark = stored === 'dark' || (stored === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        document.documentElement.classList.toggle('dark', isDark);
-    })();
-</script>
-
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 <link rel="stylesheet" href="{{ route('theme.css') }}">

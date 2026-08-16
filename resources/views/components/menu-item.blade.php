@@ -1,7 +1,7 @@
 @props(['href' => null, 'icon' => null])
 
 @php
-    $classes = 'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800';
+    $classes = 'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm text-zinc-700 hover:bg-zinc-100';
 @endphp
 
 @if($href)

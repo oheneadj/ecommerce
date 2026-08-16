@@ -28,7 +28,7 @@
 
 <div class="w-full" @if($viewable) x-data="{ show: false }" @endif>
     @if($label)
-        <label class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ $label }}</label>
+        <label class="mb-1.5 block text-sm font-medium text-zinc-700">{{ $label }}</label>
     @endif
 
     <div class="relative">
@@ -38,7 +38,7 @@
             @else
                 type="{{ $type }}"
             @endif
-            {{ $attributes->merge(['class' => 'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100']) }}
+            {{ $attributes->merge(['class' => 'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500']) }}
         />
 
         @if($viewable)
@@ -50,6 +50,6 @@
     </div>
 
     @error($fieldName)
-        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
     @enderror
 </div>

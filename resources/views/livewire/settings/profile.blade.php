@@ -10,7 +10,7 @@
                     <x-app-icon name="user" class="size-5 text-zinc-400" />
                     {{ __('Profile') }}
                 </h2>
-                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ __('Update your name and email address') }}</p>
+                <p class="mt-1 text-sm text-zinc-500">{{ __('Update your name and email address') }}</p>
 
                 <form wire:submit="updateProfileInformation" class="mt-6 w-full space-y-6">
                     <x-input wire:model="name" :label="__('Name')" type="text" required autofocus autocomplete="name" />
@@ -20,7 +20,7 @@
 
                         @if ($this->hasUnverifiedEmail)
                             <div>
-                                <p class="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+                                <p class="mt-4 text-sm text-zinc-500">
                                     {{ __('Your email address is unverified.') }}
 
                                     <a class="cursor-pointer text-sm hover:underline" wire:click.prevent="resendVerificationNotification">

@@ -71,7 +71,7 @@
                         </div>
 
                         @error('recovery_code')
-                            <p class="text-sm text-red-600 dark:text-red-400">
+                            <p class="text-sm text-red-600">
                                 {{ $message }}
                             </p>
                         @enderror

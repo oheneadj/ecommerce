@@ -11,7 +11,7 @@
         <button
             type="button"
             @click="filtersOpen = true"
-            class="flex items-center gap-1.5 rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium lg:hidden dark:border-zinc-600"
+            class="flex items-center gap-1.5 rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium lg:hidden"
         >
             <x-app-icon name="funnel" class="size-4" />
             {{ __('Filters') }}
@@ -43,14 +43,14 @@
             original static-sidebar layout.
         --}}
         <div
-            class="fixed inset-y-0 left-0 z-50 w-80 max-w-[85vw] space-y-6 overflow-y-auto bg-white p-4 shadow-xl transition-transform duration-150 lg:static lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0 lg:overflow-visible lg:bg-transparent lg:p-0 lg:shadow-none dark:bg-zinc-900 lg:dark:bg-transparent"
+            class="fixed inset-y-0 left-0 z-50 w-80 max-w-[85vw] space-y-6 overflow-y-auto bg-white p-4 shadow-xl transition-transform duration-150 lg:static lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0 lg:overflow-visible lg:bg-transparent lg:p-0 lg:shadow-none"
             :class="filtersOpen ? 'translate-x-0' : '-translate-x-full'"
             wire:loading.class="opacity-50"
             wire:target="search,category,brand,minPrice,maxPrice,toggleAttributeTerm,resetFilters"
         >
             <div class="flex items-center justify-between lg:hidden">
                 <h2 class="text-lg font-semibold">{{ __('Filters') }}</h2>
-                <button type="button" @click="filtersOpen = false" aria-label="{{ __('Close') }}" class="p-1 text-zinc-500 dark:text-zinc-400">
+                <button type="button" @click="filtersOpen = false" aria-label="{{ __('Close') }}" class="p-1 text-zinc-500">
                     <x-app-icon name="x-circle" class="size-6" />
                 </button>
             </div>
@@ -92,7 +92,7 @@
                                         class="size-5 shrink-0 rounded-full object-contain"
                                     >
                                 @else
-                                    <span class="flex size-5 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-800">
+                                    <span class="flex size-5 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-400">
                                         <x-app-icon name="folder" class="size-3" />
                                     </span>
                                 @endif
@@ -129,8 +129,8 @@
                                     @class([
                                         'rounded-lg border px-3 py-1.5 text-sm',
                                         'border-brand-primary text-brand-primary' => $isSelected,
-                                        'border-zinc-300 dark:border-zinc-600' => ! $isSelected && $isAvailable,
-                                        'border-zinc-200 text-zinc-400 line-through cursor-not-allowed dark:border-zinc-700 dark:text-zinc-600' => ! $isSelected && ! $isAvailable,
+                                        'border-zinc-300' => ! $isSelected && $isAvailable,
+                                        'border-zinc-200 text-zinc-400 line-through cursor-not-allowed' => ! $isSelected && ! $isAvailable,
                                     ])
                                 >
                                     {{ $term->value }}
@@ -213,7 +213,7 @@
                 @touchend.window="stopDrag()"
             >
                 <h2 class="text-sm font-medium">{{ __('Price (GH₵)') }}</h2>
-                <div class="mt-3 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
+                <div class="mt-3 flex items-center justify-between text-xs text-zinc-500">
                     <span x-text="'GH₵' + min"></span>
                     <span x-text="'GH₵' + max"></span>
                 </div>
@@ -221,7 +221,7 @@
                     x-ref="track"
                     @mousedown="startDrag($event)"
                     @touchstart="startDrag($event)"
-                    class="relative mt-4 h-1 cursor-pointer rounded-full bg-zinc-200 dark:bg-zinc-700"
+                    class="relative mt-4 h-1 cursor-pointer rounded-full bg-zinc-200"
                 >
                     <div
                         class="absolute h-1 rounded-full bg-brand-primary"
@@ -272,9 +272,9 @@
             <div wire:loading wire:target="search,category,brand,minPrice,maxPrice,toggleAttributeTerm,resetFilters" class="grid grid-cols-2 gap-4 sm:grid-cols-3" aria-hidden="true" aria-busy="true">
                 @for ($i = 0; $i < 9; $i++)
                     <div class="animate-pulse space-y-2">
-                        <div class="aspect-square rounded-lg bg-zinc-200 dark:bg-zinc-700"></div>
-                        <div class="h-3 w-3/4 rounded bg-zinc-200 dark:bg-zinc-700"></div>
-                        <div class="h-3 w-1/3 rounded bg-zinc-200 dark:bg-zinc-700"></div>
+                        <div class="aspect-square rounded-lg bg-zinc-200"></div>
+                        <div class="h-3 w-3/4 rounded bg-zinc-200"></div>
+                        <div class="h-3 w-1/3 rounded bg-zinc-200"></div>
                     </div>
                 @endfor
             </div>
@@ -282,7 +282,7 @@
             <div wire:loading.remove wire:target="search,category,brand,minPrice,maxPrice,toggleAttributeTerm,resetFilters">
                 @if ($this->products->isEmpty())
                     <x-card>
-                        <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No products match your filters.') }}</p>
+                        <p class="text-sm text-zinc-500">{{ __('No products match your filters.') }}</p>
                     </x-card>
                 @else
                     <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">

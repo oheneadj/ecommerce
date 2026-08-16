@@ -9,19 +9,19 @@
             aria-label="{{ __('Search products') }}"
             autocomplete="off"
             maxlength="100"
-            class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+            class="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
         >
     </form>
 
     @if ($open)
-        <div class="absolute left-0 right-0 z-20 mt-2 max-h-96 overflow-y-auto rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800">
+        <div class="absolute left-0 right-0 z-20 mt-2 max-h-96 overflow-y-auto rounded-lg border border-zinc-200 bg-white shadow-lg">
             <div wire:loading wire:target="query" class="space-y-3 p-3">
                 @for ($i = 0; $i < 3; $i++)
                     <div class="flex animate-pulse items-center gap-3">
-                        <div class="h-10 w-10 shrink-0 rounded-lg bg-zinc-200 dark:bg-zinc-700"></div>
+                        <div class="h-10 w-10 shrink-0 rounded-lg bg-zinc-200"></div>
                         <div class="flex-1 space-y-1.5">
-                            <div class="h-3 w-3/4 rounded bg-zinc-200 dark:bg-zinc-700"></div>
-                            <div class="h-3 w-1/4 rounded bg-zinc-200 dark:bg-zinc-700"></div>
+                            <div class="h-3 w-3/4 rounded bg-zinc-200"></div>
+                            <div class="h-3 w-1/4 rounded bg-zinc-200"></div>
                         </div>
                     </div>
                 @endfor
@@ -35,19 +35,19 @@
                         href="{{ route('products.show', $product) }}"
                         wire:navigate
                         wire:click="close"
-                        class="flex items-center gap-3 p-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-700/50"
+                        class="flex items-center gap-3 p-3 transition-colors hover:bg-zinc-50"
                     >
                         <x-product-thumbnail :variant="$variant" :product="$product" class="h-10 w-10 shrink-0" />
                         <div class="min-w-0 flex-1">
                             <p class="truncate text-sm font-medium">{{ $product->name }}</p>
                             @if ($variant)
-                                <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ $variant->price_formatted }}</p>
+                                <p class="text-xs text-zinc-500">{{ $variant->price_formatted }}</p>
                             @endif
                         </div>
                     </a>
                 @empty
                     @if (mb_strlen(trim($query)) >= 2)
-                        <p class="p-3 text-sm text-zinc-500 dark:text-zinc-400">{{ __('No products found.') }}</p>
+                        <p class="p-3 text-sm text-zinc-500">{{ __('No products found.') }}</p>
                     @endif
                 @endforelse
 
@@ -56,7 +56,7 @@
                         href="{{ route('products.index', ['search' => $query]) }}"
                         wire:navigate
                         wire:click="close"
-                        class="block border-t border-zinc-200 p-3 text-center text-sm font-medium text-brand-primary hover:underline dark:border-zinc-700"
+                        class="block border-t border-zinc-200 p-3 text-center text-sm font-medium text-brand-primary hover:underline"
                     >
                         {{ __('View all results for ":query"', ['query' => $query]) }}
                     </a>

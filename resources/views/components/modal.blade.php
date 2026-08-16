@@ -17,7 +17,7 @@
     <div
         x-show="open"
         x-transition
-        {{ $attributes->merge(['class' => 'relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-zinc-900']) }}
+        {{ $attributes->merge(['class' => 'relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl']) }}
     >
         {{ $slot }}
     </div>

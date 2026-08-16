@@ -35,7 +35,7 @@
                 />
 
                 @if (Route::has('password.request'))
-                    <a class="absolute top-0 text-sm end-0 text-zinc-600 hover:underline dark:text-zinc-400" href="{{ route('password.request') }}" wire:navigate>
+                    <a class="absolute top-0 text-sm end-0 text-zinc-600 hover:underline" href="{{ route('password.request') }}" wire:navigate>
                         {{ __('Forgot your password?') }}
                     </a>
                 @endif
@@ -51,12 +51,12 @@
             </div>
         </form>
 
-        <div class="space-x-1 text-sm text-center rtl:space-x-reverse text-zinc-600 dark:text-zinc-400">
+        <div class="space-x-1 text-sm text-center rtl:space-x-reverse text-zinc-600">
             <span>{{ __('Don\'t have an account?') }}</span>
             <a class="hover:underline" href="{{ route('register') }}" wire:navigate>{{ __('Sign up') }}</a>
         </div>
 
-        <div class="space-x-1 text-sm text-center rtl:space-x-reverse text-zinc-600 dark:text-zinc-400">
+        <div class="space-x-1 text-sm text-center rtl:space-x-reverse text-zinc-600">
             <a class="hover:underline" href="{{ route('login.phone') }}" wire:navigate>{{ __('Log in with phone number instead') }}</a>
         </div>
     </div>

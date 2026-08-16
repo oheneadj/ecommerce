@@ -21,7 +21,7 @@
             x-transition:leave-start="opacity-100 translate-y-0 scale-100"
             x-transition:leave-end="opacity-0 translate-y-2 scale-95"
             class="rounded-lg px-4 py-3 text-sm shadow-lg"
-            x-bind:class="toast.variant === 'success' ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'bg-zinc-800 text-white'"
+            x-bind:class="toast.variant === 'success' ? 'bg-zinc-900 text-white' : 'bg-zinc-800 text-white'"
             x-text="toast.text"
         ></div>
     </template>

@@ -14,10 +14,10 @@
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-white text-zinc-900 antialiased dark:bg-zinc-900 dark:text-zinc-100">
+    <body class="min-h-screen bg-white text-zinc-900 antialiased">
         @include('partials.admin-bar')
 
-        <header class="border-b border-zinc-200 dark:border-zinc-700">
+        <header class="border-b border-zinc-200">
             <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
                 <a href="{{ route('home') }}" wire:navigate class="flex shrink-0 items-center gap-2">
                     @if ($store->logo_path)
@@ -42,11 +42,11 @@
                     controls, not primary destinations.
                 --}}
                 <nav class="flex shrink-0 items-center gap-5 text-sm font-medium">
-                    <a href="{{ route('products.index') }}" wire:navigate class="hidden items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary sm:flex dark:text-zinc-300">
+                    <a href="{{ route('products.index') }}" wire:navigate class="hidden items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary sm:flex">
                         <x-app-icon name="squares-2x2" class="size-5" />
                         <span>{{ __('Shop') }}</span>
                     </a>
-                    <a href="{{ route('wishlist.show') }}" wire:navigate class="hidden items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary sm:flex dark:text-zinc-300">
+                    <a href="{{ route('wishlist.show') }}" wire:navigate class="hidden items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary sm:flex">
                         <x-app-icon name="heart" class="size-5" />
                         <span>{{ __('Wishlist') }}</span>
                     </a>
@@ -59,7 +59,7 @@
                         <div class="hidden sm:block">
                             <x-dropdown align="end">
                                 <x-slot:trigger>
-                                    <button type="button" class="flex items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary dark:text-zinc-300">
+                                    <button type="button" class="flex items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary">
                                         <x-app-icon name="user" class="size-5" />
                                         <span>{{ __('Account') }}</span>
                                     </button>
@@ -78,7 +78,7 @@
                             </x-dropdown>
                         </div>
                     @else
-                        <a href="{{ route('account.show') }}" wire:navigate class="hidden items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary sm:flex dark:text-zinc-300">
+                        <a href="{{ route('account.show') }}" wire:navigate class="hidden items-center gap-1.5 text-zinc-700 transition-colors hover:text-brand-primary sm:flex">
                             <x-app-icon name="user" class="size-5" />
                             <span>{{ __('Account') }}</span>
                         </a>
@@ -87,7 +87,7 @@
             </div>
 
             {{-- Full-width, properly-sized search row — mobile only. --}}
-            <div class="border-t border-zinc-200 px-4 py-3 sm:hidden dark:border-zinc-700">
+            <div class="border-t border-zinc-200 px-4 py-3 sm:hidden">
                 <livewire:storefront.search-autosuggest />
             </div>
         </header>
@@ -103,14 +103,14 @@
 
         @include('partials.mobile-bottom-nav')
 
-        <footer class="border-t border-zinc-200 dark:border-zinc-700">
-            <div class="mx-auto grid max-w-6xl gap-8 px-4 py-10 text-sm text-zinc-500 sm:grid-cols-3 sm:px-6 dark:text-zinc-400">
+        <footer class="border-t border-zinc-200">
+            <div class="mx-auto grid max-w-6xl gap-8 px-4 py-10 text-sm text-zinc-500 sm:grid-cols-3 sm:px-6">
                 <div>
                     <div class="flex items-center gap-2">
                         @if ($store->logo_path)
                             <img src="{{ Illuminate\Support\Facades\Storage::disk('public')->url($store->logo_path) }}" alt="{{ $store->business_name }}" class="h-7 w-auto">
                         @else
-                            <span class="text-base font-semibold text-zinc-900 dark:text-zinc-100">{{ $store->business_name ?? config('app.name') }}</span>
+                            <span class="text-base font-semibold text-zinc-900">{{ $store->business_name ?? config('app.name') }}</span>
                         @endif
                     </div>
                     @if ($store->tagline)
@@ -128,7 +128,7 @@
                 </div>
 
                 <div>
-                    <p class="font-medium text-zinc-900 dark:text-zinc-100">{{ __('Shop') }}</p>
+                    <p class="font-medium text-zinc-900">{{ __('Shop') }}</p>
                     <ul class="mt-3 space-y-2">
                         <li><a href="{{ route('products.index') }}" wire:navigate class="transition-colors hover:text-brand-primary">{{ __('All products') }}</a></li>
                         <li><a href="{{ route('wishlist.show') }}" wire:navigate class="transition-colors hover:text-brand-primary">{{ __('Wishlist') }}</a></li>
@@ -140,7 +140,7 @@
                 </div>
 
                 <div>
-                    <p class="font-medium text-zinc-900 dark:text-zinc-100">{{ __('Contact') }}</p>
+                    <p class="font-medium text-zinc-900">{{ __('Contact') }}</p>
                     <ul class="mt-3 space-y-2">
                         @if ($store->contact_email)
                             <li>{{ $store->contact_email }}</li>
@@ -155,7 +155,7 @@
                 </div>
             </div>
 
-            <div class="border-t border-zinc-200 px-4 py-4 text-center text-xs text-zinc-400 sm:px-6 dark:border-zinc-700 dark:text-zinc-500">
+            <div class="border-t border-zinc-200 px-4 py-4 text-center text-xs text-zinc-400 sm:px-6">
                 &copy; {{ now()->year }} {{ $store->business_name ?? config('app.name') }}. {{ __('All rights reserved.') }}
             </div>
         </footer>

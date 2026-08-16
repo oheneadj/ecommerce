@@ -3,7 +3,7 @@
         <h1 class="text-2xl font-semibold">{{ $page->title }}</h1>
 
         <x-card>
-            <div class="space-y-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+            <div class="space-y-4 text-sm leading-relaxed text-zinc-700">
                 {!! $page->content !!}
             </div>
         </x-card>

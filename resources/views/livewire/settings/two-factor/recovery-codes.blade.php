@@ -1,14 +1,14 @@
 <div
-    class="py-6 space-y-6 border shadow-sm rounded-xl border-zinc-200 dark:border-white/10"
+    class="py-6 space-y-6 border shadow-sm rounded-xl border-zinc-200"
     wire:cloak
     x-data="{ showRecoveryCodes: false }"
 >
     <div class="px-6 space-y-2">
         <div class="flex items-center gap-2">
             <x-app-icon name="lock-closed" class="size-4"/>
-            <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{{ __('2FA recovery codes') }}</h3>
+            <h3 class="text-lg font-semibold text-zinc-900">{{ __('2FA recovery codes') }}</h3>
         </div>
-        <p class="text-sm text-zinc-500 dark:text-zinc-400">
+        <p class="text-sm text-zinc-500">
             {{ __('Recovery codes let you regain access if you lose your 2FA device. Store them in a secure password manager.') }}
         </p>
     </div>
@@ -63,7 +63,7 @@
 
                 @if (filled($recoveryCodes))
                     <div
-                        class="grid gap-1 p-4 font-mono text-sm rounded-lg bg-zinc-100 dark:bg-white/5"
+                        class="grid gap-1 p-4 font-mono text-sm rounded-lg bg-zinc-100"
                         role="list"
                         aria-label="{{ __('Recovery codes') }}"
                     >
@@ -78,7 +78,7 @@
                             </div>
                         @endforeach
                     </div>
-                    <p class="text-xs text-zinc-500 dark:text-zinc-400">
+                    <p class="text-xs text-zinc-500">
                         {{ __('Each recovery code can be used once to access your account and will be removed after use. If you need more, click Regenerate codes above.') }}
                     </p>
                 @endif

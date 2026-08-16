@@ -1,11 +1,11 @@
 <x-layouts::auth :title="__('Email verification')">
     <div class="mt-4 flex flex-col gap-6">
-        <p class="text-center text-sm text-zinc-500 dark:text-zinc-400">
+        <p class="text-center text-sm text-zinc-500">
             {{ __('Please verify your email address by clicking on the link we just emailed to you.') }}
         </p>
 
         @if (session('status') == 'verification-link-sent')
-            <p class="text-center text-sm font-medium text-green-600 dark:text-green-400">
+            <p class="text-center text-sm font-medium text-green-600">
                 {{ __('A new verification link has been sent to the email address you provided during registration.') }}
             </p>
         @endif

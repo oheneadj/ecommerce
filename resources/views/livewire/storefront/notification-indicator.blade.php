@@ -2,7 +2,7 @@
     <button
         type="button"
         wire:click="toggle"
-        class="relative flex items-center text-zinc-700 hover:text-brand-primary dark:text-zinc-300"
+        class="relative flex items-center text-zinc-700 hover:text-brand-primary"
         aria-label="{{ __('Notifications') }}"
     >
         <x-app-icon name="bell" class="size-5" />
@@ -14,21 +14,21 @@
     </button>
 
     @if ($open)
-        <div class="absolute right-0 z-20 mt-2 w-80 rounded-lg border border-zinc-200 bg-white p-4 shadow-lg dark:border-zinc-700 dark:bg-zinc-800">
+        <div class="absolute right-0 z-20 mt-2 w-80 rounded-lg border border-zinc-200 bg-white p-4 shadow-lg">
             @if ($this->recent->isEmpty())
-                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No notifications yet.') }}</p>
+                <p class="text-sm text-zinc-500">{{ __('No notifications yet.') }}</p>
             @else
                 <div class="max-h-72 space-y-3 overflow-y-auto">
                     @foreach ($this->recent as $notification)
                         <div wire:key="notification-preview-{{ $notification->id }}" class="text-sm">
                             <p class="font-medium">{{ $notification->data['subject'] ?? '' }}</p>
-                            <p class="truncate text-zinc-500 dark:text-zinc-400">{{ $notification->data['message'] ?? '' }}</p>
-                            <p class="mt-0.5 text-xs text-zinc-400 dark:text-zinc-500">{{ $notification->created_at?->diffForHumans() }}</p>
+                            <p class="truncate text-zinc-500">{{ $notification->data['message'] ?? '' }}</p>
+                            <p class="mt-0.5 text-xs text-zinc-400">{{ $notification->created_at?->diffForHumans() }}</p>
                         </div>
                     @endforeach
                 </div>
 
-                <div class="mt-3 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+                <div class="mt-3 border-t border-zinc-200 pt-3">
                     <a href="{{ route('account.notifications') }}" wire:navigate class="text-sm font-medium text-brand-primary hover:underline">
                         {{ __('View all') }}
                     </a>

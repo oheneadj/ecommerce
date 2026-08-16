@@ -14,7 +14,7 @@
     ];
 @endphp
 <nav
-    class="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-zinc-200 bg-white py-2 sm:hidden dark:border-zinc-700 dark:bg-zinc-900"
+    class="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-zinc-200 bg-white py-2 sm:hidden"
     aria-label="{{ __('Primary') }}"
 >
     @foreach ($tabs as $tab)
@@ -23,7 +23,7 @@
             href="{{ route($tab['route']) }}"
             wire:navigate
             @if ($isActive) aria-current="page" @endif
-            class="flex flex-col items-center gap-0.5 px-3 py-1 text-xs font-medium {{ $isActive ? 'text-brand-primary' : 'text-zinc-500 dark:text-zinc-400' }}"
+            class="flex flex-col items-center gap-0.5 px-3 py-1 text-xs font-medium {{ $isActive ? 'text-brand-primary' : 'text-zinc-500' }}"
         >
             <x-app-icon :name="$tab['icon']" :filled="$isActive" class="size-6" />
             {{ $tab['label'] }}

@@ -6,7 +6,7 @@
 
     @if ($this->addresses->isEmpty())
         <x-card>
-            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __("You haven't saved any addresses yet.") }}</p>
+            <p class="text-sm text-zinc-500">{{ __("You haven't saved any addresses yet.") }}</p>
         </x-card>
     @else
         <div class="grid gap-4 sm:grid-cols-2">
@@ -20,9 +20,9 @@
                                     <x-status-badge color="success">{{ __('Default') }}</x-status-badge>
                                 @endif
                             </p>
-                            <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{{ $address->recipient_name }}</p>
-                            <p class="text-sm text-zinc-600 dark:text-zinc-400">{{ $address->phone }}</p>
-                            <p class="text-sm text-zinc-600 dark:text-zinc-400">
+                            <p class="mt-1 text-sm text-zinc-600">{{ $address->recipient_name }}</p>
+                            <p class="text-sm text-zinc-600">{{ $address->phone }}</p>
+                            <p class="text-sm text-zinc-600">
                                 {{ $address->line1 }}@if ($address->line2), {{ $address->line2 }}@endif<br>
                                 {{ $address->city }}@if ($address->region), {{ $address->region }}@endif
                             </p>
@@ -67,7 +67,7 @@
             </div>
 
             <label class="flex items-center gap-2 text-sm">
-                <input type="checkbox" wire:model="is_default" class="rounded border-zinc-300 dark:border-zinc-600">
+                <input type="checkbox" wire:model="is_default" class="rounded border-zinc-300">
                 {{ __('Set as default address') }}
             </label>
 

@@ -16,7 +16,7 @@
         {{ $attributes->merge(['class' => 'rounded-lg object-cover']) }}
     >
 @else
-    <div {{ $attributes->merge(['class' => 'flex items-center justify-center rounded-lg bg-zinc-100 text-zinc-400 dark:bg-zinc-800']) }}>
+    <div {{ $attributes->merge(['class' => 'flex items-center justify-center rounded-lg bg-zinc-100 text-zinc-400']) }}>
         <x-app-icon name="folder" class="size-6" />
     </div>
 @endif

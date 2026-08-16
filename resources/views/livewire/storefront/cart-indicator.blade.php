@@ -6,7 +6,7 @@
     <button
         type="button"
         x-on:click="toggle()"
-        class="relative flex items-center gap-1.5 text-zinc-700 hover:text-brand-primary dark:text-zinc-300"
+        class="relative flex items-center gap-1.5 text-zinc-700 hover:text-brand-primary"
         aria-label="{{ __('Cart') }}"
     >
         <span class="relative">
@@ -24,10 +24,10 @@
         x-show="visible"
         x-cloak
         x-transition
-        class="absolute right-0 z-20 mt-2 w-80 rounded-lg border border-zinc-200 bg-white p-4 shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+        class="absolute right-0 z-20 mt-2 w-80 rounded-lg border border-zinc-200 bg-white p-4 shadow-lg"
     >
         @if (! $this->cart || $this->cart->items->isEmpty())
-            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Your cart is empty.') }}</p>
+            <p class="text-sm text-zinc-500">{{ __('Your cart is empty.') }}</p>
         @else
             <div class="max-h-72 space-y-3 overflow-y-auto">
                 @foreach ($this->cart->items as $item)
@@ -39,13 +39,13 @@
                         <x-product-thumbnail :variant="$variant" :product="$product" class="h-12 w-12 shrink-0" />
                         <div class="flex-1 text-sm">
                             <p class="truncate font-medium">{{ $product->name }}</p>
-                            <p class="text-zinc-500 dark:text-zinc-400">{{ $item->quantity }} &times; {{ $variant->price_formatted }}</p>
+                            <p class="text-zinc-500">{{ $item->quantity }} &times; {{ $variant->price_formatted }}</p>
                         </div>
                     </div>
                 @endforeach
             </div>
 
-            <div class="mt-3 flex items-center justify-between border-t border-zinc-200 pt-3 text-sm font-medium dark:border-zinc-700">
+            <div class="mt-3 flex items-center justify-between border-t border-zinc-200 pt-3 text-sm font-medium">
                 <span>{{ __('Subtotal') }}</span>
                 <span><x-money :amount="$this->subtotal" /></span>
             </div>

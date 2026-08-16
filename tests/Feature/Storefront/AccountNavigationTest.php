@@ -2,9 +2,9 @@
 
 /**
  * Covers the customer account area's unified navigation (Dashboard, Orders,
- * Addresses, Wishlist, Profile, Security, Appearance) — shared across every
- * /account/* and /settings/* page via <x-account.layout> — and confirms the
- * old standalone /dashboard route (replaced by /account) is gone.
+ * Addresses, Wishlist, Profile, Security) — shared across every /account/*
+ * and /settings/* page via <x-account.layout> — and confirms the old
+ * standalone /dashboard route (replaced by /account) is gone.
  */
 
 declare(strict_types=1);
@@ -38,7 +38,6 @@ class AccountNavigationTest extends TestCase
         $response->assertSee(route('wishlist.show'), false);
         $response->assertSee(route('profile.edit'), false);
         $response->assertSee(route('security.edit'), false);
-        $response->assertSee(route('appearance.edit'), false);
     }
 
     public function test_the_settings_pages_use_the_storefront_layout_with_the_account_nav(): void
@@ -65,6 +64,6 @@ class AccountNavigationTest extends TestCase
             $this->fail('Account nav not found in the response.');
         }
 
-        $this->assertSame(8, substr_count($matches[0], '<svg'), 'Expected one icon per account nav item.');
+        $this->assertSame(7, substr_count($matches[0], '<svg'), 'Expected one icon per account nav item.');
     }
 }

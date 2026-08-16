@@ -9,8 +9,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Storefront;
 
 use App\Livewire\Storefront\NotificationsPage;
+use App\Models\Order;
 use App\Models\User;
 use App\Notifications\CustomerBroadcastNotification;
+use App\Notifications\OrderPlaced;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -35,8 +37,7 @@ class NotificationsPageTest extends TestCase
         // CartPageTest uses for its own #[Lazy] component.
         Livewire::test(NotificationsPage::class)
             ->call('$refresh')
-            ->assertSee('Sale!')
-            ->assertSee('Everything is 20% off.');
+            ->assertSee('Sale!');
     }
 
     public function test_it_never_shows_another_customers_notifications(): void
@@ -62,19 +63,45 @@ class NotificationsPageTest extends TestCase
         $this->get('/account/notifications')->assertOk()->assertSeeHtml('animate-pulse');
     }
 
-    public function test_viewing_the_page_marks_notifications_as_read(): void
+    public function test_viewing_the_page_does_not_mark_notifications_as_read(): void
     {
         $customer = User::factory()->create();
         $this->actingAs($customer);
         $customer->notify(new CustomerBroadcastNotification('Sale!', 'Everything is 20% off.'));
 
-        // mount() (where the mark-as-read side effect lives) is only ever
-        // invoked through the real #[Lazy] component's special internal
-        // __lazyLoad call, never by a generic `$refresh` — disabling lazy
-        // loading for this one test is Livewire's own documented way to
-        // exercise mount() directly.
-        Livewire::withoutLazyLoading();
-        Livewire::test(NotificationsPage::class);
+        Livewire::test(NotificationsPage::class)->call('$refresh');
+
+        $this->assertNull($customer->notifications()->first()->read_at);
+    }
+
+    public function test_clicking_a_non_order_notification_marks_it_read_and_expands_it_in_place(): void
+    {
+        $customer = User::factory()->create();
+        $this->actingAs($customer);
+        $customer->notify(new CustomerBroadcastNotification('Sale!', 'Everything is 20% off.'));
+        $notificationId = $customer->notifications()->first()->id;
+
+        Livewire::test(NotificationsPage::class)
+            ->call('$refresh')
+            ->call('openNotification', $notificationId)
+            ->assertSet('expandedNotificationId', $notificationId)
+            ->assertSee('Everything is 20% off.');
+
+        $this->assertNotNull($customer->notifications()->first()->read_at);
+    }
+
+    public function test_clicking_an_order_notification_marks_it_read_and_navigates_to_the_order(): void
+    {
+        $customer = User::factory()->create();
+        $this->actingAs($customer);
+        $order = Order::factory()->create(['user_id' => $customer->id]);
+        $customer->notify(new OrderPlaced($order));
+        $notificationId = $customer->notifications()->first()->id;
+
+        Livewire::test(NotificationsPage::class)
+            ->call('$refresh')
+            ->call('openNotification', $notificationId)
+            ->assertRedirect(route('account.orders.show', $order));
 
         $this->assertNotNull($customer->notifications()->first()->read_at);
     }

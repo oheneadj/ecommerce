@@ -7,11 +7,21 @@
         @else
             <div class="divide-y divide-zinc-200">
                 @foreach ($this->notifications as $notification)
-                    <div wire:key="notification-{{ $notification->id }}" class="py-3">
-                        <p class="font-medium">{{ $notification->data['subject'] ?? '' }}</p>
-                        <p class="text-sm text-zinc-600">{{ $notification->data['message'] ?? '' }}</p>
-                        <p class="mt-1 text-xs text-zinc-400">{{ $notification->created_at?->format('d M Y, H:i') }}</p>
-                    </div>
+                    <button
+                        type="button"
+                        wire:key="notification-{{ $notification->id }}"
+                        wire:click="openNotification('{{ $notification->id }}')"
+                        class="flex w-full items-start gap-3 py-3 text-left {{ $notification->read_at === null ? 'bg-brand-primary/5' : '' }}"
+                    >
+                        <span class="mt-1.5 size-2 flex-shrink-0 rounded-full {{ $notification->read_at === null ? 'bg-brand-primary' : 'bg-transparent' }}"></span>
+                        <span class="flex-1">
+                            <span class="block font-medium {{ $notification->read_at === null ? 'text-zinc-900' : 'text-zinc-600' }}">{{ $notification->data['subject'] ?? $notification->data['message'] ?? '' }}</span>
+                            @if ($expandedNotificationId === $notification->id)
+                                <span class="mt-1 block text-sm text-zinc-600">{{ $notification->data['message'] ?? '' }}</span>
+                            @endif
+                            <span class="mt-1 block text-xs text-zinc-400">{{ $notification->created_at?->format('d M Y, H:i') }}</span>
+                        </span>
+                    </button>
                 @endforeach
             </div>
 

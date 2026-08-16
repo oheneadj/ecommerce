@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — click-to-read customer notifications with unread indicators
+- Customer notifications (`/account/notifications` and the header bell dropdown) are now click-to-read instead of auto-marked-as-read on view. Clicking an order-related notification (`OrderPlaced`, `OrderShipped`, `PaymentSucceeded`, `PaymentFailed` — identified by the `order_id` carried in its stored data) marks it read and navigates to that order's detail page; clicking anything else (e.g. a staff broadcast) marks it read and expands the row in place to reveal its full message.
+- Unread notifications now have a visible indicator (a dot + tinted row) on both the full history page and the bell preview — previously read and unread were visually indistinguishable, undermined further by the page/dropdown marking everything read just by opening it.
+- The bell dropdown now shows the top unread notifications (was: 5 most recent regardless of read state) — a natural fit now that opening it no longer instantly marks them read.
+- New shared `App\Livewire\Storefront\Concerns\LinksToRelatedOrder` trait resolves a notification's order URL, used by both `NotificationsPage` and `NotificationIndicator`.
+- 8 new tests, 2 existing tests updated for the removed auto-mark-as-read behavior.
+
 ### Added — retry transient backup failures before alerting, notify immediately when unrecoverable
 - A backup run that fails mid-upload for a transient reason (e.g. a dropped connection to Google Drive) is now retried automatically by `spatie/laravel-backup` — up to 3 attempts, 30 seconds apart (`config/backup.php`) — before `App\Listeners\RecordFailedBackup` ever marks the run `Failed` or emails a Super Admin. A single blip no longer pages anyone.
 - A backup attempted with no remote storage credentials configured at all is never worth retrying (nothing about retrying fixes a missing credential) — that case now alerts every Super Admin immediately, closing a gap where it previously failed the run silently with no notification at all. Reuses `RecordFailedBackup` (via `Spatie\Backup\Events\BackupHasFailed`) rather than duplicating the alert logic, and gets its own named `App\Exceptions\RemoteStorageNotConfiguredException`.

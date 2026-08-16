@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Storefront;
 
+use App\Livewire\Storefront\Concerns\LinksToRelatedOrder;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Notifications\DatabaseNotification;
@@ -28,6 +29,8 @@ use Livewire\Component;
 #[Lazy]
 class NotificationIndicator extends Component
 {
+    use LinksToRelatedOrder;
+
     public bool $open = false;
 
     #[Computed]
@@ -37,39 +40,52 @@ class NotificationIndicator extends Component
     }
 
     /**
+     * The top unread notifications — read ones don't need a spot in a
+     * badge-driven preview whose whole purpose is surfacing what's new.
+     *
      * @return Collection<int, DatabaseNotification>
      */
     #[Computed]
     public function recent(): Collection
     {
-        return Auth::user()?->notifications()->latest()->limit(5)->get() ?? new Collection;
-    }
-
-    public function toggle(): void
-    {
-        $this->open = ! $this->open;
-
-        if ($this->open) {
-            $this->markRecentAsRead();
-        }
+        return Auth::user()?->unreadNotifications()->latest()->limit(5)->get() ?? new Collection;
     }
 
     /**
-     * Opening the dropdown is the customer actually seeing these — marks
-     * just the batch currently shown as read, not the whole notification
-     * history, so a customer with older unread notifications beyond the
-     * preview list doesn't have them silently marked read without ever
-     * being shown.
+     * Just opens/closes the dropdown — nothing is marked read by viewing
+     * it, only by actually clicking a notification (see openNotification).
      */
-    private function markRecentAsRead(): void
+    public function toggle(): void
     {
-        foreach ($this->recent as $notification) {
-            if ($notification->read_at === null) {
-                $notification->markAsRead();
-            }
+        $this->open = ! $this->open;
+    }
+
+    /**
+     * Clicking a preview item marks it read and, if it's about an order,
+     * navigates there — matches the full notifications page's behavior.
+     * Non-order notifications have nowhere to go from this compact
+     * preview, so nothing happens here for those; "View all" covers them.
+     */
+    public function openNotification(string $notificationId): void
+    {
+        $notification = $this->recent->firstWhere('id', $notificationId);
+
+        if (! $notification) {
+            return;
         }
 
-        unset($this->unreadCount, $this->recent);
+        $orderUrl = $this->relatedOrderUrl($notification);
+
+        if ($orderUrl === null) {
+            return;
+        }
+
+        if ($notification->read_at === null) {
+            $notification->markAsRead();
+            unset($this->unreadCount, $this->recent);
+        }
+
+        $this->redirect($orderUrl, navigate: true);
     }
 
     public function render(): View

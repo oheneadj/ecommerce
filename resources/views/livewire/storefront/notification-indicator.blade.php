@@ -18,13 +18,21 @@
             @if ($this->recent->isEmpty())
                 <p class="text-sm text-zinc-500">{{ __('No notifications yet.') }}</p>
             @else
-                <div class="max-h-72 space-y-3 overflow-y-auto">
+                <div class="max-h-72 space-y-1 overflow-y-auto">
                     @foreach ($this->recent as $notification)
-                        <div wire:key="notification-preview-{{ $notification->id }}" class="text-sm">
-                            <p class="font-medium">{{ $notification->data['subject'] ?? '' }}</p>
-                            <p class="truncate text-zinc-500">{{ $notification->data['message'] ?? '' }}</p>
-                            <p class="mt-0.5 text-xs text-zinc-400">{{ $notification->created_at?->diffForHumans() }}</p>
-                        </div>
+                        <button
+                            type="button"
+                            wire:key="notification-preview-{{ $notification->id }}"
+                            wire:click="openNotification('{{ $notification->id }}')"
+                            class="flex w-full items-start gap-2 rounded-md p-2 text-left text-sm hover:bg-zinc-50"
+                        >
+                            <span class="mt-1.5 size-2 flex-shrink-0 rounded-full bg-brand-primary"></span>
+                            <span class="flex-1">
+                                <span class="block font-medium">{{ $notification->data['subject'] ?? $notification->data['message'] ?? '' }}</span>
+                                <span class="block truncate text-zinc-500">{{ $notification->data['message'] ?? '' }}</span>
+                                <span class="mt-0.5 block text-xs text-zinc-400">{{ $notification->created_at?->diffForHumans() }}</span>
+                            </span>
+                        </button>
                     @endforeach
                 </div>
 

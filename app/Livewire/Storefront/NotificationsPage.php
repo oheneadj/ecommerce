@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Storefront;
 
+use App\Livewire\Storefront\Concerns\LinksToRelatedOrder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Notifications\DatabaseNotification;
@@ -29,7 +30,15 @@ use Livewire\WithPagination;
 #[Lazy]
 class NotificationsPage extends Component
 {
+    use LinksToRelatedOrder;
     use WithPagination;
+
+    /**
+     * The single notification currently expanded to show its full message
+     * — only reached by non-order notifications, since an order
+     * notification just navigates away on click instead.
+     */
+    public ?string $expandedNotificationId = null;
 
     /**
      * @return LengthAwarePaginator<int, DatabaseNotification>
@@ -40,24 +49,40 @@ class NotificationsPage extends Component
         return Auth::user()->notifications()->latest()->paginate(20);
     }
 
-    /**
-     * Viewing this page is the customer seeing every notification on it —
-     * marks the whole current page as read, not the account's entire
-     * history, so paging further still shows genuinely-unread items as
-     * unread until that page is actually viewed.
-     */
-    public function mount(): void
-    {
-        foreach ($this->notifications->items() as $notification) {
-            if ($notification->read_at === null) {
-                $notification->markAsRead();
-            }
-        }
-    }
-
     public function render(): View
     {
         return view('livewire.storefront.notifications-page');
+    }
+
+    /**
+     * The one click-to-read action for a notification row: marks it read,
+     * then either sends the customer to the order it's about, or (for
+     * anything with nowhere to navigate, e.g. a staff broadcast) expands
+     * the row in place to reveal its full message. Nothing is marked read
+     * just by viewing this page — only by actually clicking a row.
+     */
+    public function openNotification(string $notificationId): void
+    {
+        $notification = collect($this->notifications->items())->firstWhere('id', $notificationId);
+
+        if (! $notification) {
+            return;
+        }
+
+        if ($notification->read_at === null) {
+            $notification->markAsRead();
+            unset($this->notifications);
+        }
+
+        $orderUrl = $this->relatedOrderUrl($notification);
+
+        if ($orderUrl !== null) {
+            $this->redirect($orderUrl, navigate: true);
+
+            return;
+        }
+
+        $this->expandedNotificationId = $this->expandedNotificationId === $notificationId ? null : $notificationId;
     }
 
     /**

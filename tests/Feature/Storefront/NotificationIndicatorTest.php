@@ -10,8 +10,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Storefront;
 
 use App\Livewire\Storefront\NotificationIndicator;
+use App\Models\Order;
 use App\Models\User;
 use App\Notifications\CustomerBroadcastNotification;
+use App\Notifications\OrderPlaced;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -48,7 +50,7 @@ class NotificationIndicatorTest extends TestCase
             ->assertSee('Everything is 20% off.');
     }
 
-    public function test_opening_the_dropdown_marks_the_shown_notifications_as_read(): void
+    public function test_opening_the_dropdown_does_not_mark_notifications_as_read(): void
     {
         $customer = User::factory()->create();
         $this->actingAs($customer);
@@ -56,6 +58,43 @@ class NotificationIndicatorTest extends TestCase
 
         Livewire::test(NotificationIndicator::class)->call('toggle');
 
+        $this->assertNull($customer->notifications()->first()->read_at);
+    }
+
+    public function test_read_notifications_do_not_appear_in_the_preview(): void
+    {
+        $customer = User::factory()->create();
+        $this->actingAs($customer);
+        $customer->notify(new CustomerBroadcastNotification('Sale!', 'Everything is 20% off.'));
+        $customer->notifications()->first()->markAsRead();
+
+        Livewire::test(NotificationIndicator::class)->assertDontSee('Sale!');
+    }
+
+    public function test_clicking_an_order_notification_in_the_preview_marks_it_read_and_navigates_to_the_order(): void
+    {
+        $customer = User::factory()->create();
+        $this->actingAs($customer);
+        $order = Order::factory()->create(['user_id' => $customer->id]);
+        $customer->notify(new OrderPlaced($order));
+        $notificationId = $customer->notifications()->first()->id;
+
+        Livewire::test(NotificationIndicator::class)
+            ->call('openNotification', $notificationId)
+            ->assertRedirect(route('account.orders.show', $order));
+
         $this->assertNotNull($customer->notifications()->first()->read_at);
+    }
+
+    public function test_clicking_a_non_order_notification_in_the_preview_does_nothing(): void
+    {
+        $customer = User::factory()->create();
+        $this->actingAs($customer);
+        $customer->notify(new CustomerBroadcastNotification('Sale!', 'Everything is 20% off.'));
+        $notificationId = $customer->notifications()->first()->id;
+
+        Livewire::test(NotificationIndicator::class)->call('openNotification', $notificationId)->assertNoRedirect();
+
+        $this->assertNull($customer->notifications()->first()->read_at);
     }
 }

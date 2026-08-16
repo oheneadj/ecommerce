@@ -60,6 +60,22 @@ return [
             'report' => false,
         ],
 
+        /*
+         * Backup destination only — registered by
+         * AppServiceProvider::configureGoogleDriveDisk() via
+         * Storage::extend('google', ...), using a Google Cloud service
+         * account (not OAuth) so scheduled/unattended backups never
+         * depend on a human completing a login screen. The service
+         * account's own email must be shared (Editor access) on the
+         * destination Drive folder — see docs/infrastructure-deployment.md
+         * §2 for the one-time setup steps.
+         */
+        'gdrive' => [
+            'driver' => 'google',
+            'serviceAccountJson' => env('GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON'),
+            'folder' => env('GOOGLE_DRIVE_FOLDER_ID'),
+        ],
+
     ],
 
     /*

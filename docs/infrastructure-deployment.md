@@ -54,6 +54,26 @@ Durability protects against a crash mid-transaction. It does not protect against
 
 Per-client isolation means one client's restore never touches another's data — but it also means backup configuration must be part of the standard deployment checklist, not something remembered per client.
 
+### Implementation (Settings → Store Settings → Backups / Settings → Backups)
+
+Database + uploaded files (`storage/app/public`, `storage/app/private`) back up together as one run, via `spatie/laravel-backup` targeting a Google Drive destination (`App\Jobs\RunBackupJob`). Both triggers dispatch the same queued job:
+
+- **Automatic** — off by default. A Super Admin turns it on and picks Daily/Weekly from Store Settings; `App\Actions\Backup\RunScheduledBackup` (scheduled daily in `routes/console.php`, self-guarding per the chosen frequency, same pattern `SendCriticalHealthAlert` uses for its own snooze) decides whether one is actually due.
+- **Manual** — "Run backup now" on the Backups page (Settings → Backups, Super Admin only).
+- **History & restore** — every run is logged to `backup_runs` (status, size, who triggered it, error class on failure). A "Restore" action exists on a successful run, gated behind re-entering the admin's password **and** typing a literal confirmation phrase — this overwrites the live database and every uploaded file, so it's deliberately heavy to trigger.
+- **Alerting** — a failed run emails every Super Admin (`App\Notifications\BackupFailed`), and `App\HealthChecks\BackupIsRecent` fails on the System Health page if auto-backup is off or the latest successful run is older than the configured frequency allows — giving the pre-existing `backup_restore_tested` attestation (§5.1 of the health-checks task) a real automated signal to sit alongside.
+- **Retention** — enforced by `backup:clean`, with the admin-configured `backup_retention_days` (30-day floor, matching the target above) applied at runtime before each cleanup run.
+
+**One-time setup per deployment** (Google Cloud service account — works unattended, no OAuth consent screen to babysit):
+
+1. Create/select a Google Cloud project, enable the **Google Drive API**.
+2. Create a **service account**, generate a JSON key, download it.
+3. Create (or pick) the destination Drive folder, share it with the service account's own email address (Editor access).
+4. Set `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON` (path to the key file) and `GOOGLE_DRIVE_FOLDER_ID` in `.env`. Set `BACKUP_ARCHIVE_PASSWORD` too — the dump contains customer PII (names, phone numbers, addresses).
+5. Confirm `Settings → Store Settings → Backups` shows the provider as configured, then run one manually to verify end-to-end before relying on the schedule.
+
+The quarterly restore test above is exactly what the "Restore" action gives you a real, in-app way to perform — against a disposable staging copy, never production.
+
 ---
 
 ## 3. Scheduler & Queue (correctness-critical, not just performance)

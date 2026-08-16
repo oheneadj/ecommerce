@@ -10,6 +10,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Enums\BackupFrequency;
+use App\Enums\RemoteStorageProvider;
 use App\Enums\SmsProvider;
 use App\Enums\UserRole;
 use App\Filament\Pages\ManageStoreSettings;
@@ -180,6 +182,47 @@ class ManageStoreSettingsTest extends TestCase
             ])
             ->call('save')
             ->assertHasFormErrors(['active_sms_provider']);
+    }
+
+    public function test_super_admin_can_configure_automatic_backups(): void
+    {
+        config(['filesystems.disks.gdrive.serviceAccountJson' => '/tmp/key.json', 'filesystems.disks.gdrive.folder' => 'folder-id']);
+        $this->actingAs($this->superAdmin());
+
+        Livewire::test(ManageStoreSettings::class)
+            ->fillForm([
+                'active_remote_storage_provider' => 'google_drive',
+                'backup_auto_enabled' => true,
+                'backup_frequency' => 'weekly',
+                'backup_retention_days' => 45,
+                'tax_rate' => 15,
+                'stock_reservation_minutes' => 15,
+                'low_stock_threshold' => 5,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $settings = StoreSetting::current();
+        $this->assertSame(RemoteStorageProvider::GoogleDrive, $settings->active_remote_storage_provider);
+        $this->assertTrue($settings->backup_auto_enabled);
+        $this->assertSame(BackupFrequency::Weekly, $settings->backup_frequency);
+        $this->assertSame(45, $settings->backup_retention_days);
+    }
+
+    public function test_picking_a_remote_storage_provider_with_no_credentials_configured_is_rejected(): void
+    {
+        config(['filesystems.disks.gdrive.serviceAccountJson' => null, 'filesystems.disks.gdrive.folder' => null]);
+        $this->actingAs($this->superAdmin());
+
+        Livewire::test(ManageStoreSettings::class)
+            ->fillForm([
+                'active_remote_storage_provider' => 'google_drive',
+                'tax_rate' => 15,
+                'stock_reservation_minutes' => 15,
+                'low_stock_threshold' => 5,
+            ])
+            ->call('save')
+            ->assertHasFormErrors(['active_remote_storage_provider']);
     }
 
     public function test_tax_rate_over_100_percent_is_rejected(): void

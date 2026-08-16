@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Listeners\MergeGuestCartOnLogin;
+use App\Listeners\RecordFailedBackup;
+use App\Listeners\RecordSuccessfulBackup;
 use App\Models\StoreSetting;
 use App\Notifications\Channels\SmsChannel;
 use App\Payments\PaymentManager;
@@ -11,8 +13,11 @@ use App\Sms\Contracts\SmsGateway;
 use App\Sms\SmsManager;
 use App\Support\PasswordPolicy;
 use Carbon\CarbonImmutable;
+use Google\Client as GoogleClient;
+use Google\Service\Drive as GoogleDriveService;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\DevCommands;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Date;
@@ -21,9 +26,14 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use League\Flysystem\Filesystem;
+use Masbug\Flysystem\GoogleDriveAdapter;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\Backup\Events\BackupHasFailed;
+use Spatie\Backup\Events\BackupWasSuccessful;
 use Symfony\Component\Mime\Address;
 
 class AppServiceProvider extends ServiceProvider
@@ -48,6 +58,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->configureDevQueueWorker();
         $this->configureDevMailServer();
+        $this->configureGoogleDriveDisk();
 
         Notification::extend('sms', fn ($app) => new SmsChannel($app->make(SmsGateway::class)));
 
@@ -58,6 +69,13 @@ class AppServiceProvider extends ServiceProvider
         // Covers every login path (phone OTP, Google, email+password, 2FA,
         // passkeys) — SessionGuard::login() always fires Login.
         Event::listen(Login::class, MergeGuestCartOnLogin::class);
+
+        // Backups (App\Jobs\RunBackupJob) — reacts to spatie/laravel-backup's
+        // own events rather than anything in the job itself, so both the
+        // scheduled and manual trigger paths get audit-logged/alerted the
+        // same way.
+        Event::listen(BackupWasSuccessful::class, RecordSuccessfulBackup::class);
+        Event::listen(BackupHasFailed::class, RecordFailedBackup::class);
 
         // Branding: every outgoing email shows the store's business name as
         // its "From" display name, not config/mail.php's static default —
@@ -123,6 +141,35 @@ class AppServiceProvider extends ServiceProvider
         }
 
         DevCommands::register('mailpit', 'mail');
+    }
+
+    /**
+     * Registers the 'google' Flysystem driver backing the 'gdrive' disk
+     * (config/filesystems.php), used only for backups
+     * (App\Jobs\RunBackupJob). Built from a Google Cloud service account,
+     * not OAuth — masbug/flysystem-google-drive-ext's own README example
+     * uses a client_id/secret/refresh_token flow, which needs a human to
+     * complete a consent screen and can silently expire; a service
+     * account works unattended indefinitely, which a scheduled backup
+     * requires. Registered even when the credential env vars are empty
+     * (Storage::disk('gdrive') simply fails loudly if actually used
+     * without them) — RemoteStorageProvider::hasCredentialsConfigured()
+     * is what gates whether a backup is ever attempted in the first
+     * place.
+     */
+    protected function configureGoogleDriveDisk(): void
+    {
+        Storage::extend('google', function ($app, array $config): FilesystemAdapter {
+            $client = new GoogleClient;
+            $client->setApplicationName(config('app.name', 'Laravel'));
+            $client->setAuthConfig($config['serviceAccountJson']);
+            $client->addScope(GoogleDriveService::DRIVE);
+
+            $service = new GoogleDriveService($client);
+            $adapter = new GoogleDriveAdapter($service, $config['folder'] ?? '/');
+
+            return new FilesystemAdapter(new Filesystem($adapter), $adapter, $config);
+        });
     }
 
     /**

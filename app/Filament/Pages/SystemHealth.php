@@ -87,6 +87,7 @@ class SystemHealth extends Page implements HasForms
         'SuperAdminExists' => 'Configuration',
         'ExpiredReservationsAreBeingReleased' => 'Operations',
         'PendingPaymentsAreBeingVerified' => 'Operations',
+        'BackupIsRecent' => 'Operations',
     ];
 
     private const CATEGORY_ORDER = ['Infrastructure', 'Operations', 'Configuration', 'Data Integrity', 'Attestations'];

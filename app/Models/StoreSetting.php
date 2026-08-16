@@ -10,6 +10,8 @@ namespace App\Models;
 
 use App\Actions\Mail\GenerateMailThemeCss;
 use App\Concerns\LogsAdminActivity;
+use App\Enums\BackupFrequency;
+use App\Enums\RemoteStorageProvider;
 use App\Enums\SmsProvider;
 use App\Http\Controllers\Storefront\ThemeCssController;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -43,6 +45,10 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $whatsapp_url
  * @property bool $whatsapp_chat_enabled
  * @property SmsProvider|null $active_sms_provider
+ * @property RemoteStorageProvider|null $active_remote_storage_provider
+ * @property bool $backup_auto_enabled
+ * @property BackupFrequency|null $backup_frequency
+ * @property int $backup_retention_days
  * @property int $tax_rate
  * @property int $stock_reservation_minutes
  * @property int $low_stock_threshold
@@ -64,6 +70,10 @@ use Illuminate\Support\Facades\Storage;
     'whatsapp_url',
     'whatsapp_chat_enabled',
     'active_sms_provider',
+    'active_remote_storage_provider',
+    'backup_auto_enabled',
+    'backup_frequency',
+    'backup_retention_days',
     'tax_rate',
     'stock_reservation_minutes',
     'low_stock_threshold',
@@ -82,6 +92,9 @@ class StoreSetting extends Model
             'health_alerts_snoozed_until' => 'datetime',
             'active_sms_provider' => SmsProvider::class,
             'whatsapp_chat_enabled' => 'boolean',
+            'active_remote_storage_provider' => RemoteStorageProvider::class,
+            'backup_auto_enabled' => 'boolean',
+            'backup_frequency' => BackupFrequency::class,
         ];
     }
 

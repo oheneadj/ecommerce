@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\HealthChecks\BackupIsRecent;
 use App\HealthChecks\DatabaseEngineIsInnoDb;
 use App\HealthChecks\ExpiredReservationsAreBeingReleased;
 use App\HealthChecks\ForeignKeysAreEnforced;
@@ -64,6 +65,7 @@ class HealthServiceProvider extends ServiceProvider
 
             ExpiredReservationsAreBeingReleased::new(),
             PendingPaymentsAreBeingVerified::new(),
+            BackupIsRecent::new(),
         ]);
     }
 }

@@ -9,10 +9,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Health;
 
+use App\Enums\BackupFrequency;
+use App\Enums\BackupStatus;
 use App\Enums\PaymentProvider;
 use App\Enums\PaymentStatus;
 use App\Enums\StockReservationStatus;
 use App\Enums\UserRole;
+use App\HealthChecks\BackupIsRecent;
 use App\HealthChecks\DatabaseEngineIsInnoDb;
 use App\HealthChecks\ExpiredReservationsAreBeingReleased;
 use App\HealthChecks\ForeignKeysAreEnforced;
@@ -25,6 +28,7 @@ use App\HealthChecks\StoreSettingsPopulated;
 use App\HealthChecks\SuperAdminExists;
 use App\HealthChecks\TransactionDurabilityEnabled;
 use App\HealthChecks\TransactionIsolationLevelIsSafe;
+use App\Models\BackupRun;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PaymentProviderSetting;
@@ -187,5 +191,35 @@ class HealthChecksTest extends TestCase
         ]);
 
         $this->assertSame(Status::ok(), PendingPaymentsAreBeingVerified::new()->run()->status);
+    }
+
+    public function test_backup_is_recent_fails_when_auto_backup_is_disabled(): void
+    {
+        StoreSetting::current()->update(['backup_auto_enabled' => false]);
+
+        $this->assertSame(Status::failed(), BackupIsRecent::new()->run()->status);
+    }
+
+    public function test_backup_is_recent_fails_when_no_backup_has_ever_succeeded(): void
+    {
+        StoreSetting::current()->update(['backup_auto_enabled' => true, 'backup_frequency' => BackupFrequency::Daily]);
+
+        $this->assertSame(Status::failed(), BackupIsRecent::new()->run()->status);
+    }
+
+    public function test_backup_is_recent_fails_when_the_latest_success_is_too_old(): void
+    {
+        StoreSetting::current()->update(['backup_auto_enabled' => true, 'backup_frequency' => BackupFrequency::Daily]);
+        BackupRun::factory()->create(['status' => BackupStatus::Success, 'completed_at' => now()->subDays(5)]);
+
+        $this->assertSame(Status::failed(), BackupIsRecent::new()->run()->status);
+    }
+
+    public function test_backup_is_recent_passes_when_a_recent_backup_succeeded(): void
+    {
+        StoreSetting::current()->update(['backup_auto_enabled' => true, 'backup_frequency' => BackupFrequency::Daily]);
+        BackupRun::factory()->create(['status' => BackupStatus::Success, 'completed_at' => now()->subHours(2)]);
+
+        $this->assertSame(Status::ok(), BackupIsRecent::new()->run()->status);
     }
 }

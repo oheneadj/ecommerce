@@ -19,10 +19,12 @@
         "laravel/tinker": "^3.0",
         "livewire/livewire": "^4.1",
         "lorisleiva/laravel-actions": "^2.10",
+        "masbug/flysystem-google-drive-ext": "^2.5",
         "phiki/phiki": "^2.2",
         "pxlrbt/filament-excel": "^3.6",
         "shuvroroy/filament-spatie-laravel-health": "^3.3",
         "spatie/laravel-activitylog": "^5.0",
+        "spatie/laravel-backup": "^10.3",
         "spatie/laravel-health": "^1.40",
         "spatie/laravel-permission": "^8.3"
     },

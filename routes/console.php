@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Backup\RunScheduledBackup;
 use App\Actions\Health\SendCriticalHealthAlert;
 use App\Actions\Inventory\CheckLowStockLevels;
 use App\Actions\Inventory\ReleaseExpiredReservations;
@@ -51,3 +52,12 @@ Schedule::command('health:run-integrity-checks')
 Schedule::call(fn () => SendCriticalHealthAlert::run())
     ->daily()
     ->name('send-critical-health-alert');
+
+// Checks daily whether a backup is actually due (App\Actions\Backup\
+// RunScheduledBackup itself no-ops unless auto-backup is enabled and
+// the configured frequency's interval has elapsed since the last
+// successful run — "weekly" is enforced there, not by this schedule).
+Schedule::call(fn () => RunScheduledBackup::run())
+    ->daily()
+    ->name('run-scheduled-backup')
+    ->withoutOverlapping();

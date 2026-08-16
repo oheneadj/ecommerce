@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — database + file backups to Google Drive
+- Full database + uploaded-files (`storage/app/public`, `storage/app/private`) backups via `spatie/laravel-backup` targeting a new `gdrive` Flysystem disk (`masbug/flysystem-google-drive-ext`, authenticated with a Google Cloud service account — no OAuth consent screen for unattended scheduled runs). Both automatic and manual triggers dispatch the same queued `App\Jobs\RunBackupJob`.
+- **Automatic** — off by default. Store Settings → Backups gained an enable toggle, a Daily/Weekly frequency select, and a retention-days field (30-day floor); `App\Actions\Backup\RunScheduledBackup` (scheduled daily in `routes/console.php`) decides whether one is actually due, self-guarding per the chosen frequency the same way `SendCriticalHealthAlert` already guards its own snooze.
+- **Manual** — a new Super-Admin-only "Backups" page (`App\Filament\Resources\BackupRuns`) lists every run (status, size, who triggered it) with a "Run backup now" action.
+- **Restore** — a "Restore" action on any successful run, deliberately heavy to trigger: re-entering the admin's own password **and** typing a literal confirmation phrase, since it overwrites the live database and every uploaded file (`App\Actions\Backup\RestoreFromBackup`).
+- **Alerting & health** — a failed run emails every Super Admin (`App\Notifications\BackupFailed`, via the existing `SafeNotifier`/`StaffRecipients` infrastructure) and is logged to a new `backup_runs` table by `App\Listeners\RecordSuccessfulBackup`/`RecordFailedBackup` (reacting to spatie's own events, so both trigger paths are covered identically). A new `App\HealthChecks\BackupIsRecent` check surfaces on the System Health page, giving the pre-existing `backup_restore_tested` manual attestation a real automated signal to sit alongside.
+- New `App\Enums\RemoteStorageProvider` (mirrors `SmsProvider`'s `hasCredentialsConfigured()` pattern) and `App\Enums\BackupFrequency`/`BackupStatus`.
+- `docs/infrastructure-deployment.md` §2 documents the one-time per-deployment Google Cloud service-account setup.
+- 37 new tests.
+
 ### Added — lazy loading + skeletons on the customer account pages
 - `OrderHistoryPage`, `AddressBook`, and `NotificationsPage` (the `/account/orders`, `/account/addresses`, and `/account/notifications` pages) are now `#[Lazy]` Livewire components, each with its own skeleton placeholder — same `#[Lazy]`/`placeholder()` pattern already used by `CartPage`/`CartIndicator`/etc.
 - Split the `/account` dashboard's "Recent orders" card out of `AccountController`/`account.show.blade.php` into a new `App\Livewire\Storefront\RecentOrders` component, also `#[Lazy]` with a skeleton — its query no longer holds up the rest of the (otherwise static) dashboard's first paint.

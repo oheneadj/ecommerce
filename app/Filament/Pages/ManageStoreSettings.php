@@ -9,6 +9,8 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Actions\Catalog\ConvertImageToWebp;
+use App\Enums\BackupFrequency;
+use App\Enums\RemoteStorageProvider;
 use App\Enums\SmsProvider;
 use App\Enums\UserRole;
 use App\Models\StoreSetting;
@@ -69,6 +71,10 @@ class ManageStoreSettings extends Page implements HasForms
         'whatsapp_url',
         'whatsapp_chat_enabled',
         'active_sms_provider',
+        'active_remote_storage_provider',
+        'backup_auto_enabled',
+        'backup_frequency',
+        'backup_retention_days',
         'tax_rate',
         'stock_reservation_minutes',
         'low_stock_threshold',
@@ -193,6 +199,39 @@ class ManageStoreSettings extends Page implements HasForms
                                     $fail('This provider has no credentials configured in the environment yet.');
                                 }
                             }),
+                    ]),
+
+                Section::make('Backups')
+                    ->description('Automatic and manual database + file backups run from Settings → Backups. This only configures the schedule — see that page for history and to run one now.')
+                    ->schema([
+                        Select::make('active_remote_storage_provider')
+                            ->label('Remote storage provider')
+                            ->options(RemoteStorageProvider::class)
+                            ->native(false)
+                            ->helperText('Credentials are set via environment variables (a Google Cloud service account) — this only chooses which already-configured destination is active.')
+                            ->rule(fn () => function (string $attribute, mixed $value, Closure $fail): void {
+                                if ($value !== null && ! RemoteStorageProvider::from($value)->hasCredentialsConfigured()) {
+                                    $fail('This provider has no credentials configured in the environment yet.');
+                                }
+                            }),
+
+                        Grid::make(3)
+                            ->schema([
+                                Toggle::make('backup_auto_enabled')
+                                    ->label('Run backups automatically'),
+
+                                Select::make('backup_frequency')
+                                    ->options(BackupFrequency::class)
+                                    ->native(false)
+                                    ->requiredIf('backup_auto_enabled', true),
+
+                                TextInput::make('backup_retention_days')
+                                    ->label('Retention (days)')
+                                    ->helperText('30 is this project\'s own documented minimum.')
+                                    ->numeric()
+                                    ->required()
+                                    ->minValue(1),
+                            ]),
                     ]),
 
                 Section::make('Checkout & inventory')

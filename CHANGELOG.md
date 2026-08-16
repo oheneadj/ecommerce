@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — admin bar caused horizontal page scroll
+- The shared "WP-style" admin bar (`partials/admin-bar.blade.php`, shown above both the storefront and the Filament panel for Admin/Super Admin) laid its items out as a single `nowrap` flex row with no wrapping and no overflow handling — on any viewport narrower than its full content width (phone/tablet, or desktop with a long signed-in name), the row simply grew past its container and dragged the whole page into horizontal scroll.
+- Fixed by letting the bar (and each of its two item groups) wrap onto additional lines instead of overflowing. Deliberately not fixed via `overflow-x: auto` on the bar — that was tried first, but the CSS Overflow spec couples the axes: setting `overflow-x` to anything but `visible` forces `overflow-y` to `auto` too, which would have clipped the hover dropdowns (New/Pending orders/Cache) since they're `position: absolute` descendants that render below the bar's own box.
+
 ### Added — WhatsApp chat bubble
 - New floating WhatsApp button on every storefront page (bottom-left, clears the mobile tab bar and never collides with the toast container on the opposite corner), linking to the existing `whatsapp_url` wa.me link already used for the footer's social icon.
 - Store Settings gained a "WhatsApp chat bubble" toggle (`whatsapp_chat_enabled`, new migration) — off by default, and has no effect until a WhatsApp link is actually set, so flipping it on with an empty link can't render a button with nowhere to go (`StoreSetting::showsWhatsappChatBubble()`).

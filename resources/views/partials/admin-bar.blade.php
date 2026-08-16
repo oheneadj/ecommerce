@@ -57,13 +57,35 @@
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                height: 32px;
-                padding: 0 12px;
+                /* Allowed to grow past one line on narrow viewports (see
+                   flex-wrap below) instead of a hard 32px — a fixed height
+                   would clip whatever couldn't fit. */
+                min-height: 32px;
+                padding: 6px 12px;
                 background: #1d2327;
                 color: #eee;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: 13px;
                 line-height: 32px;
+                /* This row's content (View Site / New / Pending orders /
+                   Cache / the signed-in user's name / Log out) can easily
+                   out-measure a phone or tablet viewport. Wrapping onto a
+                   second line keeps every item reachable without widening
+                   the page — the alternative, giving this container its
+                   own overflow-x, was tried and reverted: any element with
+                   overflow-x set to something other than 'visible' forces
+                   the browser to also clip overflow-y (per the CSS
+                   Overflow spec's axis-coupling rule), which would hide
+                   the hover dropdowns below (New/Pending orders/Cache)
+                   entirely, since they're position: absolute descendants
+                   that rely on escaping this container vertically.
+                   Wrapping avoids that trade-off completely — this stays
+                   a plain block box with overflow left at its default.
+                */
+                flex-wrap: wrap;
+                row-gap: 4px;
+                max-width: 100%;
+                box-sizing: border-box;
             }
             .wp-admin-bar a {
                 color: #eee;
@@ -81,7 +103,9 @@
             .wp-admin-bar-group {
                 display: flex;
                 align-items: center;
-                height: 32px;
+                flex-wrap: wrap;
+                row-gap: 4px;
+                min-height: 32px;
             }
             .wp-admin-bar form {
                 display: inline;

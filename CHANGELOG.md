@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — creating a variant never recorded its initial stock movement (StockCacheMatchesMovements failures)
+- Both variant-creation paths — the admin "Create" form (`VariantsRelationManager`) and bulk "Generate variants"/`GenerateProductVariants` — wrote the submitted stock count straight onto `product_variants.stock`, with no corresponding `stock_movements` row. This silently violated the "stock is a cache derived from its movement ledger" invariant for *every* variant ever created with nonzero initial stock — exactly what the `StockCacheMatchesMovements` System Health check (Tier 3) exists to catch. Both paths now create the variant with `stock` at 0, then apply the initial count through `RecordStockMovement` (type Restock), so it's backed by a real ledger entry like every other stock change.
+- Added `php artisan health:reconcile-stock-cache` (`--force` to write, dry-run by default) for backfilling any variants already affected by this before the fix — it trusts the cached `stock` value as correct and inserts the missing ledger entry to match it, never adjusting `stock` itself. Run it, review the table, then `--force` to apply.
+- 9 new tests.
+
 ### Fixed — admin bar caused horizontal page scroll
 - The shared "WP-style" admin bar (`partials/admin-bar.blade.php`, shown above both the storefront and the Filament panel for Admin/Super Admin) laid its items out as a single `nowrap` flex row with no wrapping and no overflow handling — on any viewport narrower than its full content width (phone/tablet, or desktop with a long signed-in name), the row simply grew past its container and dragged the whole page into horizontal scroll.
 - Fixed by letting the bar (and each of its two item groups) wrap onto additional lines instead of overflowing. Deliberately not fixed via `overflow-x: auto` on the bar — that was tried first, but the CSS Overflow spec couples the axes: setting `overflow-x` to anything but `visible` forces `overflow-y` to `auto` too, which would have clipped the hover dropdowns (New/Pending orders/Cache) since they're `position: absolute` descendants that render below the bar's own box.

@@ -10,10 +10,13 @@ declare(strict_types=1);
 
 namespace App\Actions\Catalog;
 
+use App\Actions\Inventory\RecordStockMovement;
+use App\Enums\StockMovementType;
 use App\Enums\VariantStatus;
 use App\Models\AttributeTerm;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Lorisleiva\Actions\Concerns\AsAction;
@@ -40,6 +43,7 @@ class GenerateProductVariants
         int $defaultPrice,
         int $defaultStock,
         string $skuPrefix,
+        ?User $actor = null,
     ): Collection {
         $termGroups = array_values(array_filter($termGroups, fn (array $group): bool => $group !== []));
         $combinations = $this->cartesianProduct($termGroups);
@@ -50,7 +54,7 @@ class GenerateProductVariants
             ->get()
             ->keyBy('id');
 
-        return DB::transaction(function () use ($product, $combinations, $existingCombinations, $defaultPrice, $defaultStock, $skuPrefix, $termsById): Collection {
+        return DB::transaction(function () use ($product, $combinations, $existingCombinations, $defaultPrice, $defaultStock, $skuPrefix, $termsById, $actor): Collection {
             $created = collect();
 
             foreach ($combinations as $termIds) {
@@ -60,14 +64,24 @@ class GenerateProductVariants
 
                 $terms = collect($termIds)->map(fn (int $id): AttributeTerm => $termsById[$id]);
 
+                // Created with `stock` at 0, not $defaultStock — the initial
+                // count is applied through RecordStockMovement below so it's
+                // backed by a real ledger entry, same as every other write
+                // to a variant's stock (technical-design-ecommerce.md's
+                // "never update stock directly" rule applies to a brand-new
+                // variant too, not just an existing one).
                 $variant = $product->variants()->create([
                     'sku' => $this->buildSku($skuPrefix, $terms),
                     'price' => $defaultPrice,
-                    'stock' => $defaultStock,
+                    'stock' => 0,
                     'status' => VariantStatus::Active,
                 ]);
 
                 $variant->attributeTerms()->sync($termIds);
+
+                if ($defaultStock > 0) {
+                    RecordStockMovement::run($variant, StockMovementType::Restock, $defaultStock, $actor, 'Initial stock at creation');
+                }
 
                 $created->push($variant);
             }

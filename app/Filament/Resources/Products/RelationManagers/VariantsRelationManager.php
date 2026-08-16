@@ -10,6 +10,8 @@ use App\Actions\Catalog\ConvertImageToWebp;
 use App\Actions\Catalog\DeleteProductVariant;
 use App\Actions\Catalog\GenerateProductVariants;
 use App\Actions\Inventory\AdjustStockWithReservationCheck;
+use App\Actions\Inventory\RecordStockMovement;
+use App\Enums\StockMovementType;
 use App\Enums\VariantStatus;
 use App\Filament\Support\MoneyInput;
 use App\Models\AttributeTerm;
@@ -189,7 +191,7 @@ class VariantsRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                CreateAction::make(),
+                $this->createAction(),
                 $this->generateVariantsAction(),
             ])
             ->recordActions([
@@ -216,8 +218,38 @@ class VariantsRelationManager extends RelationManager
             ->emptyStateDescription('A product can\'t be sold without at least one variant.')
             ->emptyStateIcon(Heroicon::OutlinedCube)
             ->emptyStateActions([
-                CreateAction::make(),
+                $this->createAction(),
             ]);
+    }
+
+    /**
+     * Created with `stock` at 0, not the submitted value — the initial
+     * count is applied through RecordStockMovement afterward so it's
+     * backed by a real ledger entry, same as every other write to a
+     * variant's stock. Without this, `stock` and `stock_movements` drift
+     * apart the instant a variant is created with nonzero stock, which is
+     * exactly what `StockCacheMatchesMovements` (System Health, Tier 3)
+     * exists to catch.
+     */
+    private function createAction(): CreateAction
+    {
+        return CreateAction::make()
+            ->using(function (array $data): ProductVariant {
+                $initialStock = (int) ($data['stock'] ?? 0);
+                $data['stock'] = 0;
+
+                /** @var Product $product */
+                $product = $this->getOwnerRecord();
+
+                /** @var ProductVariant $variant */
+                $variant = $product->variants()->create($data);
+
+                if ($initialStock > 0) {
+                    RecordStockMovement::run($variant, StockMovementType::Restock, $initialStock, Auth::user(), 'Initial stock at creation');
+                }
+
+                return $variant;
+            });
     }
 
     /**
@@ -329,6 +361,7 @@ class VariantsRelationManager extends RelationManager
                     (int) $data['price'],
                     (int) $data['stock'],
                     $data['sku_prefix'],
+                    Auth::user(),
                 );
 
                 $combinationCount = collect($termGroups)->map(fn (array $ids): int => count($ids))->reduce(fn (int $carry, int $count): int => $carry * $count, 1);

@@ -30,8 +30,11 @@ class NotificationsPageTest extends TestCase
         $this->actingAs($customer);
         $customer->notify(new CustomerBroadcastNotification('Sale!', 'Everything is 20% off.'));
 
-        $this->get('/account/notifications')
-            ->assertOk()
+        // #[Lazy] means the real component only renders past its own
+        // `$refresh` follow-up request — same forced-hydration pattern
+        // CartPageTest uses for its own #[Lazy] component.
+        Livewire::test(NotificationsPage::class)
+            ->call('$refresh')
             ->assertSee('Sale!')
             ->assertSee('Everything is 20% off.');
     }
@@ -43,7 +46,20 @@ class NotificationsPageTest extends TestCase
         $other->notify(new CustomerBroadcastNotification('Not for you', 'Secret message.'));
         $this->actingAs($customer);
 
-        $this->get('/account/notifications')->assertDontSee('Not for you');
+        Livewire::test(NotificationsPage::class)->call('$refresh')->assertDontSee('Not for you');
+    }
+
+    /**
+     * The real content only ever reaches the page through a follow-up
+     * request the #[Lazy] attribute defers to — the initial HTTP response
+     * (what a customer's very first paint actually sees) must show the
+     * skeleton, never a blank gap while that request is in flight.
+     */
+    public function test_the_page_shows_a_skeleton_placeholder_before_the_real_component_loads(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $this->get('/account/notifications')->assertOk()->assertSeeHtml('animate-pulse');
     }
 
     public function test_viewing_the_page_marks_notifications_as_read(): void
@@ -52,6 +68,12 @@ class NotificationsPageTest extends TestCase
         $this->actingAs($customer);
         $customer->notify(new CustomerBroadcastNotification('Sale!', 'Everything is 20% off.'));
 
+        // mount() (where the mark-as-read side effect lives) is only ever
+        // invoked through the real #[Lazy] component's special internal
+        // __lazyLoad call, never by a generic `$refresh` — disabling lazy
+        // loading for this one test is Livewire's own documented way to
+        // exercise mount() directly.
+        Livewire::withoutLazyLoading();
         Livewire::test(NotificationsPage::class);
 
         $this->assertNotNull($customer->notifications()->first()->read_at);

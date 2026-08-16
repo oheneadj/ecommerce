@@ -13,6 +13,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Lazy;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -25,6 +26,7 @@ use Livewire\WithPagination;
  * @property-read LengthAwarePaginator<int, DatabaseNotification> $notifications
  */
 #[Title('Notifications')]
+#[Lazy]
 class NotificationsPage extends Component
 {
     use WithPagination;
@@ -56,5 +58,15 @@ class NotificationsPage extends Component
     public function render(): View
     {
         return view('livewire.storefront.notifications-page');
+    }
+
+    /**
+     * Shown while the real component is still loading (see #[Lazy] above)
+     * — the mark-as-read side effect in mount() above only runs once the
+     * real component actually hydrates, same as everything else here.
+     */
+    public function placeholder(): View
+    {
+        return view('livewire.storefront.notifications-page-placeholder');
     }
 }

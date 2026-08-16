@@ -33,6 +33,19 @@ class AddressBookTest extends TestCase
         $this->get('/account/addresses')->assertOk();
     }
 
+    /**
+     * The real content only ever reaches the page through a follow-up
+     * request the #[Lazy] attribute defers to — the initial HTTP response
+     * (what a customer's very first paint actually sees) must show the
+     * skeleton, never a blank gap while that request is in flight.
+     */
+    public function test_the_page_shows_a_skeleton_placeholder_before_the_real_component_loads(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $this->get('/account/addresses')->assertOk()->assertSeeHtml('animate-pulse');
+    }
+
     public function test_the_first_saved_address_is_automatically_the_default(): void
     {
         $user = User::factory()->create();

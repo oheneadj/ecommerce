@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — lazy loading + skeletons on the customer account pages
+- `OrderHistoryPage`, `AddressBook`, and `NotificationsPage` (the `/account/orders`, `/account/addresses`, and `/account/notifications` pages) are now `#[Lazy]` Livewire components, each with its own skeleton placeholder — same `#[Lazy]`/`placeholder()` pattern already used by `CartPage`/`CartIndicator`/etc.
+- Split the `/account` dashboard's "Recent orders" card out of `AccountController`/`account.show.blade.php` into a new `App\Livewire\Storefront\RecentOrders` component, also `#[Lazy]` with a skeleton — its query no longer holds up the rest of the (otherwise static) dashboard's first paint.
+- Tests updated to account for `#[Lazy]`: assertions on real content now force the follow-up render via `->call('$refresh')` (same pattern `CartPageTest` already established), and `NotificationsPage`'s mark-as-read test uses `Livewire::withoutLazyLoading()` since that side effect lives in `mount()`, which only the real (non-placeholder) component ever runs.
+- 4 new tests covering the skeleton placeholder actually appearing on first load.
+
+### Removed — dark mode on public storefront/auth pages
+- Every `dark:` Tailwind class removed from the storefront, auth, and customer-settings views — these pages are light-mode only now. Filament's admin panel is untouched and keeps its own independent dark/light toggle (a fully separate CSS pipeline, `resources/css/filament/admin/theme.css`, that was never part of this change).
+- Removed the customer-facing Settings → Appearance page entirely (route, `App\Livewire\Settings\Appearance`, its view, and its account-nav link) — its light/dark/system toggle had nothing left to control. Removed the matching dark-mode-detection bootstrap script from `partials/head.blade.php` and the now-dead `.dark { ... }` CSS block/`@custom-variant dark` declaration from `resources/css/app.css`.
+- Updated tests that referenced the removed page/nav item.
+
 ### Fixed — creating a variant never recorded its initial stock movement (StockCacheMatchesMovements failures)
 - Both variant-creation paths — the admin "Create" form (`VariantsRelationManager`) and bulk "Generate variants"/`GenerateProductVariants` — wrote the submitted stock count straight onto `product_variants.stock`, with no corresponding `stock_movements` row. This silently violated the "stock is a cache derived from its movement ledger" invariant for *every* variant ever created with nonzero initial stock — exactly what the `StockCacheMatchesMovements` System Health check (Tier 3) exists to catch. Both paths now create the variant with `stock` at 0, then apply the initial count through `RecordStockMovement` (type Restock), so it's backed by a real ledger entry like every other stock change.
 - Added `php artisan health:reconcile-stock-cache` (`--force` to write, dry-run by default) for backfilling any variants already affected by this before the fix — it trusts the cached `stock` value as correct and inserts the missing ledger entry to match it, never adjusting `stock` itself. Run it, review the table, then `--force` to apply.

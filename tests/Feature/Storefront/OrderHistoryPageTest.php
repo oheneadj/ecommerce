@@ -28,7 +28,23 @@ class OrderHistoryPageTest extends TestCase
     {
         $this->actingAs(User::factory()->create());
 
-        $this->get('/account/orders')->assertOk()->assertSee("haven't placed any orders");
+        // #[Lazy] means the real component only renders past its own
+        // `$refresh` follow-up request — same forced-hydration pattern
+        // CartPageTest uses for its own #[Lazy] component.
+        Livewire::test(OrderHistoryPage::class)->call('$refresh')->assertSee("haven't placed any orders");
+    }
+
+    /**
+     * The real content only ever reaches the page through a follow-up
+     * request the #[Lazy] attribute defers to — the initial HTTP response
+     * (what a customer's very first paint actually sees) must show the
+     * skeleton, never a blank gap while that request is in flight.
+     */
+    public function test_the_page_shows_a_skeleton_placeholder_before_the_real_component_loads(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $this->get('/account/orders')->assertOk()->assertSeeHtml('animate-pulse');
     }
 
     public function test_the_order_history_page_shows_the_customers_own_orders(): void
@@ -38,6 +54,7 @@ class OrderHistoryPageTest extends TestCase
         $this->actingAs($user);
 
         Livewire::test(OrderHistoryPage::class)
+            ->call('$refresh')
             ->assertSee($order->order_number);
     }
 
@@ -49,6 +66,7 @@ class OrderHistoryPageTest extends TestCase
         $this->actingAs($user);
 
         Livewire::test(OrderHistoryPage::class)
+            ->call('$refresh')
             ->assertDontSee($otherOrder->order_number);
     }
 }

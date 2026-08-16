@@ -9,9 +9,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Storefront;
 
+use App\Livewire\Storefront\RecentOrders;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class AccountPageTest extends TestCase
@@ -48,10 +50,26 @@ class AccountPageTest extends TestCase
 
         $this->actingAs($user);
 
-        $response = $this->get('/account');
+        // #[Lazy] means the real component only renders past its own
+        // `$refresh` follow-up request — same forced-hydration pattern
+        // CartPageTest uses for its own #[Lazy] component.
+        Livewire::test(RecentOrders::class)
+            ->call('$refresh')
+            ->assertSee($ownOrder->order_number)
+            ->assertDontSee('ORD-2026-000002');
+    }
 
-        $response->assertSee($ownOrder->order_number);
-        $response->assertDontSee('ORD-2026-000002');
+    /**
+     * The recent-orders query only ever runs on the follow-up request the
+     * #[Lazy] attribute defers to — the initial HTTP response (a
+     * customer's very first paint) must show the skeleton, never a blank
+     * gap while that request is in flight.
+     */
+    public function test_the_recent_orders_widget_shows_a_skeleton_placeholder_before_it_loads(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $this->get('/account')->assertOk()->assertSeeHtml('animate-pulse');
     }
 
     public function test_it_links_to_the_profile_settings_page(): void

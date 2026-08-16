@@ -16,10 +16,12 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Lazy;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Title('My Addresses')]
+#[Lazy]
 class AddressBook extends Component
 {
     public bool $showForm = false;
@@ -141,5 +143,13 @@ class AddressBook extends Component
     public function render(): View
     {
         return view('livewire.storefront.address-book');
+    }
+
+    /**
+     * Shown while the real component is still loading (see #[Lazy] above).
+     */
+    public function placeholder(): View
+    {
+        return view('livewire.storefront.address-book-placeholder');
     }
 }

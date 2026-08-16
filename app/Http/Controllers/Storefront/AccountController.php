@@ -11,14 +11,11 @@ namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Auth;
 
 class AccountController extends Controller
 {
     public function show(): View
     {
-        $orders = Auth::user()->orders()->latest()->limit(5)->get();
-
-        return view('account.show', ['orders' => $orders]);
+        return view('account.show');
     }
 }

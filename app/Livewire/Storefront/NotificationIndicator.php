@@ -33,6 +33,13 @@ class NotificationIndicator extends Component
 
     public bool $open = false;
 
+    /**
+     * The single preview item currently expanded to show its full message
+     * — only reached by non-order notifications, since an order
+     * notification just navigates away on click instead.
+     */
+    public ?string $expandedNotificationId = null;
+
     #[Computed]
     public function unreadCount(): int
     {
@@ -61,10 +68,13 @@ class NotificationIndicator extends Component
     }
 
     /**
-     * Clicking a preview item marks it read and, if it's about an order,
-     * navigates there — matches the full notifications page's behavior.
-     * Non-order notifications have nowhere to go from this compact
-     * preview, so nothing happens here for those; "View all" covers them.
+     * Clicking a preview item marks it read, then either navigates to the
+     * order it's about, or (for anything with nowhere to navigate, e.g. a
+     * staff broadcast) expands the row in place to reveal its full
+     * message — matches the full notifications page's behavior. The
+     * `recent` list itself is deliberately left uninvalidated here so an
+     * expanded item doesn't vanish mid-interaction just because marking it
+     * read would otherwise drop it out of the unread-only preview.
      */
     public function openNotification(string $notificationId): void
     {
@@ -74,18 +84,20 @@ class NotificationIndicator extends Component
             return;
         }
 
+        if ($notification->read_at === null) {
+            $notification->markAsRead();
+            unset($this->unreadCount);
+        }
+
         $orderUrl = $this->relatedOrderUrl($notification);
 
-        if ($orderUrl === null) {
+        if ($orderUrl !== null) {
+            $this->redirect($orderUrl, navigate: true);
+
             return;
         }
 
-        if ($notification->read_at === null) {
-            $notification->markAsRead();
-            unset($this->unreadCount, $this->recent);
-        }
-
-        $this->redirect($orderUrl, navigate: true);
+        $this->expandedNotificationId = $this->expandedNotificationId === $notificationId ? null : $notificationId;
     }
 
     public function render(): View

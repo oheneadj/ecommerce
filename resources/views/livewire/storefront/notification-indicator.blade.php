@@ -18,7 +18,7 @@
             @if ($this->recent->isEmpty())
                 <p class="text-sm text-zinc-500">{{ __('No notifications yet.') }}</p>
             @else
-                <div class="max-h-72 space-y-1 overflow-y-auto">
+                <div class="space-y-1">
                     @foreach ($this->recent as $notification)
                         <button
                             type="button"
@@ -29,7 +29,7 @@
                             <span class="mt-1.5 size-2 flex-shrink-0 rounded-full bg-brand-primary"></span>
                             <span class="flex-1">
                                 <span class="block font-medium">{{ $notification->data['subject'] ?? $notification->data['message'] ?? '' }}</span>
-                                <span class="block truncate text-zinc-500">{{ $notification->data['message'] ?? '' }}</span>
+                                <span class="block text-zinc-500 {{ $expandedNotificationId === $notification->id ? '' : 'line-clamp-2' }}">{{ $notification->data['message'] ?? '' }}</span>
                                 <span class="mt-0.5 block text-xs text-zinc-400">{{ $notification->created_at?->diffForHumans() }}</span>
                             </span>
                         </button>

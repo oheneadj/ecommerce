@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Customer notifications (`/account/notifications` and the header bell dropdown) are now click-to-read instead of auto-marked-as-read on view. Clicking an order-related notification (`OrderPlaced`, `OrderShipped`, `PaymentSucceeded`, `PaymentFailed` — identified by the `order_id` carried in its stored data) marks it read and navigates to that order's detail page; clicking anything else (e.g. a staff broadcast) marks it read and expands the row in place to reveal its full message.
 - Unread notifications now have a visible indicator (a dot + tinted row) on both the full history page and the bell preview — previously read and unread were visually indistinguishable, undermined further by the page/dropdown marking everything read just by opening it.
 - The bell dropdown now shows the top unread notifications (was: 5 most recent regardless of read state) — a natural fit now that opening it no longer instantly marks them read.
+- The bell dropdown no longer scrolls internally — its message preview wraps and truncates to 2 lines (`line-clamp-2`) instead, with the same click-to-expand-in-place behavior as the full history page revealing the rest.
 - New shared `App\Livewire\Storefront\Concerns\LinksToRelatedOrder` trait resolves a notification's order URL, used by both `NotificationsPage` and `NotificationIndicator`.
 - 8 new tests, 2 existing tests updated for the removed auto-mark-as-read behavior.
 

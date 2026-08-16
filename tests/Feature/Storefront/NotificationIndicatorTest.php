@@ -86,15 +86,18 @@ class NotificationIndicatorTest extends TestCase
         $this->assertNotNull($customer->notifications()->first()->read_at);
     }
 
-    public function test_clicking_a_non_order_notification_in_the_preview_does_nothing(): void
+    public function test_clicking_a_non_order_notification_in_the_preview_marks_it_read_and_expands_it_in_place(): void
     {
         $customer = User::factory()->create();
         $this->actingAs($customer);
         $customer->notify(new CustomerBroadcastNotification('Sale!', 'Everything is 20% off.'));
         $notificationId = $customer->notifications()->first()->id;
 
-        Livewire::test(NotificationIndicator::class)->call('openNotification', $notificationId)->assertNoRedirect();
+        Livewire::test(NotificationIndicator::class)
+            ->call('openNotification', $notificationId)
+            ->assertNoRedirect()
+            ->assertSet('expandedNotificationId', $notificationId);
 
-        $this->assertNull($customer->notifications()->first()->read_at);
+        $this->assertNotNull($customer->notifications()->first()->read_at);
     }
 }

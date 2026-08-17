@@ -57,7 +57,7 @@
 
                     @if (! $phoneCodeSent)
                         <form wire:submit="sendPhoneVerificationCode" class="mt-6 space-y-4">
-                            <x-input wire:model="newPhone" :label="__('Phone number')" type="tel" placeholder="{{ __('e.g. +233201234567') }}" />
+                            <x-input wire:model="newPhone" :label="__('Phone number')" type="tel" placeholder="{{ __('+233201234567 or 0201234567') }}" />
                             <div class="flex items-center gap-4">
                                 <x-button variant="primary" type="submit" class="whitespace-nowrap">{{ __('Send code') }}</x-button>
                                 @if ($this->verifiedPhone)

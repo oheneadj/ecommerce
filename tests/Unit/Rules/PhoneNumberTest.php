@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Covers App\Rules\PhoneNumber's E.164 format enforcement.
+ * Covers App\Rules\PhoneNumber's format acceptance and E.164 normalization.
  */
 
 declare(strict_types=1);
@@ -20,10 +20,12 @@ class PhoneNumberTest extends TestCase
     public static function validNumbers(): array
     {
         return [
-            'Ghana mobile' => ['+233201234567'],
-            'US number' => ['+12025551234'],
-            'shortest plausible (8 digits after +)' => ['+12345678'],
-            'longest allowed (15 digits after +)' => ['+123456789012345'],
+            'full E.164' => ['+233201234567', '+233201234567'],
+            'bare country code, no +' => ['233201234567', '+233201234567'],
+            'local Ghana format' => ['0201234567', '+233201234567'],
+            'US number (full E.164)' => ['+12025551234', '+12025551234'],
+            'shortest plausible (8 digits after +)' => ['+12345678', '+12345678'],
+            'longest allowed (15 digits after +)' => ['+123456789012345', '+123456789012345'],
         ];
     }
 
@@ -33,25 +35,25 @@ class PhoneNumberTest extends TestCase
     public static function invalidNumbers(): array
     {
         return [
-            'missing +' => ['233201234567'],
-            'local format, no country code' => ['0201234567'],
             'leading zero after +' => ['+0201234567'],
             'contains letters' => ['+233abc1234'],
             'too short' => ['+1234567'],
             'too long' => ['+1234567890123456'],
             'contains spaces' => ['+233 20 123 4567'],
+            'local format with wrong digit count' => ['02012345'],
         ];
     }
 
     #[DataProvider('validNumbers')]
-    public function test_it_accepts_valid_e164_numbers(string $number): void
+    public function test_it_accepts_and_normalizes_valid_numbers(string $input, string $expectedNormalized): void
     {
         $failed = false;
-        (new PhoneNumber)->validate('phone', $number, function () use (&$failed): void {
+        (new PhoneNumber)->validate('phone', $input, function () use (&$failed): void {
             $failed = true;
         });
 
         $this->assertFalse($failed);
+        $this->assertSame($expectedNormalized, PhoneNumber::normalize($input));
     }
 
     #[DataProvider('invalidNumbers')]
@@ -63,6 +65,7 @@ class PhoneNumberTest extends TestCase
         });
 
         $this->assertTrue($failed);
+        $this->assertNull(PhoneNumber::normalize($number));
     }
 
     public function test_it_treats_an_empty_value_as_valid_leaving_presence_to_a_separate_rule(): void

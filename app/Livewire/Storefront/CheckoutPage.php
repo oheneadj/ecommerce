@@ -19,6 +19,7 @@ use App\Exceptions\CouponUsageLimitExceededException;
 use App\Exceptions\EmptyCartException;
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidCouponException;
+use App\Livewire\Concerns\NormalizesPhoneNumber;
 use App\Livewire\Storefront\Concerns\RespondsToPaymentInitiation;
 use App\Models\Address;
 use App\Models\Cart;
@@ -27,11 +28,9 @@ use App\Models\PaymentProviderSetting;
 use App\Models\ShippingMethod;
 use App\Models\StoreSetting;
 use App\Payments\PaymentManager;
-use App\Rules\PhoneNumber;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Lazy;
 use Livewire\Attributes\Title;
@@ -53,6 +52,7 @@ use Livewire\Component;
 #[Lazy]
 class CheckoutPage extends Component
 {
+    use NormalizesPhoneNumber;
     use RespondsToPaymentInitiation;
 
     public ?int $selectedAddressId = null;
@@ -360,18 +360,14 @@ class CheckoutPage extends Component
             }
         }
 
-        // Format-checked separately from the presence loop above — this
-        // matters more here than anywhere else phone numbers are collected:
-        // a guest's order confirmation/shipping SMS notifications depend
-        // on it being a real, correctly-formatted number, with no account
-        // to later go back and fix it on.
-        if ($valid) {
-            $errors = Validator::make(['guestPhone' => $this->guestPhone], ['guestPhone' => [new PhoneNumber]])->errors();
-
-            if ($errors->isNotEmpty()) {
-                $this->addError('guestPhone', (string) $errors->first('guestPhone'));
-                $valid = false;
-            }
+        // Normalized (not just format-checked) separately from the
+        // presence loop above — this matters more here than anywhere else
+        // phone numbers are collected: a guest's order confirmation/
+        // shipping SMS notifications depend on it being a real,
+        // canonically-formatted number, with no account to later go back
+        // and fix it on.
+        if ($valid && ! $this->normalizePhoneOrFail('guestPhone', 'guestPhone')) {
+            $valid = false;
         }
 
         return $valid;

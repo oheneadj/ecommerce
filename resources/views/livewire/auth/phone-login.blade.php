@@ -10,7 +10,7 @@
                     type="tel"
                     required
                     autofocus
-                    placeholder="+233..."
+                    placeholder="+233201234567 or 0201234567"
                 />
 
                 <x-button variant="primary" type="submit" class="w-full">

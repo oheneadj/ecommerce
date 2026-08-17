@@ -55,7 +55,7 @@
 
             <div class="grid gap-4 sm:grid-cols-2">
                 <x-input wire:model="recipient_name" label="{{ __('Recipient name') }}" placeholder="{{ __('e.g. Ama Owusu') }}" required />
-                <x-input wire:model="phone" label="{{ __('Phone') }}" placeholder="{{ __('e.g. +233201234567') }}" required />
+                <x-input wire:model="phone" label="{{ __('Phone') }}" placeholder="{{ __('+233201234567 or 0201234567') }}" required />
             </div>
 
             <x-input wire:model="line1" label="{{ __('Address line 1') }}" placeholder="{{ __('Street address, building name') }}" required />

@@ -13,7 +13,7 @@ use App\Actions\Auth\VerifyOtp;
 use App\Exceptions\InvalidOtpException;
 use App\Exceptions\OtpRateLimitedException;
 use App\Exceptions\TooManyOtpVerificationAttemptsException;
-use App\Rules\PhoneNumber;
+use App\Livewire\Concerns\NormalizesPhoneNumber;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 use Livewire\Attributes\Title;
@@ -27,6 +27,8 @@ use Livewire\Component;
 #[Title('Log in')]
 class PhoneLogin extends Component
 {
+    use NormalizesPhoneNumber;
+
     public string $phone = '';
 
     public string $code = '';
@@ -58,7 +60,9 @@ class PhoneLogin extends Component
      */
     public function sendCode(): void
     {
-        $this->validate(['phone' => ['required', 'string', new PhoneNumber]]);
+        if (! $this->normalizePhoneOrFail('phone', 'phone')) {
+            return;
+        }
 
         try {
             RequestOtp::run($this->phone, request()->ip());

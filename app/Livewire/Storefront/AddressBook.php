@@ -11,9 +11,8 @@ namespace App\Livewire\Storefront;
 use App\Actions\Address\CreateAddress;
 use App\Actions\Address\DeleteAddress;
 use App\Actions\Address\UpdateAddress;
+use App\Livewire\Concerns\NormalizesPhoneNumber;
 use App\Models\Address;
-use App\Rules\PhoneNumber;
-use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -26,6 +25,8 @@ use Livewire\Component;
 #[Lazy]
 class AddressBook extends Component
 {
+    use NormalizesPhoneNumber;
+
     public bool $showForm = false;
 
     public ?int $editingAddressId = null;
@@ -47,14 +48,14 @@ class AddressBook extends Component
     public bool $is_default = false;
 
     /**
-     * @return array<string, array<int, string|ValidationRule>>
+     * @return array<string, array<int, string>>
      */
     protected function rules(): array
     {
         return [
             'label' => ['nullable', 'string', 'max:255'],
             'recipient_name' => ['required', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'max:255', new PhoneNumber],
+            'phone' => ['required', 'string', 'max:255'],
             'line1' => ['required', 'string', 'max:255'],
             'line2' => ['nullable', 'string', 'max:255'],
             'city' => ['required', 'string', 'max:255'],
@@ -97,6 +98,10 @@ class AddressBook extends Component
 
     public function save(): void
     {
+        if (! $this->normalizePhoneOrFail('phone', 'phone')) {
+            return;
+        }
+
         $data = $this->validate();
         $data['label'] = $data['label'] !== '' ? $data['label'] : null;
         $data['line2'] = $data['line2'] !== '' ? $data['line2'] : null;

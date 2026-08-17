@@ -135,8 +135,10 @@ class ManageStoreSettings extends Page implements HasForms
                                 TextInput::make('contact_phone')
                                     ->tel()
                                     ->maxLength(255)
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(fn (?string $state, callable $set) => $set('contact_phone', PhoneNumber::normalize((string) $state) ?? $state))
                                     ->rule(new PhoneNumber)
-                                    ->placeholder('e.g. +233201234567'),
+                                    ->placeholder('e.g. +233201234567 or 0201234567'),
 
                                 TextInput::make('contact_address')
                                     ->maxLength(255),

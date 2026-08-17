@@ -9,7 +9,7 @@ use App\Exceptions\InvalidOtpException;
 use App\Exceptions\OtpRateLimitedException;
 use App\Exceptions\PhoneAlreadyLinkedException;
 use App\Exceptions\TooManyOtpVerificationAttemptsException;
-use App\Rules\PhoneNumber;
+use App\Livewire\Concerns\NormalizesPhoneNumber;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -22,6 +22,7 @@ use Livewire\Component;
 #[Layout('layouts.storefront')]
 class Profile extends Component
 {
+    use NormalizesPhoneNumber;
     use ProfileValidationRules;
 
     public string $name = '';
@@ -91,8 +92,12 @@ class Profile extends Component
      */
     public function sendPhoneVerificationCode(): void
     {
+        if (! $this->normalizePhoneOrFail('newPhone', 'newPhone')) {
+            return;
+        }
+
         $this->validate([
-            'newPhone' => ['required', 'string', new PhoneNumber, Rule::unique('users', 'phone')->ignore(Auth::id())],
+            'newPhone' => [Rule::unique('users', 'phone')->ignore(Auth::id())],
         ]);
 
         try {

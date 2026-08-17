@@ -63,10 +63,18 @@ class StaffForm
                                     ->required()
                                     ->tel()
                                     ->maxLength(255)
+                                    // Normalizes on blur, before the unique/format
+                                    // rules below run, so both compare against the
+                                    // same canonical E.164 shape a stored number is
+                                    // already in — not whichever of the formats
+                                    // (local, bare country code, full E.164) staff
+                                    // happened to type.
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(fn (?string $state, callable $set) => $set('phone', PhoneNumber::normalize((string) $state) ?? $state))
                                     ->unique(ignoreRecord: true)
                                     ->rule(new PhoneNumber)
-                                    ->placeholder('e.g. +233201234567')
-                                    ->helperText('International format, e.g. +233201234567 — used for the invite heads-up SMS and operational alerts (e.g. low stock).'),
+                                    ->placeholder('e.g. +233201234567 or 0201234567')
+                                    ->helperText('Used for the invite heads-up SMS and operational alerts (e.g. low stock).'),
                             ]),
                     ]),
             ]);

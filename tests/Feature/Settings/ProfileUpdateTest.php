@@ -191,6 +191,65 @@ class ProfileUpdateTest extends TestCase
         $this->assertNotNull($user->phone_verified_at);
     }
 
+    public function test_a_verified_phone_is_shown_without_the_add_form(): void
+    {
+        $user = User::factory()->create(['phone' => '+233201234567', 'phone_verified_at' => now()]);
+        $this->actingAs($user);
+
+        Livewire::test(Profile::class)
+            ->assertSee('+233201234567')
+            ->assertSet('changingPhone', false);
+    }
+
+    public function test_a_customer_with_a_verified_phone_can_start_changing_it(): void
+    {
+        $this->fakeSmsGateway();
+        $user = User::factory()->create(['phone' => '+233201234567', 'phone_verified_at' => now()]);
+        $this->actingAs($user);
+
+        Livewire::test(Profile::class)
+            ->call('startPhoneChange')
+            ->assertSet('changingPhone', true)
+            ->set('newPhone', '+233209999999')
+            ->call('sendPhoneVerificationCode')
+            ->assertHasNoErrors()
+            ->assertSet('phoneCodeSent', true);
+    }
+
+    public function test_verifying_a_new_code_replaces_the_existing_verified_phone(): void
+    {
+        $user = User::factory()->create(['phone' => '+233201234567', 'phone_verified_at' => now()]);
+        $this->actingAs($user);
+        OtpCode::query()->create([
+            'identifier' => '+233209999999',
+            'code_hash' => Hash::make('123456'),
+            'purpose' => 'link_phone',
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        Livewire::test(Profile::class)
+            ->call('startPhoneChange')
+            ->set('newPhone', '+233209999999')
+            ->set('phoneOtpCode', '123456')
+            ->call('verifyPhoneCode')
+            ->assertHasNoErrors()
+            ->assertSet('changingPhone', false);
+
+        $this->assertSame('+233209999999', $user->refresh()->phone);
+    }
+
+    public function test_cancelling_a_phone_change_returns_to_the_verified_number_display(): void
+    {
+        $user = User::factory()->create(['phone' => '+233201234567', 'phone_verified_at' => now()]);
+        $this->actingAs($user);
+
+        Livewire::test(Profile::class)
+            ->call('startPhoneChange')
+            ->assertSet('changingPhone', true)
+            ->call('cancelPhoneChange')
+            ->assertSet('changingPhone', false);
+    }
+
     public function test_verifying_the_wrong_code_does_not_attach_the_phone_number(): void
     {
         $user = User::factory()->create(['phone' => null]);

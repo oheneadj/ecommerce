@@ -34,6 +34,12 @@ class Profile extends Component
     public bool $phoneCodeSent = false;
 
     /**
+     * Reveals the add/change form even though a verified phone already
+     * exists — otherwise the page just shows the current number.
+     */
+    public bool $changingPhone = false;
+
+    /**
      * Mount the component.
      */
     public function mount(): void
@@ -56,7 +62,27 @@ class Profile extends Component
         if (is_string($pendingPhone)) {
             $this->newPhone = $pendingPhone;
             $this->phoneCodeSent = true;
+            $this->changingPhone = true;
         }
+    }
+
+    /**
+     * Reveal the add/change form for a customer who already has a
+     * verified phone number.
+     */
+    public function startPhoneChange(): void
+    {
+        $this->changingPhone = true;
+    }
+
+    /**
+     * Back out of the number-entry step to the verified-number display —
+     * only reached before a code has been sent (once sent, "use a
+     * different number" via cancelPhoneVerification is the equivalent).
+     */
+    public function cancelPhoneChange(): void
+    {
+        $this->reset('newPhone', 'changingPhone');
     }
 
     /**
@@ -65,7 +91,7 @@ class Profile extends Component
     public function sendPhoneVerificationCode(): void
     {
         $this->validate([
-            'newPhone' => ['required', 'string', 'min:9', Rule::unique('users', 'phone')],
+            'newPhone' => ['required', 'string', 'min:9', Rule::unique('users', 'phone')->ignore(Auth::id())],
         ]);
 
         try {
@@ -96,8 +122,8 @@ class Profile extends Component
         }
 
         session()->forget('link_phone_number');
-        $this->reset('newPhone', 'phoneOtpCode', 'phoneCodeSent');
-        $this->dispatch('toast', variant: 'success', message: __('Phone number verified and added to your account.'));
+        $this->reset('newPhone', 'phoneOtpCode', 'phoneCodeSent', 'changingPhone');
+        $this->dispatch('toast', variant: 'success', message: __('Phone number verified and saved to your account.'));
     }
 
     /**

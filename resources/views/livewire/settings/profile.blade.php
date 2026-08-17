@@ -43,15 +43,29 @@
                     {{ __('Phone number') }}
                 </h2>
 
-                @if ($this->verifiedPhone)
+                @if ($this->verifiedPhone && ! $changingPhone)
                     <p class="mt-1 text-sm text-zinc-500">{{ __('Verified') }}: {{ $this->verifiedPhone }}</p>
+                    <button type="button" wire:click="startPhoneChange" class="mt-4 text-sm font-medium text-brand-primary hover:underline">
+                        {{ __('Change number') }}
+                    </button>
                 @else
-                    <p class="mt-1 text-sm text-zinc-500">{{ __('Add and verify a phone number to also sign in with it, or receive SMS updates.') }}</p>
+                    <p class="mt-1 text-sm text-zinc-500">
+                        {{ $this->verifiedPhone
+                            ? __('Verify a new number to replace :phone.', ['phone' => $this->verifiedPhone])
+                            : __('Add and verify a phone number to also sign in with it, or receive SMS updates.') }}
+                    </p>
 
                     @if (! $phoneCodeSent)
                         <form wire:submit="sendPhoneVerificationCode" class="mt-6 space-y-4">
                             <x-input wire:model="newPhone" :label="__('Phone number')" type="tel" />
-                            <x-button variant="primary" type="submit" class="whitespace-nowrap">{{ __('Send code') }}</x-button>
+                            <div class="flex items-center gap-4">
+                                <x-button variant="primary" type="submit" class="whitespace-nowrap">{{ __('Send code') }}</x-button>
+                                @if ($this->verifiedPhone)
+                                    <button type="button" wire:click="cancelPhoneChange" class="text-sm text-zinc-500 hover:underline">
+                                        {{ __('Cancel') }}
+                                    </button>
+                                @endif
+                            </div>
                         </form>
                     @else
                         <form wire:submit="verifyPhoneCode" class="mt-6 space-y-4">

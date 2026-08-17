@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — change an already-verified phone number
+- A customer with a verified phone can now click "Change number" on Profile settings to replace it with a new one — same OTP verification flow as adding one for the first time, reusing `LinkPhoneToAccount` unchanged (it already just overwrites `phone`/`phone_verified_at` on success).
+- 4 new tests.
+
 ### Fixed — phone-linking step lost on page reload, cramped "Send code" button
 - Reloading the Profile settings page while waiting for a phone-verification code stranded the customer back on the number-entry step even though their code was still valid — the pending phone number is now persisted to the session, same fix already applied to `PhoneLogin`.
 - The phone number field and "Send code" button are now stacked instead of a cramped inline `flex` row that squeezed the button.

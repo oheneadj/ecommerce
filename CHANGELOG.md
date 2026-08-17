@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — placeholders on account page inputs
+- Profile, Security, and Address Book inputs (name, email, phone, verification code, password fields, recipient name, address lines, city, region) now show example/hint placeholder text — most previously had none at all.
+
 ### Added — change an already-verified phone number
 - A customer with a verified phone can now click "Change number" on Profile settings to replace it with a new one — same OTP verification flow as adding one for the first time, reusing `LinkPhoneToAccount` unchanged (it already just overwrites `phone`/`phone_verified_at` on success).
 - 4 new tests.

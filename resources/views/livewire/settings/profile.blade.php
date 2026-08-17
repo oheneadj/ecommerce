@@ -13,10 +13,10 @@
                 <p class="mt-1 text-sm text-zinc-500">{{ __('Update your name and email address') }}</p>
 
                 <form wire:submit="updateProfileInformation" class="mt-6 w-full space-y-6">
-                    <x-input wire:model="name" :label="__('Name')" type="text" required autofocus autocomplete="name" />
+                    <x-input wire:model="name" :label="__('Name')" type="text" placeholder="{{ __('e.g. Ama Owusu') }}" required autofocus autocomplete="name" />
 
                     <div>
-                        <x-input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />
+                        <x-input wire:model="email" :label="__('Email')" type="email" placeholder="{{ __('you@example.com') }}" required autocomplete="email" />
 
                         @if ($this->hasUnverifiedEmail)
                             <div>
@@ -57,7 +57,7 @@
 
                     @if (! $phoneCodeSent)
                         <form wire:submit="sendPhoneVerificationCode" class="mt-6 space-y-4">
-                            <x-input wire:model="newPhone" :label="__('Phone number')" type="tel" />
+                            <x-input wire:model="newPhone" :label="__('Phone number')" type="tel" placeholder="{{ __('e.g. +233201234567') }}" />
                             <div class="flex items-center gap-4">
                                 <x-button variant="primary" type="submit" class="whitespace-nowrap">{{ __('Send code') }}</x-button>
                                 @if ($this->verifiedPhone)
@@ -70,7 +70,7 @@
                     @else
                         <form wire:submit="verifyPhoneCode" class="mt-6 space-y-4">
                             <p class="text-sm text-zinc-500">{{ __('Enter the code sent to :phone.', ['phone' => $newPhone]) }}</p>
-                            <x-input wire:model="phoneOtpCode" :label="__('Verification code')" type="text" inputmode="numeric" autofocus />
+                            <x-input wire:model="phoneOtpCode" :label="__('Verification code')" type="text" inputmode="numeric" placeholder="{{ __('6-digit code') }}" autofocus />
                             <div class="flex items-center gap-4">
                                 <x-button variant="primary" type="submit">{{ __('Verify') }}</x-button>
                                 <button type="button" wire:click="cancelPhoneVerification" class="text-sm text-zinc-500 hover:underline">

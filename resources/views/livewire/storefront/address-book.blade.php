@@ -54,16 +54,16 @@
             <x-input wire:model="label" label="{{ __('Label') }}" placeholder="{{ __('e.g. Home, Office') }}" />
 
             <div class="grid gap-4 sm:grid-cols-2">
-                <x-input wire:model="recipient_name" label="{{ __('Recipient name') }}" required />
-                <x-input wire:model="phone" label="{{ __('Phone') }}" required />
+                <x-input wire:model="recipient_name" label="{{ __('Recipient name') }}" placeholder="{{ __('e.g. Ama Owusu') }}" required />
+                <x-input wire:model="phone" label="{{ __('Phone') }}" placeholder="{{ __('e.g. +233201234567') }}" required />
             </div>
 
-            <x-input wire:model="line1" label="{{ __('Address line 1') }}" required />
-            <x-input wire:model="line2" label="{{ __('Address line 2') }}" />
+            <x-input wire:model="line1" label="{{ __('Address line 1') }}" placeholder="{{ __('Street address, building name') }}" required />
+            <x-input wire:model="line2" label="{{ __('Address line 2') }}" placeholder="{{ __('Apartment, suite, unit (optional)') }}" />
 
             <div class="grid gap-4 sm:grid-cols-2">
-                <x-input wire:model="city" label="{{ __('City') }}" required />
-                <x-input wire:model="region" label="{{ __('Region') }}" />
+                <x-input wire:model="city" label="{{ __('City') }}" placeholder="{{ __('e.g. Accra') }}" required />
+                <x-input wire:model="region" label="{{ __('Region') }}" placeholder="{{ __('e.g. Greater Accra') }}" />
             </div>
 
             <label class="flex items-center gap-2 text-sm">

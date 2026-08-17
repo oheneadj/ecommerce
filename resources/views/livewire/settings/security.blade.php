@@ -17,6 +17,7 @@
                         wire:model="current_password"
                         :label="__('Current password')"
                         type="password"
+                        placeholder="{{ __('Enter your current password') }}"
                         required
                         autocomplete="current-password"
                         viewable
@@ -25,6 +26,7 @@
                         wire:model="password"
                         :label="__('New password')"
                         type="password"
+                        placeholder="{{ __('Enter a new password') }}"
                         required
                         autocomplete="new-password"
                         passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
@@ -34,6 +36,7 @@
                         wire:model="password_confirmation"
                         :label="__('Confirm password')"
                         type="password"
+                        placeholder="{{ __('Re-enter the new password') }}"
                         required
                         autocomplete="new-password"
                         passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"

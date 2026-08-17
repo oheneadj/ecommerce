@@ -211,6 +211,40 @@ class ProfileUpdateTest extends TestCase
         $this->assertNull($user->refresh()->phone);
     }
 
+    public function test_reloading_the_page_after_sending_a_phone_code_stays_on_the_verify_step(): void
+    {
+        $this->fakeSmsGateway();
+        $user = User::factory()->create(['phone' => null]);
+        $this->actingAs($user);
+
+        Livewire::test(Profile::class)
+            ->set('newPhone', '+233201234567')
+            ->call('sendPhoneVerificationCode')
+            ->assertSet('phoneCodeSent', true);
+
+        // A fresh component instance, exactly as a real page reload
+        // produces — mount() must restore state from the session alone.
+        Livewire::test(Profile::class)
+            ->assertSet('phoneCodeSent', true)
+            ->assertSet('newPhone', '+233201234567');
+    }
+
+    public function test_using_a_different_number_clears_the_pending_phone_session_state(): void
+    {
+        $this->fakeSmsGateway();
+        $user = User::factory()->create(['phone' => null]);
+        $this->actingAs($user);
+
+        Livewire::test(Profile::class)
+            ->set('newPhone', '+233201234567')
+            ->call('sendPhoneVerificationCode')
+            ->assertSet('phoneCodeSent', true)
+            ->call('cancelPhoneVerification')
+            ->assertSet('phoneCodeSent', false);
+
+        Livewire::test(Profile::class)->assertSet('phoneCodeSent', false);
+    }
+
     public function test_a_login_otp_code_cannot_be_used_to_link_a_phone_number(): void
     {
         // The purpose scoping on OtpCode must isolate these two flows —

@@ -49,9 +49,9 @@
                     <p class="mt-1 text-sm text-zinc-500">{{ __('Add and verify a phone number to also sign in with it, or receive SMS updates.') }}</p>
 
                     @if (! $phoneCodeSent)
-                        <form wire:submit="sendPhoneVerificationCode" class="mt-6 flex items-end gap-4">
-                            <x-input wire:model="newPhone" :label="__('Phone number')" type="tel" class="flex-1" />
-                            <x-button variant="primary" type="submit">{{ __('Send code') }}</x-button>
+                        <form wire:submit="sendPhoneVerificationCode" class="mt-6 space-y-4">
+                            <x-input wire:model="newPhone" :label="__('Phone number')" type="tel" />
+                            <x-button variant="primary" type="submit" class="whitespace-nowrap">{{ __('Send code') }}</x-button>
                         </form>
                     @else
                         <form wire:submit="verifyPhoneCode" class="mt-6 space-y-4">

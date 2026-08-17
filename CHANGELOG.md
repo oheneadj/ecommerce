@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — phone-linking step lost on page reload, cramped "Send code" button
+- Reloading the Profile settings page while waiting for a phone-verification code stranded the customer back on the number-entry step even though their code was still valid — the pending phone number is now persisted to the session, same fix already applied to `PhoneLogin`.
+- The phone number field and "Send code" button are now stacked instead of a cramped inline `flex` row that squeezed the button.
+- 2 new tests.
+
 ### Added — let email+password customers add and verify a phone number
 - Profile settings gained a "Phone number" card: an email+password customer with no phone on file can now add one, receive a 6-digit OTP (reusing the existing SMS OTP infrastructure), and verify it — after which it's attached to their account (`phone` + `phone_verified_at`), enabling phone+OTP login and SMS notifications for an account that started as email-only.
 - The phone number is rejected up front if it already belongs to a different account (checked before sending the SMS, and again via the column's unique constraint as a race-condition backstop) — never silently reassigned or merged, per this project's no-unverified-account-linking rule; linking here is safe specifically because the phone is independently OTP-verified.

@@ -44,6 +44,19 @@ class Profile extends Component
         // properties would throw before the page ever rendered.
         $this->name = Auth::user()->name ?? '';
         $this->email = Auth::user()->email ?? '';
+
+        // `newPhone`/`phoneCodeSent` are otherwise plain in-memory component
+        // properties — a page reload while waiting for the code (the same
+        // gap PhoneLogin already had to solve) would silently re-mount this
+        // component and strand the customer back on the number-entry step,
+        // even though their already-requested code is still valid
+        // server-side. The session survives a reload; component state doesn't.
+        $pendingPhone = session('link_phone_number');
+
+        if (is_string($pendingPhone)) {
+            $this->newPhone = $pendingPhone;
+            $this->phoneCodeSent = true;
+        }
     }
 
     /**
@@ -63,6 +76,7 @@ class Profile extends Component
             return;
         }
 
+        session(['link_phone_number' => $this->newPhone]);
         $this->phoneCodeSent = true;
     }
 
@@ -81,6 +95,7 @@ class Profile extends Component
             return;
         }
 
+        session()->forget('link_phone_number');
         $this->reset('newPhone', 'phoneOtpCode', 'phoneCodeSent');
         $this->dispatch('toast', variant: 'success', message: __('Phone number verified and added to your account.'));
     }
@@ -90,6 +105,7 @@ class Profile extends Component
      */
     public function cancelPhoneVerification(): void
     {
+        session()->forget('link_phone_number');
         $this->reset('phoneOtpCode', 'phoneCodeSent');
     }
 

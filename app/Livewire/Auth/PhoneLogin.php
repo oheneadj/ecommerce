@@ -13,6 +13,7 @@ use App\Actions\Auth\VerifyOtp;
 use App\Exceptions\InvalidOtpException;
 use App\Exceptions\OtpRateLimitedException;
 use App\Exceptions\TooManyOtpVerificationAttemptsException;
+use App\Rules\PhoneNumber;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 use Livewire\Attributes\Title;
@@ -57,7 +58,7 @@ class PhoneLogin extends Component
      */
     public function sendCode(): void
     {
-        $this->validate(['phone' => ['required', 'string', 'min:9']]);
+        $this->validate(['phone' => ['required', 'string', new PhoneNumber]]);
 
         try {
             RequestOtp::run($this->phone, request()->ip());

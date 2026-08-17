@@ -54,7 +54,7 @@ class StaffResourceTest extends TestCase
 
     private function staffMember(UserRole $role = UserRole::Admin): User
     {
-        $user = User::factory()->create(['phone' => fake()->unique()->numerify('055#######')]);
+        $user = User::factory()->create(['phone' => fake()->unique()->numerify('+233#########')]);
         $user->assignRole($role->value);
 
         return $user;
@@ -107,7 +107,7 @@ class StaffResourceTest extends TestCase
             ->fillForm([
                 'name' => 'Jane Doe',
                 'email' => 'jane@example.com',
-                'phone' => '0551234567',
+                'phone' => '+233551234567',
                 'role' => UserRole::Admin->value,
             ])
             ->call('create')

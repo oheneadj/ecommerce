@@ -27,9 +27,11 @@ use App\Models\PaymentProviderSetting;
 use App\Models\ShippingMethod;
 use App\Models\StoreSetting;
 use App\Payments\PaymentManager;
+use App\Rules\PhoneNumber;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Lazy;
 use Livewire\Attributes\Title;
@@ -354,6 +356,20 @@ class CheckoutPage extends Component
         foreach ($fields as $field => $message) {
             if (trim($this->{$field}) === '') {
                 $this->addError($field, $message);
+                $valid = false;
+            }
+        }
+
+        // Format-checked separately from the presence loop above — this
+        // matters more here than anywhere else phone numbers are collected:
+        // a guest's order confirmation/shipping SMS notifications depend
+        // on it being a real, correctly-formatted number, with no account
+        // to later go back and fix it on.
+        if ($valid) {
+            $errors = Validator::make(['guestPhone' => $this->guestPhone], ['guestPhone' => [new PhoneNumber]])->errors();
+
+            if ($errors->isNotEmpty()) {
+                $this->addError('guestPhone', (string) $errors->first('guestPhone'));
                 $valid = false;
             }
         }

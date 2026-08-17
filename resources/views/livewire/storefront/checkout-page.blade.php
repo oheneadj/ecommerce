@@ -49,7 +49,7 @@
                             <x-input wire:model="guestName" :placeholder="__('Full name')" />
                         </div>
                         <div>
-                            <x-input wire:model="guestPhone" type="tel" :placeholder="__('Phone number')" />
+                            <x-input wire:model="guestPhone" type="tel" placeholder="{{ __('e.g. +233201234567') }}" />
                         </div>
                         <div class="sm:col-span-2">
                             <x-input wire:model="guestEmail" type="email" :placeholder="__('Email address')" />

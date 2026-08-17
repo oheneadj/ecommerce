@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — phone number format validation everywhere a phone number is collected
+- No phone input anywhere in the app actually validated the number was a real, correctly-formatted phone number before this — `PhoneLogin` only checked length (`min:9`), and every other field (Address Book, guest checkout, Staff, admin's own profile, Store Settings contact number) had no format check at all. New `App\Rules\PhoneNumber` enforces E.164 international format (`+` + country code + digits, e.g. `+233201234567`) and is now applied everywhere a phone number is entered: `PhoneLogin`, Profile's phone-linking form, `AddressBook`, guest checkout, and the Filament Staff form, admin's own profile (Breezy `PersonalInfo`), and Store Settings' contact phone.
+- Matters beyond just clean data: every phone number is sent as-is to the SMS gateway with no reformatting (`App\Sms\Drivers\MoolreSms`/`GiantSms` pass `$to` straight through) — an unvalidated number silently wasted an SMS send attempt or failed at the gateway with no useful error. The Staff form's placeholder previously suggested local format (`0551234567`), inconsistent with the `+233...` format every other flow already expected and a likely-latent bug for staff-alert SMS delivery.
+- Updated existing tests, seeders, and the address factory to use E.164-format phone numbers where they go through actual form validation.
+- 12 new unit tests for the rule itself.
+
 ### Added — placeholders on account page inputs
 - Profile, Security, and Address Book inputs (name, email, phone, verification code, password fields, recipient name, address lines, city, region) now show example/hint placeholder text — most previously had none at all.
 

@@ -20,21 +20,21 @@ class UserSeeder extends Seeder
         $superAdmin = User::factory()->create([
             'name' => 'Ama Owusu',
             'email' => 'superadmin@example.com',
-            'phone' => '0551000001',
+            'phone' => '+233551000001',
         ]);
         $superAdmin->assignRole(UserRole::SuperAdmin->value);
 
         $admin = User::factory()->create([
             'name' => 'Kwame Asante',
             'email' => 'admin@example.com',
-            'phone' => '0551000002',
+            'phone' => '+233551000002',
         ]);
         $admin->assignRole(UserRole::Admin->value);
 
         $storeKeeper = User::factory()->create([
             'name' => 'Efua Mensah',
             'email' => 'storekeeper@example.com',
-            'phone' => '0551000003',
+            'phone' => '+233551000003',
         ]);
         $storeKeeper->assignRole(UserRole::StoreKeeper->value);
 
@@ -42,7 +42,7 @@ class UserSeeder extends Seeder
         $yaw = User::factory()->create([
             'name' => 'Yaw Boateng',
             'email' => 'yaw@example.com',
-            'phone' => '0551000010',
+            'phone' => '+233551000010',
         ]);
         Address::factory()->create([
             'user_id' => $yaw->id,

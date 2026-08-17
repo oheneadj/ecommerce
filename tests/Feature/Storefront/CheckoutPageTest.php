@@ -613,7 +613,7 @@ class CheckoutPageTest extends TestCase
             ->set('selectedShippingMethodId', $shippingMethod->id)
             ->set('guestName', 'Ama Boateng')
             ->set('guestEmail', 'ama@example.com')
-            ->set('guestPhone', '0244000000')
+            ->set('guestPhone', '+233244000000')
             ->set('guestLine1', '12 Ring Road')
             ->set('guestCity', 'Accra')
             ->call('placeOrder');
@@ -621,7 +621,7 @@ class CheckoutPageTest extends TestCase
         $order = Order::query()->sole();
         $this->assertNull($order->user_id);
         $this->assertSame('ama@example.com', $order->guest_email);
-        $this->assertSame('0244000000', $order->guest_phone);
+        $this->assertSame('+233244000000', $order->guest_phone);
         $this->assertSame('Ama Boateng', $order->address_snapshot['recipient_name']);
         $this->assertSame(1300, $order->grand_total);
     }

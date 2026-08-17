@@ -9,6 +9,7 @@ use App\Exceptions\InvalidOtpException;
 use App\Exceptions\OtpRateLimitedException;
 use App\Exceptions\PhoneAlreadyLinkedException;
 use App\Exceptions\TooManyOtpVerificationAttemptsException;
+use App\Rules\PhoneNumber;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -91,7 +92,7 @@ class Profile extends Component
     public function sendPhoneVerificationCode(): void
     {
         $this->validate([
-            'newPhone' => ['required', 'string', 'min:9', Rule::unique('users', 'phone')->ignore(Auth::id())],
+            'newPhone' => ['required', 'string', new PhoneNumber, Rule::unique('users', 'phone')->ignore(Auth::id())],
         ]);
 
         try {

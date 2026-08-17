@@ -6,6 +6,7 @@ namespace App\Filament\Resources\Staff\Schemas;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Rules\PhoneNumber;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
@@ -63,8 +64,9 @@ class StaffForm
                                     ->tel()
                                     ->maxLength(255)
                                     ->unique(ignoreRecord: true)
-                                    ->placeholder('e.g. 0551234567')
-                                    ->helperText('Used for the invite heads-up SMS and operational alerts (e.g. low stock).'),
+                                    ->rule(new PhoneNumber)
+                                    ->placeholder('e.g. +233201234567')
+                                    ->helperText('International format, e.g. +233201234567 — used for the invite heads-up SMS and operational alerts (e.g. low stock).'),
                             ]),
                     ]),
             ]);

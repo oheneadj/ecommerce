@@ -12,6 +12,8 @@ use App\Actions\Address\CreateAddress;
 use App\Actions\Address\DeleteAddress;
 use App\Actions\Address\UpdateAddress;
 use App\Models\Address;
+use App\Rules\PhoneNumber;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -45,14 +47,14 @@ class AddressBook extends Component
     public bool $is_default = false;
 
     /**
-     * @return array<string, array<int, string>>
+     * @return array<string, array<int, string|ValidationRule>>
      */
     protected function rules(): array
     {
         return [
             'label' => ['nullable', 'string', 'max:255'],
             'recipient_name' => ['required', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'max:255', new PhoneNumber],
             'line1' => ['required', 'string', 'max:255'],
             'line2' => ['nullable', 'string', 'max:255'],
             'city' => ['required', 'string', 'max:255'],

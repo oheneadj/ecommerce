@@ -14,6 +14,7 @@ use App\Enums\RemoteStorageProvider;
 use App\Enums\SmsProvider;
 use App\Enums\UserRole;
 use App\Models\StoreSetting;
+use App\Rules\PhoneNumber;
 use BackedEnum;
 use Closure;
 use Filament\Forms\Components\ColorPicker;
@@ -133,7 +134,9 @@ class ManageStoreSettings extends Page implements HasForms
 
                                 TextInput::make('contact_phone')
                                     ->tel()
-                                    ->maxLength(255),
+                                    ->maxLength(255)
+                                    ->rule(new PhoneNumber)
+                                    ->placeholder('e.g. +233201234567'),
 
                                 TextInput::make('contact_address')
                                     ->maxLength(255),

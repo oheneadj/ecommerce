@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Breezy;
 
+use App\Rules\PhoneNumber;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
 use Jeffgreco13\FilamentBreezy\Livewire\PersonalInfo as BasePersonalInfo;
@@ -37,6 +38,8 @@ class PersonalInfo extends BasePersonalInfo
             ->tel()
             ->maxLength(255)
             ->unique($this->userClass, ignorable: $this->user)
+            ->rule(new PhoneNumber)
+            ->placeholder('e.g. +233201234567')
             ->label('Phone');
     }
 }

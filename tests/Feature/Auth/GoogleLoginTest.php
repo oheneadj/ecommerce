@@ -6,8 +6,11 @@ namespace Tests\Feature\Auth;
 
 use App\Actions\Auth\LoginWithGoogle;
 use App\Enums\UserRole;
+use App\Exceptions\GoogleEmailConflictException;
 use App\Models\User;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 use Spatie\Permission\Models\Role;
@@ -125,5 +128,126 @@ class GoogleLoginTest extends TestCase
         $this->assertAuthenticatedAs($currentUser);
         $this->assertSame('google-123', $currentUser->fresh()->google_id);
         $this->assertNull($otherAccountWithSameEmail->fresh()->google_id);
+    }
+
+    /**
+     * The core fix (audit part 2/4): a matching email alone was never
+     * enough to justify handing a stranger access to someone else's
+     * account — the existing account's own email must be independently
+     * verified too, not just Google's side.
+     */
+    public function test_a_first_time_google_login_matching_an_account_with_an_unverified_email_is_blocked(): void
+    {
+        $existing = User::factory()->create(['email' => 'jane@example.com', 'email_verified_at' => null, 'google_id' => null]);
+
+        $googleUser = $this->fakeGoogleUser('google-123', 'jane@example.com');
+
+        $this->expectException(GoogleEmailConflictException::class);
+
+        try {
+            LoginWithGoogle::run($googleUser);
+        } finally {
+            $this->assertGuest();
+            $this->assertNull($existing->fresh()->google_id);
+        }
+    }
+
+    public function test_the_blocked_login_sends_a_fresh_verification_email_to_the_conflicting_account(): void
+    {
+        Notification::fake();
+        $existing = User::factory()->create(['email' => 'jane@example.com', 'email_verified_at' => null, 'google_id' => null]);
+
+        try {
+            LoginWithGoogle::run($this->fakeGoogleUser('google-123', 'jane@example.com'));
+        } catch (GoogleEmailConflictException) {
+            // Expected.
+        }
+
+        Notification::assertSentTo($existing, VerifyEmail::class);
+    }
+
+    public function test_the_conflict_verification_email_is_rate_limited(): void
+    {
+        Notification::fake();
+        $existing = User::factory()->create(['email' => 'jane@example.com', 'email_verified_at' => null, 'google_id' => null]);
+
+        foreach (range(1, 2) as $attempt) {
+            try {
+                LoginWithGoogle::run($this->fakeGoogleUser('google-123', 'jane@example.com'));
+            } catch (GoogleEmailConflictException) {
+                // Expected, every attempt.
+            }
+        }
+
+        Notification::assertSentToTimes($existing, VerifyEmail::class, 1);
+    }
+
+    /**
+     * Once the existing account's email is genuinely verified (either
+     * side — clicking the link, or an earlier Google login), the exact
+     * same login now succeeds via the normal auto-link path. This is the
+     * self-resolving path a blocked customer is pointed toward.
+     */
+    public function test_retrying_after_the_existing_account_verifies_its_email_succeeds(): void
+    {
+        $existing = User::factory()->create(['email' => 'jane@example.com', 'email_verified_at' => now(), 'google_id' => null]);
+
+        $user = LoginWithGoogle::run($this->fakeGoogleUser('google-123', 'jane@example.com'));
+
+        $this->assertSame($existing->id, $user->id);
+        $this->assertSame('google-123', $user->fresh()->google_id);
+    }
+
+    public function test_the_unauthenticated_callback_redirects_to_phone_login_with_a_helpful_message_on_conflict(): void
+    {
+        User::factory()->create(['email' => 'jane@example.com', 'email_verified_at' => null, 'google_id' => null]);
+
+        Socialite::shouldReceive('driver->user')->andReturn($this->fakeGoogleUser('google-123', 'jane@example.com'));
+
+        $this->get('/login/google/callback')
+            ->assertRedirect(route('login.phone'))
+            ->assertSessionHas('error');
+
+        $this->assertGuest();
+    }
+
+    /**
+     * Regression: this exception was never caught before — a customer
+     * whose already-authenticated "connect Google" attempt hit an already-
+     * linked-elsewhere Google account got an uncaught 500, not a message.
+     */
+    public function test_connecting_an_already_linked_elsewhere_google_account_shows_a_friendly_error(): void
+    {
+        Role::findOrCreate(UserRole::Admin->value, 'web');
+        $currentUser = User::factory()->create(['email' => 'current-user@example.com', 'google_id' => null]);
+        User::factory()->create(['google_id' => 'google-123']);
+
+        Socialite::shouldReceive('driver->user')->andReturn($this->fakeGoogleUser('google-123', 'someone-else@example.com'));
+
+        $this->actingAs($currentUser)
+            ->get('/login/google/callback')
+            ->assertRedirect(route('account.show', absolute: false))
+            ->assertSessionHas('error');
+
+        $this->assertNull($currentUser->fresh()->google_id);
+    }
+
+    public function test_connecting_google_redirects_back_to_the_page_it_was_started_from(): void
+    {
+        Role::findOrCreate(UserRole::Admin->value, 'web');
+        $currentUser = User::factory()->create(['email' => 'current-user@example.com', 'google_id' => null]);
+
+        Socialite::shouldReceive('driver->user')->andReturn($this->fakeGoogleUser('google-123', 'current-user@example.com'));
+
+        // Simulates the redirect() action having already stashed where to
+        // return to — that endpoint itself just builds Google's OAuth URL
+        // (no assertable behavior of its own beyond the session write it
+        // performs), so it's exercised directly here rather than via a
+        // real request that would need Socialite's own redirect mocked too.
+        $this->withSession(['google_link_redirect_to' => route('security.edit', absolute: false)])
+            ->actingAs($currentUser)
+            ->get('/login/google/callback')
+            ->assertRedirect(route('security.edit', absolute: false))
+            ->assertSessionHas('status');
     }
 }

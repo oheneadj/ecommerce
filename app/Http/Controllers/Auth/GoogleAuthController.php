@@ -10,6 +10,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Actions\Auth\LinkAccountIdentifier;
 use App\Actions\Auth\LoginWithGoogle;
+use App\Exceptions\AccountIdentifierAlreadyLinkedException;
+use App\Exceptions\GoogleEmailConflictException;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -24,10 +26,17 @@ use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse
 class GoogleAuthController extends Controller
 {
     /**
-     * Redirect the customer to Google's OAuth consent screen.
+     * Redirect the customer to Google's OAuth consent screen. `redirect_to`
+     * is only meaningful for the already-authenticated "connect Google"
+     * flow (Profile/Security) — stashed in the session since Google's own
+     * callback URL is fixed and can't carry it through the round trip.
      */
     public function redirect(): SymfonyRedirectResponse
     {
+        if (Auth::check() && request()->filled('redirect_to')) {
+            session(['google_link_redirect_to' => request()->string('redirect_to')->toString()]);
+        }
+
         return Socialite::driver('google')->redirect();
     }
 
@@ -40,12 +49,22 @@ class GoogleAuthController extends Controller
         $googleUser = Socialite::driver('google')->user();
 
         if (Auth::check()) {
-            LinkAccountIdentifier::run(Auth::user(), $googleUser->getId(), $googleUser->getEmail());
+            $redirectTo = session()->pull('google_link_redirect_to', route('account.show', absolute: false));
 
-            return redirect()->intended(route('account.show', absolute: false));
+            try {
+                LinkAccountIdentifier::run(Auth::user(), $googleUser->getId(), $googleUser->getEmail());
+            } catch (AccountIdentifierAlreadyLinkedException $e) {
+                return redirect()->to($redirectTo)->with('error', $e->getMessage());
+            }
+
+            return redirect()->to($redirectTo)->with('status', __('Google account connected.'));
         }
 
-        LoginWithGoogle::run($googleUser);
+        try {
+            LoginWithGoogle::run($googleUser);
+        } catch (GoogleEmailConflictException $e) {
+            return redirect()->route('login.phone')->with('error', $e->getMessage());
+        }
 
         return redirect()->intended(route('account.show', absolute: false));
     }

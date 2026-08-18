@@ -1,6 +1,12 @@
 <div class="flex flex-col gap-6">
         <x-auth-header :title="__('Log in')" :description="__('We\'ll text you a one-time code, no password needed')" />
 
+        @if (session('error'))
+            <x-callout variant="danger" icon="x-circle">
+                {{ session('error') }}
+            </x-callout>
+        @endif
+
         @if (! $codeSent)
             <form wire:submit="sendCode" class="flex flex-col gap-6">
                 <x-input

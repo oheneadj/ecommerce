@@ -253,6 +253,24 @@ class CustomerMessagingTest extends TestCase
         ]);
     }
 
+    public function test_the_logged_provider_matches_the_actually_active_sms_driver(): void
+    {
+        $this->fakeSmsGateway();
+        config(['sms.default' => 'giantsms']);
+        $this->actingAs($this->admin());
+
+        $customer = User::factory()->create(['phone' => '0551234567']);
+
+        Livewire::test(ListCustomers::class)
+            ->callTableAction('sendSms', $customer, data: ['message' => 'Your order has shipped!'])
+            ->assertHasNoTableActionErrors();
+
+        $this->assertDatabaseHas('sms_api_logs', [
+            'recipient' => '0551234567',
+            'provider' => 'giantsms',
+        ]);
+    }
+
     public function test_bulk_send_email_skips_customers_with_no_email_and_reports_the_count(): void
     {
         Mail::fake();

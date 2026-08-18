@@ -10,6 +10,7 @@ namespace App\Notifications\Channels;
 
 use App\Models\SmsApiLog;
 use App\Sms\Contracts\SmsGateway;
+use App\Sms\SmsManager;
 use Illuminate\Notifications\Notification;
 
 /**
@@ -25,6 +26,7 @@ readonly class SmsChannel
 {
     public function __construct(
         private SmsGateway $gateway,
+        private SmsManager $manager,
     ) {}
 
     public function send(mixed $notifiable, Notification $notification): void
@@ -43,7 +45,11 @@ readonly class SmsChannel
         $result = $this->gateway->send($phone, $message);
 
         SmsApiLog::query()->create([
-            'provider' => 'moolre',
+            // The gateway itself doesn't know its own driver name (it's a
+            // plain SmsGateway implementation) — read it from the Manager
+            // that resolved it, so a store configured for GiantSMS isn't
+            // misattributed to Moolre in every log row.
+            'provider' => $this->manager->getDefaultDriver(),
             'action' => class_basename($notification),
             'recipient' => $phone,
             'request_payload' => ['recipient' => $phone, 'message' => $message],

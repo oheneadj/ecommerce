@@ -13,6 +13,7 @@ use App\Models\OtpCode;
 use App\Models\SmsApiLog;
 use App\Notifications\Support\BrandedMessage;
 use App\Sms\Contracts\SmsGateway;
+use App\Sms\SmsManager;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Lorisleiva\Actions\Concerns\AsAction;
@@ -32,7 +33,10 @@ class RequestOtp
 {
     use AsAction;
 
-    public function __construct(private readonly SmsGateway $sms) {}
+    public function __construct(
+        private readonly SmsGateway $sms,
+        private readonly SmsManager $smsManager,
+    ) {}
 
     /**
      * @throws OtpRateLimitedException when the phone (or its source IP) has requested too many codes too recently
@@ -57,7 +61,10 @@ class RequestOtp
         $result = $this->sms->send($phone, $message);
 
         SmsApiLog::query()->create([
-            'provider' => 'moolre',
+            // The gateway itself doesn't know its own driver name — read
+            // it from the Manager that resolved it, so a store configured
+            // for GiantSMS isn't misattributed to Moolre in every log row.
+            'provider' => $this->smsManager->getDefaultDriver(),
             'action' => 'otp',
             'recipient' => $phone,
             'request_payload' => ['recipient' => $phone, 'message' => $message],

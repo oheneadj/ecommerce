@@ -62,7 +62,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDevMailServer();
         $this->configureGoogleDriveDisk();
 
-        Notification::extend('sms', fn ($app) => new SmsChannel($app->make(SmsGateway::class)));
+        Notification::extend('sms', fn ($app) => new SmsChannel($app->make(SmsGateway::class), $app->make(SmsManager::class)));
 
         // Laravel's policy auto-discovery can't guess a policy for a
         // third-party model outside App\Models — registered explicitly.

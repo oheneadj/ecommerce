@@ -11,6 +11,7 @@ namespace App\Jobs;
 use App\Models\SmsApiLog;
 use App\Models\User;
 use App\Sms\Contracts\SmsGateway;
+use App\Sms\SmsManager;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -44,7 +45,7 @@ class SendCustomerSms implements ShouldQueue
         $this->onQueue('sms');
     }
 
-    public function handle(SmsGateway $sms): void
+    public function handle(SmsGateway $sms, SmsManager $manager): void
     {
         $customer = User::query()->find($this->customerId);
 
@@ -55,7 +56,10 @@ class SendCustomerSms implements ShouldQueue
         $result = $sms->send($customer->phone, $this->message);
 
         SmsApiLog::query()->create([
-            'provider' => 'moolre',
+            // The gateway itself doesn't know its own driver name — read
+            // it from the Manager that resolved it, so a store configured
+            // for GiantSMS isn't misattributed to Moolre in every log row.
+            'provider' => $manager->getDefaultDriver(),
             'action' => 'customer_message',
             'recipient' => $customer->phone,
             'request_payload' => ['recipient' => $customer->phone, 'message' => $this->message],

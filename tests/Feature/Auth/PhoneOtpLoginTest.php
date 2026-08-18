@@ -61,6 +61,18 @@ class PhoneOtpLoginTest extends TestCase
         $this->assertStringContainsString('login code', $log->request_payload['message']);
     }
 
+    public function test_the_logged_provider_matches_the_actually_active_sms_driver(): void
+    {
+        $this->fakeSmsGateway();
+        config(['sms.default' => 'giantsms']);
+
+        RequestOtp::run('+233201234567');
+
+        $log = SmsApiLog::query()->where('recipient', '+233201234567')->first();
+
+        $this->assertSame('giantsms', $log->provider);
+    }
+
     public function test_the_sms_api_log_payload_is_encrypted_at_rest(): void
     {
         $this->fakeSmsGateway();

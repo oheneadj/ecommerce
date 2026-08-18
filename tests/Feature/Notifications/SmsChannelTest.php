@@ -41,4 +41,24 @@ class SmsChannelTest extends TestCase
             'action' => 'OrderPlaced',
         ]);
     }
+
+    public function test_the_logged_provider_matches_the_actually_active_sms_driver(): void
+    {
+        $this->app->bind(SmsGateway::class, fn () => new class implements SmsGateway
+        {
+            public function send(string $to, string $message): SmsSendResult
+            {
+                return new SmsSendResult(success: true, providerReference: 'fake-ref', rawResponse: ['status' => 'ok'], statusCode: 200);
+            }
+        });
+        config(['sms.default' => 'giantsms']);
+
+        $notifiable = (new AnonymousNotifiable)->route('sms', '0551234567');
+        $notifiable->notify(new OrderPlaced(Order::factory()->create()));
+
+        $this->assertDatabaseHas('sms_api_logs', [
+            'recipient' => '0551234567',
+            'provider' => 'giantsms',
+        ]);
+    }
 }

@@ -22,6 +22,10 @@ return new class extends Migration
             $table->id();
             $table->string('title');
             $table->text('body');
+            // 'banner' (top-of-page strip, never dismissible) or 'popup'
+            // (centered modal, dismissible — see AnnouncementView's own
+            // docblock for why dismissal only applies to this type).
+            $table->string('type')->default('banner');
             $table->string('audience');
             $table->timestamp('starts_at');
             $table->timestamp('ends_at')->nullable();
@@ -29,7 +33,7 @@ return new class extends Migration
             $table->boolean('active')->default(true);
             $table->timestamps();
 
-            $table->index(['active', 'starts_at', 'ends_at']);
+            $table->index(['type', 'active', 'starts_at', 'ends_at']);
         });
     }
 

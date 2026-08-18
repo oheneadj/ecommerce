@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Announcements\Schemas;
 
+use App\Enums\AnnouncementType;
 use App\Enums\CustomerSegment;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
@@ -33,6 +34,13 @@ class AnnouncementForm
                             ->rows(3)
                             ->placeholder('e.g. 20% off everything, this weekend only.'),
 
+                        Select::make('type')
+                            ->options(AnnouncementType::class)
+                            ->required()
+                            ->native(false)
+                            ->default(AnnouncementType::Banner)
+                            ->helperText('A banner and a popup can both be showing at the same time — each type picks its own highest-priority announcement independently.'),
+
                         Select::make('audience')
                             ->options(CustomerSegment::class)
                             ->required()
@@ -58,7 +66,7 @@ class AnnouncementForm
                                     ->numeric()
                                     ->default(0)
                                     ->required()
-                                    ->helperText('Only one announcement shows at a time — the highest priority currently-running one wins.'),
+                                    ->helperText('Only one announcement of each type shows at a time — the highest priority currently-running one of its type wins.'),
                             ]),
 
                         Toggle::make('active')

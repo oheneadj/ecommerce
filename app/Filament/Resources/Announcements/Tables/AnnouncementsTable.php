@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Announcements\Tables;
 
+use App\Enums\AnnouncementType;
 use App\Enums\CustomerSegment;
 use App\Models\Announcement;
 use Filament\Actions\BulkAction;
@@ -28,6 +29,8 @@ class AnnouncementsTable
                 TextColumn::make('title')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('type')
+                    ->badge(),
                 TextColumn::make('audience')
                     ->badge(),
                 IconColumn::make('active')
@@ -49,6 +52,8 @@ class AnnouncementsTable
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
+                SelectFilter::make('type')
+                    ->options(AnnouncementType::class),
                 SelectFilter::make('audience')
                     ->options(CustomerSegment::class),
             ])

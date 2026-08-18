@@ -23,6 +23,7 @@
 
         @if ($showAnnouncements)
             <livewire:storefront.announcement-banner />
+            <livewire:storefront.announcement-popup />
         @endif
 
         <header class="border-b border-zinc-200">

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Enums\AnnouncementType;
 use App\Enums\CustomerSegment;
 use App\Enums\UserRole;
 use App\Filament\Resources\Announcements\Pages\CreateAnnouncement;
@@ -71,6 +72,26 @@ class AnnouncementResourceTest extends TestCase
             ->assertHasNoFormErrors();
 
         $this->assertDatabaseHas('announcements', ['title' => 'Big Sale', 'priority' => 5]);
+    }
+
+    public function test_admin_can_create_a_popup_announcement(): void
+    {
+        $this->actingAs($this->admin());
+
+        Livewire::test(CreateAnnouncement::class)
+            ->fillForm([
+                'title' => 'Welcome offer',
+                'body' => '10% off your first order.',
+                'type' => AnnouncementType::Popup->value,
+                'audience' => CustomerSegment::All->value,
+                'starts_at' => now(),
+                'priority' => 0,
+                'active' => true,
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('announcements', ['title' => 'Welcome offer', 'type' => AnnouncementType::Popup->value]);
     }
 
     public function test_admin_can_update_an_announcement(): void

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * An admin-authored storefront banner (sale notice, maintenance notice, etc.).
+ * An admin-authored storefront announcement (sale notice, maintenance notice, etc.), shown as a banner or a popup.
  */
 
 declare(strict_types=1);
@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Concerns\LogsAdminActivity;
+use App\Enums\AnnouncementType;
 use App\Enums\CustomerSegment;
 use Database\Factories\AnnouncementFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -27,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $title
  * @property string $body
+ * @property AnnouncementType $type
  * @property CustomerSegment $audience
  * @property Carbon $starts_at
  * @property Carbon|null $ends_at
@@ -35,7 +37,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['title', 'body', 'audience', 'starts_at', 'ends_at', 'priority', 'active'])]
+#[Fillable(['title', 'body', 'type', 'audience', 'starts_at', 'ends_at', 'priority', 'active'])]
 class Announcement extends Model
 {
     /** @use HasFactory<AnnouncementFactory> */
@@ -47,6 +49,7 @@ class Announcement extends Model
     protected function casts(): array
     {
         return [
+            'type' => AnnouncementType::class,
             'audience' => CustomerSegment::class,
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
@@ -78,5 +81,19 @@ class Announcement extends Model
             ->where('active', true)
             ->where('starts_at', '<=', now())
             ->where(fn (Builder $query) => $query->whereNull('ends_at')->orWhere('ends_at', '>', now()));
+    }
+
+    /**
+     * Used identically by both App\Livewire\Storefront\AnnouncementBanner
+     * and AnnouncementPopup — each only ever resolves its own type, since
+     * a banner and a popup can be running (and shown) at the same time,
+     * independently of each other.
+     *
+     * @param  Builder<Announcement>  $query
+     * @return Builder<Announcement>
+     */
+    public function scopeOfType(Builder $query, AnnouncementType $type): Builder
+    {
+        return $query->where('type', $type);
     }
 }

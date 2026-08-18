@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — dismissible popup announcements, alongside the (still non-dismissible) banner
+- Announcements now have a `type`: `banner` (top of page, never dismissible — unchanged) or `popup` (centered modal, dismissible). Both can be running and shown at the same time — they don't compete for the same slot; each type independently picks its own highest-priority currently-matching announcement.
+- New `App\Livewire\Storefront\AnnouncementPopup` component + `<x-modal>`-based view (reusing the existing modal component rather than building a new one). Dismissing a popup is permanent for that visitor, same "no snooze/re-show" rule popups now uniquely have — closing it (X button, backdrop click, or Escape) sets `dismissed_at` on their `AnnouncementView` row.
+- Extracted the matching logic both components share (schedule, active flag, audience, optional dismissed-exclusion) into `App\Services\AnnouncementMatcher`, so `AnnouncementBanner` and `AnnouncementPopup` aren't two copies of the same query.
+- `announcement_views.dismissed_at` is back (removed in the previous entry when banners lost their dismiss button) — now scoped to popups only; a banner's view rows never have it set, since there's no code path that could set it for one.
+- 8 new tests.
+
 ### Added — "Connect Google" and "Set password" on Profile and Security (parts 3+4/4)
 - Every account can now add whichever login method it started without: an email+password customer can connect Google or add a verified phone (already existed); a phone/Google-only customer can now set a password for the first time. Both actions appear on **both** Profile and Security settings pages via a shared partial, since either page is a reasonable place for a customer to land looking for them.
 - "Connect Google" reuses the already-safe `LinkAccountIdentifier` flow from part 2 — no new linking logic, just a discoverable button where none existed before. Shows a "Connected" badge once linked; `/login/google` now returns to whichever page the button was clicked from (Profile or Security) instead of always the dashboard.

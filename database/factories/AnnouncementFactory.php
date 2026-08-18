@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Enums\AnnouncementType;
 use App\Enums\CustomerSegment;
 use App\Models\Announcement;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -21,11 +22,17 @@ class AnnouncementFactory extends Factory
         return [
             'title' => fake()->sentence(4),
             'body' => fake()->sentence(12),
+            'type' => AnnouncementType::Banner,
             'audience' => CustomerSegment::All,
             'starts_at' => now()->subDay(),
             'ends_at' => null,
             'priority' => 0,
             'active' => true,
         ];
+    }
+
+    public function popup(): static
+    {
+        return $this->state(['type' => AnnouncementType::Popup]);
     }
 }

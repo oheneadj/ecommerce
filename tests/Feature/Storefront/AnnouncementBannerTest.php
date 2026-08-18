@@ -123,6 +123,18 @@ class AnnouncementBannerTest extends TestCase
         $this->assertSame(1, AnnouncementView::query()->where('announcement_id', $announcement->id)->count());
     }
 
+    public function test_a_popup_type_announcement_never_shows_in_the_banner_slot(): void
+    {
+        // Full-page HTTP assertion would be a false negative here — the
+        // storefront layout also renders AnnouncementPopup on the same
+        // page, which WOULD show this title. Testing the banner
+        // component in isolation is what actually proves the type
+        // filter works.
+        Announcement::factory()->popup()->create(['title' => 'Popup only']);
+
+        Livewire::test(AnnouncementBanner::class)->assertDontSee('Popup only');
+    }
+
     public function test_the_banner_is_hidden_on_the_cart_page(): void
     {
         Announcement::factory()->create(['title' => 'Site-wide sale']);

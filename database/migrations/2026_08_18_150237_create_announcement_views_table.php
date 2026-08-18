@@ -17,9 +17,11 @@ return new class extends Migration
      * session-id convention ResolveCurrentCart::guestSessionId() already
      * uses for guest carts), so reach numbers work identically for both.
      * `viewed_at` is written once, the first time this viewer is shown the
-     * announcement. There's no dismissal — an announcement stays visible
-     * to everyone it targets for as long as its own schedule/active flag
-     * says it should, by design; a visitor can't opt out of seeing it.
+     * announcement. `dismissed_at` only ever gets set for a 'popup'-type
+     * announcement (App\Livewire\Storefront\AnnouncementPopup) — a
+     * 'banner' stays visible to everyone it targets for as long as its own
+     * schedule/active flag says it should; a visitor can't opt out of that
+     * one, only a popup.
      */
     public function up(): void
     {
@@ -28,6 +30,7 @@ return new class extends Migration
             $table->foreignId('announcement_id')->constrained()->cascadeOnDelete();
             $table->string('viewer_key');
             $table->timestamp('viewed_at');
+            $table->timestamp('dismissed_at')->nullable();
 
             $table->unique(['announcement_id', 'viewer_key']);
         });

@@ -97,9 +97,9 @@ class BackupRun extends Model
     }
 
     /**
-     * Only ever expected to match one row at a time — a second run is
-     * blocked by ->withoutOverlapping() on the schedule, and the manual
-     * "Run now" action is disabled while one is already in progress.
+     * Only ever expected to match one row at a time — App\Jobs\RunBackupJob
+     * holds a cache lock for its entire run, so a second dispatch (scheduled
+     * or manual) never gets far enough to create a second Running row.
      *
      * @param  Builder<BackupRun>  $query
      * @return Builder<BackupRun>

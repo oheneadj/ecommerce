@@ -106,12 +106,13 @@ class AppServiceProvider extends ServiceProvider
      * `queue:listen` process by default, but with no `--queue` flag — it
      * only ever services the `default` queue. This project deliberately
      * segments every job onto a named queue (`emails`, `sms`,
-     * `notifications`, `processing`, `external-api`, per CLAUDE.md §15),
-     * so without this override every one of them sits in the `jobs` table
-     * forever in local dev, never picked up — the exact cause of a
-     * customer broadcast notification silently never arriving. Re-
-     * registering the same `queue` name from userland (not a vendor file)
-     * wins over the framework default, per `DevCommands::resolvePriority()`.
+     * `notifications`, `processing`, `external-api`, `backups`, per
+     * CLAUDE.md §15), so without this override every one of them sits in
+     * the `jobs` table forever in local dev, never picked up — the exact
+     * cause of a customer broadcast notification silently never arriving.
+     * Re-registering the same `queue` name from userland (not a vendor
+     * file) wins over the framework default, per
+     * `DevCommands::resolvePriority()`.
      */
     protected function configureDevQueueWorker(): void
     {
@@ -120,7 +121,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         DevCommands::artisan(
-            'queue:listen --queue=notifications,emails,sms,processing,external-api,default --tries=1 --timeout=0',
+            'queue:listen --queue=notifications,emails,sms,processing,external-api,backups,default --tries=1 --timeout=0',
             'queue',
         );
     }

@@ -98,10 +98,10 @@ Defining a schedule in `routes/console.php` or `Kernel.php` does nothing without
 Queues are segmented by nature — run a worker covering all four, or separate workers per queue if you want independent scaling/restart:
 
 ```
-php artisan queue:work database --queue=external-api,emails,sms,notifications
+php artisan queue:work database --queue=external-api,emails,sms,notifications,backups
 ```
 
-`external-api` (payment gateway verify/refund calls), `emails`/`sms` (staff-composed ad-hoc customer messages), and `notifications` (order-lifecycle and system alert notifications — mail+SMS+database together per notification, since a single notification send can span multiple channels) are kept separate from Laravel's `default` queue so a slow/flaky provider call never delays a transactional notification, or vice versa. `emails`/`sms` are split from `notifications` specifically so a burst of staff bulk-messaging never backs up order-confirmation/payment-status delivery, or vice versa.
+`external-api` (payment gateway verify/refund calls), `emails`/`sms` (staff-composed ad-hoc customer messages), and `notifications` (order-lifecycle and system alert notifications — mail+SMS+database together per notification, since a single notification send can span multiple channels) are kept separate from Laravel's `default` queue so a slow/flaky provider call never delays a transactional notification, or vice versa. `emails`/`sms` are split from `notifications` specifically so a burst of staff bulk-messaging never backs up order-confirmation/payment-status delivery, or vice versa. `backups` (`App\Jobs\RunBackupJob`) must also be listened to — leaving it off this list means every scheduled and manual backup queues forever and never actually runs, with no error surfaced anywhere except a `BackupRun` row stuck at `Running`.
 
 **Monitoring:** add an uptime/heartbeat check for both the scheduler and the queue worker. Both fail quietly; neither produces a user-visible error until a customer complains. The System Health dashboard's `ScheduleCheck`/`QueueCheck` cover "is the scheduler/worker alive at all," and `ExpiredReservationsAreBeingReleased`/`PendingPaymentsAreBeingVerified` cover the subtler failure of the scheduler being alive while one specific job errors or is unregistered — see `docs/TASK-system-health-checks.md`.
 

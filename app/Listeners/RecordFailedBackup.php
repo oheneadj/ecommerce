@@ -18,8 +18,9 @@ use Spatie\Backup\Events\BackupHasFailed;
 
 /**
  * Only one BackupRun row is ever Running at a time — see
- * App\Listeners\RecordSuccessfulBackup's own docblock for why "the most
- * recent Running row" is always the right one here too.
+ * App\Jobs\RunBackupJob's own docblock for why (a held cache lock, not just
+ * the scheduler's own overlap guard) — so "the most recent Running row" is
+ * always the right one here too.
  */
 class RecordFailedBackup
 {

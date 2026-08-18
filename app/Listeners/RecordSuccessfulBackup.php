@@ -19,11 +19,11 @@ use Spatie\Backup\BackupDestination\BackupDestination;
 use Spatie\Backup\Events\BackupWasSuccessful;
 
 /**
- * Only one BackupRun row is ever Running at a time (App\Jobs\RunBackupJob
- * is guarded by ->withoutOverlapping() on the schedule, and the manual
- * "Run now" action is disabled while one is already in progress) — so
- * "the most recent Running row" is always the right one to update,
- * without needing to thread a correlation ID through spatie's own event.
+ * Only one BackupRun row is ever Running at a time — App\Jobs\RunBackupJob
+ * holds a cache lock for its entire run, so a second dispatch (scheduled or
+ * manual) never gets this far concurrently — so "the most recent Running
+ * row" is always the right one to update, without needing to thread a
+ * correlation ID through spatie's own event.
  */
 class RecordSuccessfulBackup
 {

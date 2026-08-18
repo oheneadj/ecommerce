@@ -16,6 +16,7 @@ use App\Models\StoreSetting;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Spatie\Backup\Events\BackupHasFailed;
@@ -31,6 +32,15 @@ use Throwable;
  * to spatie/laravel-backup's own events — not by this job directly —
  * since those events fire the same way regardless of what triggered the
  * underlying artisan commands.
+ *
+ * A single cache lock (held for this job's own `$timeout`) guarantees only
+ * one run is ever actually in progress, closing a real gap: the scheduler's
+ * `withoutOverlapping()` only ever protected the scheduled trigger against
+ * itself, and the admin "Run now" button's disabled-while-running state was
+ * a check-then-act read with no lock — either could still race a second
+ * dispatch onto this same queue. `RecordSuccessfulBackup`/`RecordFailedBackup`
+ * resolve "the" running `BackupRun` row by recency, which is only safe
+ * because this lock now guarantees there's never more than one.
  */
 class RunBackupJob implements ShouldQueue
 {
@@ -52,6 +62,29 @@ class RunBackupJob implements ShouldQueue
     }
 
     public function handle(): void
+    {
+        $lock = Cache::lock('backup-run-in-progress', $this->timeout);
+
+        if (! $lock->get()) {
+            Log::warning('RunBackupJob skipped — another backup run is already in progress', [
+                'triggered_by' => $this->triggeredBy,
+            ]);
+
+            return;
+        }
+
+        try {
+            $this->run();
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * The actual backup attempt — split out from handle() so the lock
+     * acquisition above wraps the whole thing via a single try/finally.
+     */
+    private function run(): void
     {
         if (! RemoteStorageProvider::GoogleDrive->hasCredentialsConfigured()) {
             BackupRun::query()->create([

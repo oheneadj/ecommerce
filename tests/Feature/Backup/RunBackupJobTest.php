@@ -26,6 +26,7 @@ use App\Notifications\BackupFailed;
 use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -120,5 +121,40 @@ class RunBackupJobTest extends TestCase
         $run->refresh();
         $this->assertSame(BackupStatus::Failed, $run->status);
         $this->assertSame(Exception::class, $run->error_message);
+    }
+
+    /**
+     * The scheduler's own ->withoutOverlapping() only ever protected the
+     * scheduled trigger against itself — a manual "Run now" click could
+     * previously still race a scheduled dispatch onto the same queue and
+     * both call backup:run concurrently. The job now holds a cache lock
+     * for its entire run so a second, concurrent dispatch is a genuine
+     * no-op rather than a second BackupRun row / a second backup:run call.
+     */
+    public function test_a_concurrent_dispatch_is_skipped_while_a_backup_is_already_running(): void
+    {
+        config(['filesystems.disks.gdrive.serviceAccountJson' => '/tmp/key.json', 'filesystems.disks.gdrive.folder' => 'folder-id']);
+        Artisan::shouldReceive('call')->never();
+
+        $lock = Cache::lock('backup-run-in-progress', 3600);
+        $lock->get();
+
+        try {
+            (new RunBackupJob)->handle();
+        } finally {
+            $lock->release();
+        }
+
+        $this->assertDatabaseCount('backup_runs', 0);
+    }
+
+    public function test_the_lock_is_released_once_the_run_completes(): void
+    {
+        config(['filesystems.disks.gdrive.serviceAccountJson' => '/tmp/key.json', 'filesystems.disks.gdrive.folder' => 'folder-id']);
+        Artisan::shouldReceive('call')->twice()->andReturn(0);
+
+        (new RunBackupJob)->handle();
+
+        $this->assertTrue(Cache::lock('backup-run-in-progress', 3600)->get());
     }
 }

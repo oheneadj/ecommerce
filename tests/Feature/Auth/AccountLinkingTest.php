@@ -7,6 +7,7 @@ namespace Tests\Feature\Auth;
 use App\Actions\Auth\LinkAccountIdentifier;
 use App\Actions\Auth\SetPassword;
 use App\Exceptions\AccountIdentifierAlreadyLinkedException;
+use App\Exceptions\GoogleEmailAlreadyTakenException;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -45,5 +46,38 @@ class AccountLinkingTest extends TestCase
         $this->expectException(AccountIdentifierAlreadyLinkedException::class);
 
         LinkAccountIdentifier::run($user, 'google-999', 'someone@example.com');
+    }
+
+    /**
+     * A phone-only user (no email yet) connecting a Google account whose
+     * email already belongs to a different existing account used to crash
+     * with an uncaught QueryException on the users_email_unique
+     * constraint — this must be a clean, named rejection instead, exactly
+     * like LinkPhoneToAccount's own already-linked check.
+     */
+    public function test_link_account_identifier_rejects_a_google_email_already_used_by_another_account(): void
+    {
+        User::factory()->create(['email' => 'existing@example.com']);
+        $user = User::factory()->create(['phone' => '+233209999999', 'email' => null, 'google_id' => null]);
+
+        $this->expectException(GoogleEmailAlreadyTakenException::class);
+
+        LinkAccountIdentifier::run($user, 'google-999', 'existing@example.com');
+    }
+
+    public function test_a_rejected_google_email_conflict_never_partially_updates_the_account(): void
+    {
+        User::factory()->create(['email' => 'existing@example.com']);
+        $user = User::factory()->create(['phone' => '+233209999999', 'email' => null, 'google_id' => null]);
+
+        try {
+            LinkAccountIdentifier::run($user, 'google-999', 'existing@example.com');
+        } catch (GoogleEmailAlreadyTakenException) {
+            // expected
+        }
+
+        $user->refresh();
+        $this->assertNull($user->google_id);
+        $this->assertNull($user->email);
     }
 }

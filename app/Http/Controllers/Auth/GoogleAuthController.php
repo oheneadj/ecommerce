@@ -11,6 +11,7 @@ namespace App\Http\Controllers\Auth;
 use App\Actions\Auth\LinkAccountIdentifier;
 use App\Actions\Auth\LoginWithGoogle;
 use App\Exceptions\AccountIdentifierAlreadyLinkedException;
+use App\Exceptions\GoogleEmailAlreadyTakenException;
 use App\Exceptions\GoogleEmailConflictException;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -53,7 +54,7 @@ class GoogleAuthController extends Controller
 
             try {
                 LinkAccountIdentifier::run(Auth::user(), $googleUser->getId(), $googleUser->getEmail());
-            } catch (AccountIdentifierAlreadyLinkedException $e) {
+            } catch (AccountIdentifierAlreadyLinkedException|GoogleEmailAlreadyTakenException $e) {
                 return redirect()->to($redirectTo)->with('error', $e->getMessage());
             }
 

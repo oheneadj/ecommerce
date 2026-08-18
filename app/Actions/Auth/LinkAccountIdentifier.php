@@ -9,7 +9,9 @@ declare(strict_types=1);
 namespace App\Actions\Auth;
 
 use App\Exceptions\AccountIdentifierAlreadyLinkedException;
+use App\Exceptions\GoogleEmailAlreadyTakenException;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
@@ -24,6 +26,7 @@ class LinkAccountIdentifier
 
     /**
      * @throws AccountIdentifierAlreadyLinkedException when the Google account is already linked elsewhere
+     * @throws GoogleEmailAlreadyTakenException when the Google account's email already belongs to a different user
      */
     public function handle(User $user, string $googleId, string $googleEmail): void
     {
@@ -31,6 +34,10 @@ class LinkAccountIdentifier
 
         if ($existingOwner && $existingOwner->id !== $user->id) {
             throw new AccountIdentifierAlreadyLinkedException;
+        }
+
+        if ($user->email === null && User::query()->where('email', $googleEmail)->whereKeyNot($user->id)->exists()) {
+            throw new GoogleEmailAlreadyTakenException;
         }
 
         // One save, not two sequential ones — both fields belong to the
@@ -43,6 +50,18 @@ class LinkAccountIdentifier
             $changes['email_verified_at'] = now();
         }
 
-        $user->forceFill($changes)->save();
+        try {
+            $user->forceFill($changes)->save();
+        } catch (QueryException $e) {
+            // The pre-check above closes the common case, but a second
+            // request adopting the same email could still slip in between
+            // that check and this save — the column's own unique
+            // constraint is the actual last line of defense.
+            if (str_contains($e->getMessage(), 'users_email_unique')) {
+                throw new GoogleEmailAlreadyTakenException;
+            }
+
+            throw $e;
+        }
     }
 }

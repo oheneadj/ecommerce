@@ -183,7 +183,7 @@ class OrderFulfillmentTest extends TestCase
 
     public function test_marking_an_order_delivered_also_marks_its_shipment_delivered(): void
     {
-        $order = Order::factory()->create();
+        $order = Order::factory()->create(['status' => OrderStatus::Shipped]);
         $method = ShippingMethod::factory()->create();
         AssignShipment::run($order, $method);
 
@@ -196,7 +196,7 @@ class OrderFulfillmentTest extends TestCase
 
     public function test_marking_an_order_delivered_with_no_shipment_does_not_error(): void
     {
-        $order = Order::factory()->create();
+        $order = Order::factory()->create(['status' => OrderStatus::Shipped]);
 
         UpdateOrderStatus::run($order, OrderStatus::Delivered);
 

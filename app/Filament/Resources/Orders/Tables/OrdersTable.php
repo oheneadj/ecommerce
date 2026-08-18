@@ -6,6 +6,7 @@ namespace App\Filament\Resources\Orders\Tables;
 
 use App\Actions\Order\UpdateOrderStatus;
 use App\Enums\OrderStatus;
+use App\Exceptions\InvalidOrderStatusTransitionException;
 use App\Filament\Resources\Orders\OrderRecordActions;
 use App\Models\Order;
 use Filament\Actions\ActionGroup;
@@ -107,13 +108,31 @@ class OrdersTable
             ->action(function (Collection $records, array $data): void {
                 $status = $data['status'] instanceof OrderStatus ? $data['status'] : OrderStatus::from($data['status']);
 
+                $updated = 0;
+                $skipped = 0;
+
                 foreach ($records as $record) {
-                    if ($record instanceof Order) {
+                    if (! $record instanceof Order) {
+                        continue;
+                    }
+
+                    try {
                         UpdateOrderStatus::run($record, $status, Auth::user());
+                        $updated++;
+                    } catch (InvalidOrderStatusTransitionException) {
+                        $skipped++;
                     }
                 }
 
-                Notification::make()->title('Orders updated')->success()->send();
+                $notification = Notification::make()->title("{$updated} order(s) updated");
+
+                if ($skipped > 0) {
+                    $notification->body("{$skipped} order(s) skipped — that status isn't reachable from their current one.")->warning();
+                } else {
+                    $notification->success();
+                }
+
+                $notification->send();
             });
     }
 }

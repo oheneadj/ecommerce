@@ -14,6 +14,7 @@ use App\Actions\Order\AssignShipment;
 use App\Actions\Order\GenerateOrderInvoice;
 use App\Actions\Order\UpdateOrderStatus;
 use App\Enums\OrderStatus;
+use App\Exceptions\InvalidOrderStatusTransitionException;
 use App\Models\Order;
 use App\Models\ShippingMethod;
 use Filament\Actions\Action;
@@ -37,9 +38,12 @@ class OrderRecordActions
         return Action::make('updateStatus')
             ->label('Update status')
             ->modalWidth(Width::Small)
+            ->visible(fn (Order $record): bool => $record->status->allowedNextStatuses() !== [])
             ->schema([
                 Select::make('status')
-                    ->options(OrderStatus::class)
+                    ->options(fn (Order $record): array => collect([$record->status, ...$record->status->allowedNextStatuses()])
+                        ->mapWithKeys(fn (OrderStatus $status) => [$status->value => $status->label()])
+                        ->all())
                     ->required(),
                 Textarea::make('status_change_note')
                     ->label('Note')
@@ -51,7 +55,13 @@ class OrderRecordActions
             ->action(function (Order $record, array $data): void {
                 $status = $data['status'] instanceof OrderStatus ? $data['status'] : OrderStatus::from($data['status']);
 
-                UpdateOrderStatus::run($record, $status, Auth::user(), $data['status_change_note'] ?? null);
+                try {
+                    UpdateOrderStatus::run($record, $status, Auth::user(), $data['status_change_note'] ?? null);
+                } catch (InvalidOrderStatusTransitionException $e) {
+                    Notification::make()->title('Status not updated')->body($e->getMessage())->danger()->send();
+
+                    return;
+                }
 
                 Notification::make()->title('Order status updated')->success()->send();
             });

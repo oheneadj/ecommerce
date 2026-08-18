@@ -47,4 +47,34 @@ enum OrderStatus: string implements HasColor, HasLabel
             self::Cancelled => 'danger',
         };
     }
+
+    /**
+     * The only statuses this one may transition to directly — enforced by
+     * UpdateOrderStatus so an order can never skip a required state (e.g.
+     * Pending straight to Delivered, with no payment or stock decrement
+     * ever recorded) or reverse out of a state it already passed through.
+     * Delivered and Cancelled are terminal — nothing changes them further.
+     *
+     * @return array<int, self>
+     */
+    public function allowedNextStatuses(): array
+    {
+        return match ($this) {
+            self::Pending => [self::Paid, self::Cancelled],
+            self::Paid => [self::Processing, self::Cancelled],
+            self::Processing => [self::Shipped, self::Cancelled],
+            self::Shipped => [self::Delivered, self::Cancelled],
+            self::Delivered, self::Cancelled => [],
+        };
+    }
+
+    /**
+     * Whether stock was already decremented for this order by the time it
+     * reached this status (i.e. payment settled) — used to decide whether
+     * cancelling from here needs to restock, per UpdateOrderStatus.
+     */
+    public function hasDecrementedStock(): bool
+    {
+        return in_array($this, [self::Paid, self::Processing, self::Shipped], true);
+    }
 }

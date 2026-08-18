@@ -31,6 +31,12 @@ class OrderConfirmationPage extends Component
 
     public Order $order;
 
+    /**
+     * Scoped to the current visitor: an authenticated customer only sees
+     * their own orders, a guest only sees orders with no owning account —
+     * either way, `firstOrFail()` 404s rather than leaking another
+     * customer's order details to someone who merely guessed a ulid.
+     */
     public function mount(string $orderUlid): void
     {
         $this->order = Order::query()

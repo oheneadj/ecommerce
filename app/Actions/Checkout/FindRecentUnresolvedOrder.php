@@ -38,6 +38,12 @@ class FindRecentUnresolvedOrder
 {
     use AsAction;
 
+    /**
+     * Looks up by user (authenticated) or session ID (guest), matching
+     * exactly how ResolveCurrentCart/GetCurrentCart identify "the current
+     * visitor's cart" — so this always agrees with whichever cart those
+     * would otherwise (unhelpfully) replace with a fresh empty one.
+     */
     public function handle(?User $user, string $guestSessionId): ?Order
     {
         $cart = Cart::query()

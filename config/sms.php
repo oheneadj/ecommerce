@@ -38,4 +38,19 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Broadcast SMS Recipient Cap
+    |--------------------------------------------------------------------------
+    |
+    | Every SMS send costs real money — App\Actions\Customer\
+    | BroadcastMessageToCustomers refuses to queue an SMS broadcast past
+    | this many recipients in one go, so a single careless or compromised
+    | admin action can't fan out an unbounded (and unbudgeted) SMS bill.
+    | Email/in-app channels aren't capped — they don't carry a per-send cost.
+    |
+    */
+
+    'broadcast_max_recipients' => (int) env('SMS_BROADCAST_MAX_RECIPIENTS', 500),
+
 ];

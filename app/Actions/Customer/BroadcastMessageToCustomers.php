@@ -8,9 +8,12 @@ declare(strict_types=1);
 
 namespace App\Actions\Customer;
 
+use App\Exceptions\BroadcastRateLimitedException;
+use App\Exceptions\BroadcastRecipientLimitExceededException;
 use App\Jobs\FanOutCustomerBroadcast;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\RateLimiter;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
@@ -21,6 +24,16 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * immediately; actual delivery happens async, so the compose page can
  * only honestly report "queued for N customers", not "sent to N" —
  * per-channel success/failure isn't knowable synchronously.
+ *
+ * Two cost/abuse guards, per CLAUDE.md §12's "cost-triggering actions need
+ * their own rate limit": an SMS broadcast can't target more than
+ * `config('sms.broadcast_max_recipients')` customers in one go (email/
+ * in-app aren't capped — no per-send cost), and any admin is limited to 5
+ * broadcasts per 10 minutes regardless of channel, so a scripted or
+ * compromised admin session can't queue many large sends back to back.
+ *
+ * @throws BroadcastRecipientLimitExceededException when an SMS broadcast targets more customers than the configured cap
+ * @throws BroadcastRateLimitedException when the acting admin has sent too many broadcasts too recently
  */
 class BroadcastMessageToCustomers
 {
@@ -30,13 +43,27 @@ class BroadcastMessageToCustomers
      * @param  Builder<User>  $recipients
      * @param  array<int, string>  $channels
      */
-    public function handle(Builder $recipients, string $subject, string $message, array $channels): int
+    public function handle(Builder $recipients, string $subject, string $message, array $channels, ?int $actingAdminId = null): int
     {
+        $rateLimitKey = "customer-broadcast:{$actingAdminId}";
+
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
+            throw new BroadcastRateLimitedException(RateLimiter::availableIn($rateLimitKey));
+        }
+
         $customerIds = $recipients->pluck('id')->map(fn (mixed $id): int => (int) $id)->all();
 
         if ($customerIds === [] || $channels === []) {
             return 0;
         }
+
+        $limit = (int) config('sms.broadcast_max_recipients');
+
+        if (in_array('sms', $channels, true) && count($customerIds) > $limit) {
+            throw new BroadcastRecipientLimitExceededException(count($customerIds), $limit);
+        }
+
+        RateLimiter::hit($rateLimitKey, 600);
 
         FanOutCustomerBroadcast::dispatch($customerIds, $subject, $message, $channels);
 

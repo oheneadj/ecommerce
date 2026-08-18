@@ -11,6 +11,8 @@ namespace App\Filament\Pages;
 use App\Actions\Customer\BroadcastMessageToCustomers;
 use App\Enums\CustomerSegment;
 use App\Enums\UserRole;
+use App\Exceptions\BroadcastRateLimitedException;
+use App\Exceptions\BroadcastRecipientLimitExceededException;
 use App\Models\User;
 use BackedEnum;
 use Filament\Forms\Components\CheckboxList;
@@ -166,12 +168,19 @@ class SendCustomerNotification extends Page implements HasForms
     {
         $state = $this->getSchema('form')?->getState() ?? [];
 
-        $count = BroadcastMessageToCustomers::run(
-            $this->resolveRecipients($state),
-            $state['subject'],
-            $state['message'],
-            $state['channels'] ?? [],
-        );
+        try {
+            $count = BroadcastMessageToCustomers::run(
+                $this->resolveRecipients($state),
+                $state['subject'],
+                $state['message'],
+                $state['channels'] ?? [],
+                Auth::id(),
+            );
+        } catch (BroadcastRecipientLimitExceededException|BroadcastRateLimitedException $e) {
+            Notification::make()->title('Broadcast not sent')->body($e->getMessage())->danger()->send();
+
+            return;
+        }
 
         $notification = Notification::make()->title(
             $count > 0 ? "Queued for {$count} customer(s)" : 'No matching customers',

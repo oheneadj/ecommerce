@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Customer;
 
 use App\Actions\Customer\BroadcastMessageToCustomers;
+use App\Exceptions\BroadcastRateLimitedException;
+use App\Exceptions\BroadcastRecipientLimitExceededException;
 use App\Jobs\FanOutCustomerBroadcast;
 use App\Jobs\SendCustomerEmail;
 use App\Jobs\SendCustomerSms;
@@ -18,6 +20,7 @@ use App\Notifications\CustomerBroadcastNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 class BroadcastMessageToCustomersTest extends TestCase
@@ -116,6 +119,113 @@ class BroadcastMessageToCustomersTest extends TestCase
         (new FanOutCustomerBroadcast([$customer->id], 'Sale!', 'Everything is 20% off.', ['database']))->handle();
 
         Notification::assertSentTo($customer, CustomerBroadcastNotification::class);
+    }
+
+    public function test_an_sms_broadcast_over_the_recipient_cap_is_rejected(): void
+    {
+        Bus::fake();
+        config(['sms.broadcast_max_recipients' => 2]);
+        $customers = User::factory()->count(3)->create();
+
+        $this->expectException(BroadcastRecipientLimitExceededException::class);
+
+        BroadcastMessageToCustomers::run(
+            User::query()->whereIn('id', $customers->pluck('id')),
+            'Sale!',
+            'Everything is 20% off.',
+            ['sms'],
+        );
+    }
+
+    public function test_an_email_only_broadcast_is_not_subject_to_the_sms_recipient_cap(): void
+    {
+        Bus::fake();
+        config(['sms.broadcast_max_recipients' => 2]);
+        $customers = User::factory()->count(3)->create();
+
+        $count = BroadcastMessageToCustomers::run(
+            User::query()->whereIn('id', $customers->pluck('id')),
+            'Sale!',
+            'Everything is 20% off.',
+            ['email'],
+        );
+
+        $this->assertSame(3, $count);
+        Bus::assertDispatched(FanOutCustomerBroadcast::class);
+    }
+
+    public function test_a_rejected_over_cap_broadcast_never_dispatches_the_fan_out_job(): void
+    {
+        Bus::fake();
+        config(['sms.broadcast_max_recipients' => 1]);
+        $customers = User::factory()->count(2)->create();
+
+        try {
+            BroadcastMessageToCustomers::run(
+                User::query()->whereIn('id', $customers->pluck('id')),
+                'Sale!',
+                'Everything is 20% off.',
+                ['sms'],
+            );
+        } catch (BroadcastRecipientLimitExceededException) {
+            // expected
+        }
+
+        Bus::assertNotDispatched(FanOutCustomerBroadcast::class);
+    }
+
+    public function test_an_admin_sending_too_many_broadcasts_is_rate_limited(): void
+    {
+        Bus::fake();
+        $customer = User::factory()->create();
+
+        for ($i = 0; $i < 5; $i++) {
+            BroadcastMessageToCustomers::run(
+                User::query()->whereKey($customer->id),
+                'Sale!',
+                'Everything is 20% off.',
+                ['email'],
+                actingAdminId: 99,
+            );
+        }
+
+        $this->expectException(BroadcastRateLimitedException::class);
+
+        BroadcastMessageToCustomers::run(
+            User::query()->whereKey($customer->id),
+            'Sale!',
+            'Everything is 20% off.',
+            ['email'],
+            actingAdminId: 99,
+        );
+    }
+
+    public function test_the_broadcast_rate_limit_is_scoped_per_admin(): void
+    {
+        Bus::fake();
+        RateLimiter::clear('customer-broadcast:99');
+        $customer = User::factory()->create();
+
+        for ($i = 0; $i < 5; $i++) {
+            BroadcastMessageToCustomers::run(
+                User::query()->whereKey($customer->id),
+                'Sale!',
+                'Everything is 20% off.',
+                ['email'],
+                actingAdminId: 99,
+            );
+        }
+
+        // A different admin is unaffected by admin 99's rate limit.
+        $count = BroadcastMessageToCustomers::run(
+            User::query()->whereKey($customer->id),
+            'Sale!',
+            'Everything is 20% off.',
+            ['email'],
+            actingAdminId: 100,
+        );
+
+        $this->assertSame(1, $count);
     }
 
     public function test_fan_out_only_dispatches_channels_that_were_actually_selected(): void

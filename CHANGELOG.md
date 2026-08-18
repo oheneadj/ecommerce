@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Docs — Google Drive backup setup runbook
+- New `docs/HOWTO-setup-google-drive-backups.md` — the full click-by-click walkthrough for the one-time per-deployment Google Cloud service-account setup (`infrastructure-deployment.md` §2 only had the condensed 5-step version), plus a troubleshooting table for the most likely failure modes (missing credentials, service account not shared on the folder, etc.).
+
 ### Added — phone number format validation and normalization everywhere a phone number is collected
 - No phone input anywhere in the app actually validated the number was a real, correctly-formatted phone number before this — `PhoneLogin` only checked length (`min:9`), and every other field (Address Book, guest checkout, Staff, admin's own profile, Store Settings contact number) had no format check at all. New `App\Rules\PhoneNumber` validates and normalizes to E.164 (`+233201234567`), accepting the three shapes customers actually type: full E.164 (`+233201234567`), bare country code with no `+` (`233201234567`), or local Ghana format (`0201234567`).
 - Every phone number is now normalized to canonical E.164 *before* it's used or stored — not just format-checked — so a customer typing any of the three accepted shapes always ends up with the same stored/sent value. This matters because every number is sent as-is to the SMS gateway with no reformatting (`App\Sms\Drivers\MoolreSms`/`GiantSms` pass `$to` straight through): an unnormalized number would silently fail delivery, and comparing an un-normalized input against an already-normalized stored value (e.g. a uniqueness check) would miss real duplicates entirely.

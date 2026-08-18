@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — payment settlement race could double-decrement stock and double-fulfill an order
+- `SettlePaymentSuccess` checked whether a payment was still Pending, and whether its stock reservations were still active, entirely outside any lock — a webhook delivery racing the polling sweep (or a duplicated job dispatch) could both pass those checks and both proceed to fulfill. `RecordStockMovement` then unconditionally decremented stock even when the reservation update it followed was a no-op, so the same physical unit could be sold twice.
+- The entire settlement — including the fallback to `HandleLatePaymentConfirmation` when a reservation already expired — now runs inside a single transaction that takes `lockForUpdate()` on the payment row first and re-checks it's still Pending before doing anything. Whoever gets the lock first settles the payment; a concurrent second call sees a non-Pending status and no-ops.
+- 1 new test (`test_settling_the_same_payment_twice_only_decrements_stock_once`) — true cross-connection concurrency can't be exercised against the in-memory SQLite test database (same limitation `InventoryManagementTest`'s own concurrency test already documents), so this proves the invariant the lock guarantees instead: a second settlement attempt for an already-settled payment is a genuine no-op.
+
+### Fixed — stock could go negative via an ordinary admin stock adjustment
+- `RecordStockMovement` — the single write path for every stock change — only rejected a zero quantity; it never checked that a movement wouldn't leave stock below zero. A `Damage`/`Adjustment` movement larger than the current stock (a data-entry error, not a real physical count) drove `product_variants.stock` negative, which then poisoned low-stock alerts and available-stock math.
+- New `NegativeStockException`, thrown before any movement is written or stock is touched. 3 new tests.
+
+### Fixed — backups silently never run in production
+- `RunBackupJob` dispatches to the `backups` queue, but this project's documented production worker command (`docs/infrastructure-deployment.md`) and local dev queue listener (`AppServiceProvider::configureDevQueueWorker`) never listened to it — every scheduled and manual backup queued forever and never executed, with the admin only ever seeing a `BackupRun` row stuck at `Running`. Both now include `backups`.
+- The "only one backup ever runs at a time" guarantee `RecordSuccessfulBackup`/`RecordFailedBackup`/`BackupRun::scopeRunning()` all relied on was actually just a check-then-act read with no lock — a scheduled run and a manual "Run now" click could race, corrupt the shared temp directory, and leave a `BackupRun` row stuck at `Running` forever. `RunBackupJob` now holds a cache lock for its entire run; a concurrent dispatch is a genuine no-op rather than a second run. 2 new tests.
+
+### Fixed — connecting Google to a phone-only account could crash on an email collision
+- `LinkAccountIdentifier` set a phone-only user's email straight from their Google account with no uniqueness check, unlike the equivalent `LinkPhoneToAccount` flow — if that email already belonged to a different existing account, the save threw an uncaught `QueryException` (500) instead of a clean error. Now pre-checked, with a `users_email_unique` constraint violation as a race-safe fallback, both raising the new `GoogleEmailAlreadyTakenException`. 2 new tests.
+
+### Fixed — merging a guest cart into an account cart could exceed stock
+- `MergeGuestCartIntoUser` combined quantities from both carts with no cap against the variant's stock, unlike `AddItemToCart`'s explicit stock invariant — two carts each individually within stock at the time their items were added (one built while logged out, one while authenticated) could combine to more than physically exists. Now capped at current stock, same as every other write path. 1 new test.
+
 ### Added — comprehensive project README
 - Added `README.md`: tech stack, feature overview, setup instructions (including gaps not covered by `composer run setup` — `php artisan storage:link`, `php artisan app:create-super-admin`, the required queue worker and scheduler cron entry), environment variable reference, and a documentation index linking every file under `docs/`.
 

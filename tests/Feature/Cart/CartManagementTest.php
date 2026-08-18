@@ -96,6 +96,29 @@ class CartManagementTest extends TestCase
         $this->assertModelMissing($guestCart);
     }
 
+    /**
+     * Each cart was individually within stock when its items were added
+     * (AddItemToCart enforces that on every call), but stock can drop in
+     * between — e.g. an admin stock adjustment — leaving the two combined
+     * quantities exceeding what's actually available. The merge must cap
+     * at current stock rather than blindly adding, same invariant
+     * AddItemToCart itself enforces on every add.
+     */
+    public function test_merging_guest_and_user_carts_caps_combined_quantity_at_current_stock(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+        $user = User::factory()->create();
+        $userCart = Cart::factory()->create(['user_id' => $user->id]);
+        $userCart->items()->create(['product_variant_id' => $variant->id, 'quantity' => 6]);
+
+        $guestCart = Cart::factory()->create(['user_id' => null, 'session_id' => 'guest-session']);
+        $guestCart->items()->create(['product_variant_id' => $variant->id, 'quantity' => 6]);
+
+        $result = MergeGuestCartIntoUser::run($guestCart, $user);
+
+        $this->assertSame(10, $result->items()->first()->quantity);
+    }
+
     public function test_merging_a_guest_cart_when_user_has_no_existing_cart_reassigns_it(): void
     {
         $user = User::factory()->create();

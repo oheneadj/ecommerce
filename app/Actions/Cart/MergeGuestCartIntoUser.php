@@ -26,6 +26,11 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * without it, a merge running concurrently with an "add to cart" request
  * on either cart is a check-then-write race on `cart_items`' unique
  * `(cart_id, product_variant_id)` constraint.
+ *
+ * Combined quantities are capped at the variant's stock, same invariant
+ * AddItemToCart enforces on every add — without this, combining two carts
+ * that were each individually within stock (one built while logged out, one
+ * while authenticated) could add up to more than physically exists.
  */
 class MergeGuestCartIntoUser
 {
@@ -53,12 +58,16 @@ class MergeGuestCartIntoUser
                     ->where('product_variant_id', $guestItem->product_variant_id)
                     ->first();
 
+                $stock = $guestItem->productVariant->stock;
+
                 if ($existing !== null) {
-                    $existing->increment('quantity', $guestItem->quantity);
+                    $existing->update([
+                        'quantity' => min($existing->quantity + $guestItem->quantity, $stock),
+                    ]);
                 } else {
                     $userCart->items()->create([
                         'product_variant_id' => $guestItem->product_variant_id,
-                        'quantity' => $guestItem->quantity,
+                        'quantity' => min($guestItem->quantity, $stock),
                     ]);
                 }
             }

@@ -11,6 +11,7 @@ namespace App\Actions\Inventory;
 use App\Enums\StockMovementType;
 use App\Enums\UserRole;
 use App\Exceptions\InvalidStockMovementQuantityException;
+use App\Exceptions\NegativeStockException;
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
 use App\Models\User;
@@ -33,6 +34,7 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * subsequent sale while already low, to avoid spamming Store Keeper.
  *
  * @throws InvalidStockMovementQuantityException when quantity is zero
+ * @throws NegativeStockException when the movement would leave stock below zero
  */
 class RecordStockMovement
 {
@@ -51,6 +53,10 @@ class RecordStockMovement
         }
 
         $stockBefore = $variant->stock;
+
+        if ($stockBefore + $quantity < 0) {
+            throw new NegativeStockException;
+        }
 
         $movement = StockMovement::query()->create([
             'product_variant_id' => $variant->id,

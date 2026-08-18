@@ -12,6 +12,7 @@ use App\Enums\StockMovementType;
 use App\Enums\StockReservationStatus;
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidStockMovementQuantityException;
+use App\Exceptions\NegativeStockException;
 use App\Models\Order;
 use App\Models\ProductVariant;
 use App\Models\StockReservation;
@@ -65,6 +66,38 @@ class InventoryManagementTest extends TestCase
 
         $this->assertSame(10, $variant->fresh()->stock);
         $this->assertSame(0, $variant->stockMovements()->count());
+    }
+
+    public function test_a_movement_that_would_leave_stock_below_zero_is_rejected(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+
+        $this->expectException(NegativeStockException::class);
+
+        RecordStockMovement::run($variant, StockMovementType::Damage, -50);
+    }
+
+    public function test_a_rejected_negative_stock_movement_never_touches_stock_or_the_ledger(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+
+        try {
+            RecordStockMovement::run($variant, StockMovementType::Damage, -50);
+        } catch (NegativeStockException) {
+            // expected
+        }
+
+        $this->assertSame(10, $variant->fresh()->stock);
+        $this->assertSame(0, $variant->stockMovements()->count());
+    }
+
+    public function test_a_movement_landing_exactly_on_zero_stock_is_allowed(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+
+        RecordStockMovement::run($variant, StockMovementType::Sale, -10);
+
+        $this->assertSame(0, $variant->fresh()->stock);
     }
 
     public function test_reservation_creation_respects_available_stock(): void

@@ -50,4 +50,24 @@ enum CustomerSegment: string
             self::JoinedRecently => $query->where('created_at', '>=', Carbon::now()->subDays(30)),
         };
     }
+
+    /**
+     * Whether a single visitor falls into this segment — used by
+     * storefront announcement targeting, where there's one specific
+     * viewer to check rather than a list to filter. A guest (`$user` is
+     * null) only ever matches `All` — every other segment depends on
+     * order history/account age a guest doesn't have.
+     */
+    public function matches(?User $user): bool
+    {
+        if ($this === self::All) {
+            return true;
+        }
+
+        if ($user === null) {
+            return false;
+        }
+
+        return $this->apply(User::query()->customers()->whereKey($user->id))->exists();
+    }
 }

@@ -8,6 +8,10 @@
 @php
     $store ??= \App\Models\StoreSetting::current();
     $footerPages = \App\Models\StaticPage::query()->where('is_published', true)->orderBy('title')->get();
+    // Off on cart/checkout — a promo/maintenance banner has no business
+    // interrupting someone already mid-purchase. Every other page leaves
+    // this unset and gets the default.
+    $showAnnouncements ??= true;
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -16,6 +20,10 @@
     </head>
     <body class="min-h-screen bg-white text-zinc-900 antialiased">
         @include('partials.admin-bar')
+
+        @if ($showAnnouncements)
+            <livewire:storefront.announcement-banner />
+        @endif
 
         <header class="border-b border-zinc-200">
             <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">

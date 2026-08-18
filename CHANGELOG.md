@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — storefront announcement banner (targeting, expiry, reach/dismiss log)
+- New admin-authored storefront banner system: Settings → Announcements (Super Admin/Admin) lets staff write a title/body, target it at a customer segment (reuses the existing `CustomerSegment` enum — All/HasOrdered/NeverOrdered/JoinedRecently), schedule it (`starts_at`/`ends_at`, an unset end date runs indefinitely until turned off), and set a priority.
+- Renders as a single banner across the storefront (highest-priority currently-matching one, never a stack) — deliberately excluded from cart/checkout via a new `showAnnouncements` flag on the storefront layout, since a promo has no business interrupting someone already mid-purchase.
+- Targeting works for guests too: `CustomerSegment::matches()` (new) checks a single visitor against a segment — a guest only ever matches "All", since the other segments need order/account history a guest doesn't have.
+- **Reach/dismiss log**: one `announcement_views` row per (announcement, viewer) — not a raw per-page-load event log — recording the first time each visitor saw it and, permanently, if they dismissed it (no snooze/re-show; a dismissed announcement never comes back for that visitor). Guests are tracked via the same session-id convention `ResolveCurrentCart::guestSessionId()` already uses for guest carts, so reach/dismiss numbers work identically for guests and logged-in customers. The admin list shows live view/dismiss counts per announcement.
+- 20 new tests.
+
 ### Added — bulk actions for review moderation, catalog toggles, and reporting exports
 - **Reviews**: bulk Approve/Reject on the table's toolbar — same `App\Actions\Review\ModerateReview::run()` the existing single-record moderate buttons already use, just looped over a selection instead of one row at a time.
 - **Coupons** and **Shipping Methods**: bulk Activate/Deactivate — `active` had no dedicated toggle at all before this (single-record or bulk), only the edit form.

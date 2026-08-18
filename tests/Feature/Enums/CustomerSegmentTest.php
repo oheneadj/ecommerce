@@ -63,4 +63,22 @@ class CustomerSegmentTest extends TestCase
         $this->assertTrue($ids->contains($recent->id));
         $this->assertFalse($ids->contains($old->id));
     }
+
+    public function test_matches_a_guest_only_against_all(): void
+    {
+        $this->assertTrue(CustomerSegment::All->matches(null));
+        $this->assertFalse(CustomerSegment::HasOrdered->matches(null));
+        $this->assertFalse(CustomerSegment::NeverOrdered->matches(null));
+        $this->assertFalse(CustomerSegment::JoinedRecently->matches(null));
+    }
+
+    public function test_matches_a_specific_customer_against_has_ordered(): void
+    {
+        $withOrder = User::factory()->create();
+        Order::factory()->create(['user_id' => $withOrder->id]);
+        $withoutOrder = User::factory()->create();
+
+        $this->assertTrue(CustomerSegment::HasOrdered->matches($withOrder));
+        $this->assertFalse(CustomerSegment::HasOrdered->matches($withoutOrder));
+    }
 }

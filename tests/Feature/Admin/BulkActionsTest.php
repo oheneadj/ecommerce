@@ -6,13 +6,24 @@ namespace Tests\Feature\Admin;
 
 use App\Actions\Catalog\AdjustVariantPrice;
 use App\Enums\OrderStatus;
+use App\Enums\ReviewStatus;
 use App\Enums\UserRole;
+use App\Filament\Resources\Coupons\Pages\ListCoupons;
 use App\Filament\Resources\Orders\Pages\ListOrders;
+use App\Filament\Resources\Payments\Pages\ListPayments;
 use App\Filament\Resources\Products\Pages\EditProduct;
 use App\Filament\Resources\Products\RelationManagers\VariantsRelationManager;
+use App\Filament\Resources\Reviews\Pages\ListReviews;
+use App\Filament\Resources\ShippingMethods\Pages\ListShippingMethods;
+use App\Filament\Resources\StaticPages\Pages\ListStaticPages;
+use App\Filament\Resources\StockMovements\Pages\ListStockMovements;
+use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Review;
+use App\Models\ShippingMethod;
+use App\Models\StaticPage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -148,5 +159,133 @@ class BulkActionsTest extends TestCase
 
         $this->assertTrue($exceptionThrown);
         $this->assertSame(1000, $variants[0]->fresh()->price);
+    }
+
+    public function test_bulk_approving_reviews_approves_every_selected_review(): void
+    {
+        $this->actingAs($this->admin());
+
+        $reviews = Review::factory()->count(3)->create(['status' => ReviewStatus::Pending]);
+
+        Livewire::test(ListReviews::class)
+            ->callTableBulkAction('approve', $reviews);
+
+        foreach ($reviews as $review) {
+            $this->assertSame(ReviewStatus::Approved, $review->fresh()->status);
+        }
+    }
+
+    public function test_bulk_rejecting_reviews_rejects_every_selected_review(): void
+    {
+        $this->actingAs($this->admin());
+
+        $reviews = Review::factory()->count(2)->create(['status' => ReviewStatus::Pending]);
+
+        Livewire::test(ListReviews::class)
+            ->callTableBulkAction('reject', $reviews);
+
+        foreach ($reviews as $review) {
+            $this->assertSame(ReviewStatus::Rejected, $review->fresh()->status);
+        }
+    }
+
+    public function test_bulk_activating_coupons_activates_every_selected_coupon(): void
+    {
+        $this->actingAs($this->admin());
+
+        $coupons = Coupon::factory()->count(2)->create(['active' => false]);
+
+        Livewire::test(ListCoupons::class)
+            ->callTableBulkAction('activate', $coupons);
+
+        foreach ($coupons as $coupon) {
+            $this->assertTrue($coupon->fresh()->active);
+        }
+    }
+
+    public function test_bulk_deactivating_coupons_deactivates_every_selected_coupon(): void
+    {
+        $this->actingAs($this->admin());
+
+        $coupons = Coupon::factory()->count(2)->create(['active' => true]);
+
+        Livewire::test(ListCoupons::class)
+            ->callTableBulkAction('deactivate', $coupons);
+
+        foreach ($coupons as $coupon) {
+            $this->assertFalse($coupon->fresh()->active);
+        }
+    }
+
+    public function test_bulk_activating_shipping_methods_activates_every_selected_method(): void
+    {
+        $this->actingAs($this->admin());
+
+        $methods = ShippingMethod::factory()->count(2)->create(['active' => false]);
+
+        Livewire::test(ListShippingMethods::class)
+            ->callTableBulkAction('activate', $methods);
+
+        foreach ($methods as $method) {
+            $this->assertTrue($method->fresh()->active);
+        }
+    }
+
+    public function test_bulk_deactivating_shipping_methods_deactivates_every_selected_method(): void
+    {
+        $this->actingAs($this->admin());
+
+        $methods = ShippingMethod::factory()->count(2)->create(['active' => true]);
+
+        Livewire::test(ListShippingMethods::class)
+            ->callTableBulkAction('deactivate', $methods);
+
+        foreach ($methods as $method) {
+            $this->assertFalse($method->fresh()->active);
+        }
+    }
+
+    public function test_bulk_publishing_static_pages_publishes_every_selected_page(): void
+    {
+        $this->actingAs($this->admin());
+
+        $pages = StaticPage::factory()->count(2)->create(['is_published' => false]);
+
+        Livewire::test(ListStaticPages::class)
+            ->callTableBulkAction('publish', $pages);
+
+        foreach ($pages as $page) {
+            $this->assertTrue($page->fresh()->is_published);
+        }
+    }
+
+    public function test_bulk_unpublishing_static_pages_unpublishes_every_selected_page(): void
+    {
+        $this->actingAs($this->admin());
+
+        $pages = StaticPage::factory()->count(2)->create(['is_published' => true]);
+
+        Livewire::test(ListStaticPages::class)
+            ->callTableBulkAction('unpublish', $pages);
+
+        foreach ($pages as $page) {
+            $this->assertFalse($page->fresh()->is_published);
+        }
+    }
+
+    public function test_payments_can_be_bulk_exported(): void
+    {
+        $this->actingAs($this->admin());
+
+        Livewire::test(ListPayments::class)
+            ->assertTableBulkActionExists('export');
+    }
+
+    public function test_stock_movements_can_be_bulk_exported(): void
+    {
+        $this->actingAs($this->admin());
+
+        Livewire::test(ListStockMovements::class)
+            ->assertTableBulkActionExists('export');
     }
 }

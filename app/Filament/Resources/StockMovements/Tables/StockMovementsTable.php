@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Filament\Resources\StockMovements\Tables;
 
 use App\Enums\StockMovementType;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use pxlrbt\FilamentExcel\Actions\ExportBulkAction;
+use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
 class StockMovementsTable
 {
@@ -44,7 +47,21 @@ class StockMovementsTable
                 //
             ])
             ->toolbarActions([
-                //
+                BulkActionGroup::make([
+                    ExportBulkAction::make()
+                        ->exports([
+                            ExcelExport::make()
+                                ->fromTable()
+                                ->withColumns([
+                                    'productVariant.sku',
+                                    'type',
+                                    'quantity',
+                                    'note',
+                                    'user.name',
+                                    'created_at',
+                                ]),
+                        ]),
+                ]),
             ])
             ->emptyStateHeading('No stock movements yet')
             ->emptyStateDescription('Record a manual restock or adjustment to get started.')

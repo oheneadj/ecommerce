@@ -12,6 +12,7 @@ use App\Exceptions\RefundExceedsPaymentException;
 use App\Filament\Support\MoneyInput;
 use App\Models\Payment;
 use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -20,6 +21,8 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
+use pxlrbt\FilamentExcel\Actions\ExportBulkAction;
+use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
 class PaymentsTable
 {
@@ -58,7 +61,20 @@ class PaymentsTable
                 self::refundAction(),
             ])
             ->toolbarActions([
-                //
+                BulkActionGroup::make([
+                    ExportBulkAction::make()
+                        ->exports([
+                            ExcelExport::make()
+                                ->fromTable()
+                                ->withColumns([
+                                    'order.order_number',
+                                    'provider',
+                                    'amount',
+                                    'status',
+                                    'created_at',
+                                ]),
+                        ]),
+                ]),
             ])
             ->emptyStateHeading('No payments yet')
             ->emptyStateDescription('Payments will appear here once customers start checking out.')

@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — bulk actions for review moderation, catalog toggles, and reporting exports
+- **Reviews**: bulk Approve/Reject on the table's toolbar — same `App\Actions\Review\ModerateReview::run()` the existing single-record moderate buttons already use, just looped over a selection instead of one row at a time.
+- **Coupons** and **Shipping Methods**: bulk Activate/Deactivate — `active` had no dedicated toggle at all before this (single-record or bulk), only the edit form.
+- **Static Pages**: bulk Publish/Unpublish (`is_published`), same shape as the two above.
+- **Payments** and **Stock Movements**: bulk Export (`pxlrbt/filament-excel`, same package/pattern already used on Orders/Customers/Products) — read-only reporting, deliberately no state-mutating bulk action added to either (an audit trail of financial/inventory events shouldn't be bulk-edited or bulk-deleted).
+- Every new toggle/moderation bulk action is authorized per-record against the resource's existing Policy (`->authorizeIndividualRecords('update')`), same as every other admin action in this app — none of them bypass authorization.
+- **Explicitly not added**: a bulk "release" action on Stock Reservations — `StockReservationPolicy::update()` already returns `false` unconditionally, by deliberate design ("staff can view them but never create, edit, or delete one by hand"); adding a bulk mutation there would mean bypassing or loosening an existing authorization rule, which is a decision on its own, not a side effect of a bulk-actions pass.
+- 10 new tests.
+
 ### Changed — reusable-components audit: extracted a shared text-link button
 - CLAUDE.md Section 10 audit found the same raw `<button class="text-sm ... hover:underline">` markup repeated 6 times across the app (Profile's phone-change/cancel actions added this session, plus pre-existing ones in product filtering and phone login) with no shared component behind it. `<x-button>` already existed and already handled the wire:loading-disable-while-in-flight behavior these raw buttons never had — extended it with `link`/`link-primary` variants instead of adding a new component, so all 6 sites now share one implementation and gained the auto-disable behavior for free.
 - No behavior change beyond that auto-disable; existing tests for every affected page re-verified green.

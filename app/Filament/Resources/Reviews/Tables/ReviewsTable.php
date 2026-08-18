@@ -8,6 +8,7 @@ use App\Actions\Review\ModerateReview;
 use App\Enums\ReviewStatus;
 use App\Models\Review;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ForceDeleteBulkAction;
@@ -18,6 +19,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 
 class ReviewsTable
@@ -57,6 +59,8 @@ class ReviewsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    self::moderateBulkAction('approve', ReviewStatus::Approved),
+                    self::moderateBulkAction('reject', ReviewStatus::Rejected),
                     DeleteBulkAction::make(),
                     ForceDeleteBulkAction::make(),
                     RestoreBulkAction::make(),
@@ -79,6 +83,29 @@ class ReviewsTable
                 ModerateReview::run($record, $status);
 
                 Notification::make()->title("Review {$status->value}")->success()->send();
+            });
+    }
+
+    /**
+     * Bulk counterpart of moderateAction() above — same
+     * ModerateReview::run() call, just looped over the selection rather
+     * than a single record, so moderating a whole queue of pending
+     * reviews doesn't mean clicking Approve/Reject one row at a time.
+     */
+    private static function moderateBulkAction(string $name, ReviewStatus $status): BulkAction
+    {
+        return BulkAction::make($name)
+            ->label(ucfirst($name))
+            ->authorize(fn (): bool => Auth::user()?->can('viewAny', Review::class) ?? false)
+            ->requiresConfirmation()
+            ->action(function (Collection $records) use ($status): void {
+                foreach ($records as $record) {
+                    if ($record instanceof Review) {
+                        ModerateReview::run($record, $status);
+                    }
+                }
+
+                Notification::make()->title("{$records->count()} review(s) {$status->value}")->success()->send();
             });
     }
 }

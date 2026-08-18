@@ -10,7 +10,6 @@ use App\Exceptions\OtpRateLimitedException;
 use App\Exceptions\PhoneAlreadyLinkedException;
 use App\Exceptions\TooManyOtpVerificationAttemptsException;
 use App\Livewire\Concerns\NormalizesPhoneNumber;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -152,47 +151,24 @@ class Profile extends Component
 
         $user->fill($validated);
 
+        // A changed email is unconfirmed until proven again — and needs a
+        // fresh verification link sent to the new address, since the old
+        // one (if any was ever sent) points at whatever the email used to
+        // be. Skipped for a customer clearing back to no email at all,
+        // since there's nothing to send to.
+        $emailChangedToSomething = $user->isDirty('email') && $user->email !== null;
+
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
         }
 
         $user->save();
 
-        $this->dispatch('toast', variant: 'success', message: __('Profile updated.'));
-    }
-
-    /**
-     * Send an email verification notification to the current user.
-     */
-    public function resendVerificationNotification(): void
-    {
-        $user = Auth::user();
-
-        if ($user->hasVerifiedEmail()) {
-            $this->redirectIntended(default: route('account.show', absolute: false));
-
-            return;
+        if ($emailChangedToSomething) {
+            $user->sendEmailVerificationNotification();
         }
 
-        $user->sendEmailVerificationNotification();
-
-        $this->dispatch('toast', message: __('A new verification link has been sent to your email address.'));
-    }
-
-    #[Computed]
-    public function hasUnverifiedEmail(): bool
-    {
-        $user = Auth::user();
-
-        return $user instanceof MustVerifyEmail && ! $user->hasVerifiedEmail();
-    }
-
-    #[Computed]
-    public function showDeleteUser(): bool
-    {
-        $user = Auth::user();
-
-        return ! $user instanceof MustVerifyEmail || $user->hasVerifiedEmail();
+        $this->dispatch('toast', variant: 'success', message: __('Profile updated.'));
     }
 
     /**

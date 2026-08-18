@@ -15,21 +15,7 @@
                 <form wire:submit="updateProfileInformation" class="mt-6 w-full space-y-6">
                     <x-input wire:model="name" :label="__('Name')" type="text" placeholder="{{ __('e.g. Ama Owusu') }}" required autofocus autocomplete="name" />
 
-                    <div>
-                        <x-input wire:model="email" :label="__('Email')" type="email" placeholder="{{ __('you@example.com') }}" required autocomplete="email" />
-
-                        @if ($this->hasUnverifiedEmail)
-                            <div>
-                                <p class="mt-4 text-sm text-zinc-500">
-                                    {{ __('Your email address is unverified.') }}
-
-                                    <x-button variant="link" wire:click.prevent="resendVerificationNotification">
-                                        {{ __('Click here to re-send the verification email.') }}
-                                    </x-button>
-                                </p>
-                            </div>
-                        @endif
-                    </div>
+                    <x-input wire:model="email" :label="__('Email')" type="email" placeholder="{{ __('you@example.com') }}" required autocomplete="email" />
 
                     <div class="flex items-center gap-4">
                         <x-button variant="primary" type="submit">{{ __('Save') }}</x-button>
@@ -82,9 +68,7 @@
                 @endif
             </x-card>
 
-            @if ($this->showDeleteUser)
-                <livewire:settings.delete-user-form />
-            @endif
+            <livewire:settings.delete-user-form />
         </div>
     </x-account.layout>
 </section>

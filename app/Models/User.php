@@ -8,7 +8,13 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+// Deliberately the trait (working hasVerifiedEmail()/sendEmailVerificationNotification()
+// methods), never the Illuminate\Contracts\Auth\MustVerifyEmail interface — implementing
+// the interface would flip the `verified` route middleware already applied to every
+// account route from its current no-op into active enforcement, blocking a phone-only
+// or otherwise-unverified customer from their own account. Verification here is a trust
+// signal for specific decisions (Google auto-link, enabling password login), never a
+// general access gate.
 use App\Concerns\LogsAdminActivity;
 use App\Enums\UserRole;
 use App\Observers\UserObserver;
@@ -16,6 +22,7 @@ use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasAvatar;
 use Filament\Panel;
+use Illuminate\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -63,7 +70,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use BreezyTwoFactorAuthenticatable, HasFactory, HasRoles, LogsAdminActivity, Notifiable, PasskeyAuthenticatable, SoftDeletes, TwoFactorAuthenticatable;
+    use BreezyTwoFactorAuthenticatable, HasFactory, HasRoles, LogsAdminActivity, MustVerifyEmail, Notifiable, PasskeyAuthenticatable, SoftDeletes, TwoFactorAuthenticatable;
 
     /**
      * Overrides `LogsAdminActivity`'s default (log every fillable
@@ -147,6 +154,30 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
     public function routeNotificationForSms(): ?string
     {
         return $this->phone;
+    }
+
+    /**
+     * Whether this account has an email that's been independently confirmed
+     * as belonging to whoever controls it — either Google's own OAuth
+     * verification (set at signup) or clicking the emailed verification
+     * link. Distinct from the trait's own `hasVerifiedEmail()`: that only
+     * checks `email_verified_at`, which says nothing about whether an
+     * email even exists — a phone-only account has neither.
+     */
+    public function hasVerifiedEmailAddress(): bool
+    {
+        return $this->email !== null && $this->email_verified_at !== null;
+    }
+
+    /**
+     * Whether this account has an email on file that still needs
+     * verifying — used to decide whether to show a "verify your email"
+     * reminder. False for an account with no email at all, since there's
+     * nothing to nag about.
+     */
+    public function hasUnverifiedEmailAddress(): bool
+    {
+        return $this->email !== null && $this->email_verified_at === null;
     }
 
     /**

@@ -25,6 +25,8 @@
     <hr class="w-full border-zinc-200 md:hidden" />
 
     <div class="flex-1 self-stretch max-md:pt-6">
+        <livewire:account.verify-email-banner />
+
         {{ $slot }}
     </div>
 </div>

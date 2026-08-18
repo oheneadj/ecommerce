@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Listeners\MergeGuestCartOnLogin;
 use App\Listeners\RecordFailedBackup;
 use App\Listeners\RecordSuccessfulBackup;
+use App\Listeners\SendEmailVerificationOnRegistration;
 use App\Models\StoreSetting;
 use App\Notifications\Channels\SmsChannel;
 use App\Payments\PaymentManager;
@@ -16,6 +17,7 @@ use Carbon\CarbonImmutable;
 use Google\Client as GoogleClient;
 use Google\Service\Drive as GoogleDriveService;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\DevCommands;
@@ -69,6 +71,11 @@ class AppServiceProvider extends ServiceProvider
         // Covers every login path (phone OTP, Google, email+password, 2FA,
         // passkeys) — SessionGuard::login() always fires Login.
         Event::listen(Login::class, MergeGuestCartOnLogin::class);
+
+        // Only email+password registration dispatches Registered — Laravel's
+        // own built-in listener for this event silently skips sending
+        // (see SendEmailVerificationOnRegistration's own docblock for why).
+        Event::listen(Registered::class, SendEmailVerificationOnRegistration::class);
 
         // Backups (App\Jobs\RunBackupJob) — reacts to spatie/laravel-backup's
         // own events rather than anything in the job itself, so both the

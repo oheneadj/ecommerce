@@ -2,7 +2,10 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\User;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
 
@@ -37,5 +40,28 @@ class RegistrationTest extends TestCase
             ->assertRedirect(route('account.show', absolute: false));
 
         $this->assertAuthenticated();
+    }
+
+    /**
+     * Regression: SendEmailVerificationOnRegistration exists specifically
+     * because Laravel's own built-in listener for this silently skips
+     * sending, since User deliberately doesn't implement the
+     * MustVerifyEmail *interface* (only the trait, for working
+     * hasVerifiedEmail()/sendEmailVerificationNotification() methods).
+     */
+    public function test_registering_sends_a_verification_email(): void
+    {
+        Notification::fake();
+
+        $this->post(route('register.store'), [
+            'name' => 'John Doe',
+            'email' => 'test@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $user = User::query()->where('email', 'test@example.com')->firstOrFail();
+
+        Notification::assertSentTo($user, VerifyEmail::class);
     }
 }

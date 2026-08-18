@@ -3,6 +3,7 @@
 @php
     $variants = [
         'danger' => 'border-red-200 bg-red-50 text-red-800',
+        'warning' => 'border-amber-200 bg-amber-50 text-amber-800',
         'default' => 'border-zinc-200 bg-zinc-50 text-zinc-800',
     ];
 @endphp

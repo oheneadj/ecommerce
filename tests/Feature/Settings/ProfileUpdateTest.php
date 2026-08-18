@@ -7,8 +7,10 @@ use App\Models\OtpCode;
 use App\Models\User;
 use App\Sms\Contracts\SmsGateway;
 use App\Sms\SmsSendResult;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -66,8 +68,40 @@ class ProfileUpdateTest extends TestCase
         $this->assertNull($user->email_verified_at);
     }
 
+    public function test_adding_an_email_sends_a_verification_email(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => null]);
+        $this->actingAs($user);
+
+        Livewire::test(Profile::class)
+            ->set('name', 'Test User')
+            ->set('email', 'test@example.com')
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors();
+
+        Notification::assertSentTo($user->fresh(), VerifyEmail::class);
+    }
+
+    public function test_changing_an_already_verified_email_sends_a_fresh_verification_email(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'old@example.com', 'email_verified_at' => now()]);
+        $this->actingAs($user);
+
+        Livewire::test(Profile::class)
+            ->set('name', $user->name)
+            ->set('email', 'new@example.com')
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors();
+
+        $this->assertNull($user->fresh()->email_verified_at);
+        Notification::assertSentTo($user->fresh(), VerifyEmail::class);
+    }
+
     public function test_email_verification_status_is_unchanged_when_email_address_is_unchanged(): void
     {
+        Notification::fake();
         $user = User::factory()->create();
 
         $this->actingAs($user);
@@ -80,6 +114,7 @@ class ProfileUpdateTest extends TestCase
         $response->assertHasNoErrors();
 
         $this->assertNotNull($user->refresh()->email_verified_at);
+        Notification::assertNothingSent();
     }
 
     public function test_user_can_delete_their_account(): void

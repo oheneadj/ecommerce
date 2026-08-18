@@ -74,4 +74,26 @@ class UserTest extends TestCase
 
         $this->assertTrue($admin->canAccessPanel(Filament::getPanel('admin')));
     }
+
+    public function test_has_verified_email_address_requires_both_an_email_and_verification(): void
+    {
+        $this->assertTrue(User::factory()->create(['email' => 'a@example.com', 'email_verified_at' => now()])->hasVerifiedEmailAddress());
+        $this->assertFalse(User::factory()->create(['email' => 'b@example.com', 'email_verified_at' => null])->hasVerifiedEmailAddress());
+        $this->assertFalse(User::factory()->create(['email' => null, 'email_verified_at' => null])->hasVerifiedEmailAddress());
+    }
+
+    public function test_has_unverified_email_address_is_false_for_a_phone_only_account_with_no_email(): void
+    {
+        // Nothing to verify — must not nag a phone-only customer to
+        // "verify" an email they never added.
+        $user = User::factory()->create(['email' => null, 'email_verified_at' => null]);
+
+        $this->assertFalse($user->hasUnverifiedEmailAddress());
+    }
+
+    public function test_has_unverified_email_address_is_true_only_when_an_email_exists_and_is_unverified(): void
+    {
+        $this->assertTrue(User::factory()->create(['email' => 'a@example.com', 'email_verified_at' => null])->hasUnverifiedEmailAddress());
+        $this->assertFalse(User::factory()->create(['email' => 'b@example.com', 'email_verified_at' => now()])->hasUnverifiedEmailAddress());
+    }
 }

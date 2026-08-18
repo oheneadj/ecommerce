@@ -8,6 +8,7 @@ use App\Actions\Payment\HandleLatePaymentConfirmation;
 use App\Actions\Payment\HandlePaymentWebhook;
 use App\Actions\Payment\InitiatePayment;
 use App\Actions\Payment\ProcessRefund;
+use App\Actions\Payment\SettlePaymentSuccess;
 use App\Actions\Payment\VerifyPendingPayments;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
@@ -20,6 +21,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\ProductVariant;
+use App\Models\StockMovement;
 use App\Models\StockReservation;
 use App\Models\WebhookEvent;
 use App\Payments\PaymentManager;
@@ -373,6 +375,40 @@ class PaymentTest extends TestCase
 
         $this->assertSame(7, $variant->fresh()->stock);
         $this->assertSame(PaymentStatus::Success, $payment->fresh()->status);
+    }
+
+    /**
+     * True cross-connection concurrency can't be exercised against the
+     * in-memory SQLite database the test suite uses (see
+     * InventoryManagementTest's own note on this). This instead proves the
+     * invariant the row lock exists to guarantee: once a payment has been
+     * settled once, a second settlement attempt for the exact same payment
+     * (webhook delivery racing the polling sweep, or a duplicated job
+     * dispatch) is a genuine no-op — no second stock decrement, no second
+     * "Payment confirmed" order-status transition.
+     */
+    public function test_settling_the_same_payment_twice_only_decrements_stock_once(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+        $order = Order::factory()->create();
+        OrderItem::factory()->create(['order_id' => $order->id, 'product_variant_id' => $variant->id, 'quantity' => 2]);
+        StockReservation::factory()->create([
+            'product_variant_id' => $variant->id,
+            'order_id' => $order->id,
+            'quantity' => 2,
+            'status' => StockReservationStatus::Active,
+        ]);
+        $payment = Payment::factory()->create(['order_id' => $order->id, 'status' => PaymentStatus::Pending]);
+
+        SettlePaymentSuccess::run($payment);
+        // A second settlement attempt for the same already-settled payment
+        // — the lockForUpdate + Pending re-check inside the transaction
+        // must make this a no-op rather than decrementing stock again.
+        SettlePaymentSuccess::run($payment->fresh());
+
+        $this->assertSame(8, $variant->fresh()->stock);
+        $this->assertSame(1, StockMovement::query()->where('product_variant_id', $variant->id)->where('type', StockMovementType::Sale)->count());
+        $this->assertSame(OrderStatus::Paid, $order->fresh()->status);
     }
 
     public function test_late_payment_confirmation_refulfills_when_stock_available(): void

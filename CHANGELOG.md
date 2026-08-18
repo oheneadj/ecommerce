@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — comprehensive project README
+- Added `README.md`: tech stack, feature overview, setup instructions (including gaps not covered by `composer run setup` — `php artisan storage:link`, `php artisan app:create-super-admin`, the required queue worker and scheduler cron entry), environment variable reference, and a documentation index linking every file under `docs/`.
+
 ### Fixed — confusing "empty cart" after a failed/pending payment
 - A customer whose payment failed or was still being confirmed could land back on an empty-looking `/cart` or `/checkout` with no explanation. Root cause: `Cart::scopeOpen()` correctly closes a cart the moment its order has a `Pending` payment (by design, so a live payment can't be double-submitted against), but nothing told the customer *why* — `ResolveCurrentCart`/`GetCurrentCart` just silently handed back a brand-new empty cart instead.
 - `placeOrder()`'s one remaining special case — a payment failing synchronously at initiation — previously just showed an inline checkout error and left the customer stuck there. It now redirects to the order's own confirmation page like every other outcome already did (`respondToPaymentInitiation`'s existing fallback branch already does the right thing once the special case is removed — no new redirect logic needed there).

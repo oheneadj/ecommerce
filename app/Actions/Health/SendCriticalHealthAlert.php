@@ -18,11 +18,12 @@ use Lorisleiva\Actions\Concerns\AsAction;
 /**
  * Scheduled daily (routes/console.php). Silent no-op when nothing is
  * failing, or when a Super Admin has snoozed alerts via the System Health
- * page — the snooze is a single global timestamp
- * (`StoreSetting::health_alerts_snoozed_until`), deliberately simple: it
- * mutes the reminder for exactly 24 hours regardless of whether the
- * underlying failures change in the meantime, rather than tracking which
- * specific failures were acknowledged.
+ * page for exactly the set of failures that were on screen at snooze time
+ * (`StoreSetting::health_alerts_snoozed_failures`). A snooze only
+ * suppresses the alert while every currently-failing check was already
+ * part of what was snoozed — a genuinely new, unrelated failure (e.g.
+ * payments breaking while an SMS-provider warning was snoozed) still
+ * alerts immediately rather than waiting out the full 24-hour window.
  */
 class SendCriticalHealthAlert
 {
@@ -30,7 +31,7 @@ class SendCriticalHealthAlert
 
     /**
      * Sends the alert to every Super Admin, unless nothing is failing or
-     * alerts are currently snoozed.
+     * every currently-failing check was already covered by an active snooze.
      */
     public function handle(): void
     {
@@ -40,9 +41,15 @@ class SendCriticalHealthAlert
             return;
         }
 
-        $snoozedUntil = StoreSetting::current()->health_alerts_snoozed_until;
+        $settings = StoreSetting::current();
+        $snoozedUntil = $settings->health_alerts_snoozed_until;
+        $snoozedFailures = $settings->health_alerts_snoozed_failures ?? [];
 
-        if ($snoozedUntil !== null && $snoozedUntil->isFuture()) {
+        $isFullySnoozed = $snoozedUntil !== null
+            && $snoozedUntil->isFuture()
+            && array_diff($failures, $snoozedFailures) === [];
+
+        if ($isFullySnoozed) {
             return;
         }
 

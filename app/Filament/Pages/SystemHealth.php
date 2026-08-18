@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Actions\Health\ListCriticalHealthFailures;
 use App\Enums\UserRole;
 use App\Models\HealthAttestation;
 use App\Models\IntegrityCheckResult;
@@ -112,11 +113,18 @@ class SystemHealth extends Page implements HasForms
     }
 
     /**
-     * Mutes the daily critical-alert notification for 24 hours.
+     * Mutes the daily critical-alert notification for 24 hours — but only
+     * for the failures currently on screen. Recording which ones those
+     * were means SendCriticalHealthAlert can still alert immediately if
+     * something new and unrelated breaks during the snooze window, instead
+     * of a single global timestamp silencing everything for a full day.
      */
     public function snoozeAlerts(): void
     {
-        StoreSetting::current()->update(['health_alerts_snoozed_until' => now()->addDay()]);
+        StoreSetting::current()->update([
+            'health_alerts_snoozed_until' => now()->addDay(),
+            'health_alerts_snoozed_failures' => ListCriticalHealthFailures::run(),
+        ]);
 
         $this->runChecks();
 
@@ -128,7 +136,10 @@ class SystemHealth extends Page implements HasForms
      */
     public function resumeAlerts(): void
     {
-        StoreSetting::current()->update(['health_alerts_snoozed_until' => null]);
+        StoreSetting::current()->update([
+            'health_alerts_snoozed_until' => null,
+            'health_alerts_snoozed_failures' => null,
+        ]);
 
         $this->runChecks();
 

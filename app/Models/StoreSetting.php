@@ -53,6 +53,7 @@ use Illuminate\Support\Facades\Storage;
  * @property int $stock_reservation_minutes
  * @property int $low_stock_threshold
  * @property Carbon|null $health_alerts_snoozed_until
+ * @property array<int, string>|null $health_alerts_snoozed_failures
  */
 #[Fillable([
     'business_name',
@@ -78,6 +79,7 @@ use Illuminate\Support\Facades\Storage;
     'stock_reservation_minutes',
     'low_stock_threshold',
     'health_alerts_snoozed_until',
+    'health_alerts_snoozed_failures',
 ])]
 class StoreSetting extends Model
 {
@@ -90,6 +92,7 @@ class StoreSetting extends Model
     {
         return [
             'health_alerts_snoozed_until' => 'datetime',
+            'health_alerts_snoozed_failures' => 'array',
             'active_sms_provider' => SmsProvider::class,
             'whatsapp_chat_enabled' => 'boolean',
             'active_remote_storage_provider' => RemoteStorageProvider::class,

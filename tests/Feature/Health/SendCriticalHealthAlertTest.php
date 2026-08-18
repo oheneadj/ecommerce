@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Health;
 
+use App\Actions\Health\ListCriticalHealthFailures;
 use App\Actions\Health\SendCriticalHealthAlert;
 use App\Enums\UserRole;
 use App\Models\HealthAttestation;
@@ -94,12 +95,15 @@ class SendCriticalHealthAlertTest extends TestCase
         Notification::assertNotSentTo($superAdmin, CriticalHealthAlert::class);
     }
 
-    public function test_does_not_notify_while_alerts_are_snoozed(): void
+    public function test_does_not_notify_while_alerts_are_snoozed_and_nothing_new_is_failing(): void
     {
         Role::findOrCreate(UserRole::SuperAdmin->value, 'web');
         $superAdmin = User::factory()->create();
         $superAdmin->assignRole(UserRole::SuperAdmin->value);
-        StoreSetting::current()->update(['health_alerts_snoozed_until' => now()->addDay()]);
+        StoreSetting::current()->update([
+            'health_alerts_snoozed_until' => now()->addDay(),
+            'health_alerts_snoozed_failures' => ListCriticalHealthFailures::run(),
+        ]);
 
         SendCriticalHealthAlert::run();
 
@@ -111,7 +115,51 @@ class SendCriticalHealthAlertTest extends TestCase
         Role::findOrCreate(UserRole::SuperAdmin->value, 'web');
         $superAdmin = User::factory()->create();
         $superAdmin->assignRole(UserRole::SuperAdmin->value);
-        StoreSetting::current()->update(['health_alerts_snoozed_until' => now()->subMinute()]);
+        StoreSetting::current()->update([
+            'health_alerts_snoozed_until' => now()->subMinute(),
+            'health_alerts_snoozed_failures' => ListCriticalHealthFailures::run(),
+        ]);
+
+        SendCriticalHealthAlert::run();
+
+        Notification::assertSentTo($superAdmin, CriticalHealthAlert::class);
+    }
+
+    /**
+     * The core fix: a snooze must only suppress the exact failures it was
+     * taken against — if what's currently failing isn't fully covered by
+     * what was snoozed (a genuinely new, unrelated failure), it must still
+     * alert immediately rather than waiting out the full 24 hours.
+     */
+    public function test_notifies_when_currently_failing_checks_are_not_fully_covered_by_the_snooze(): void
+    {
+        Role::findOrCreate(UserRole::SuperAdmin->value, 'web');
+        $superAdmin = User::factory()->create();
+        $superAdmin->assignRole(UserRole::SuperAdmin->value);
+        // Snoozed against a check that isn't what's actually failing right
+        // now, simulating a new/different failure appearing after the
+        // snooze was taken.
+        StoreSetting::current()->update([
+            'health_alerts_snoozed_until' => now()->addDay(),
+            'health_alerts_snoozed_failures' => ['Some other check entirely'],
+        ]);
+
+        SendCriticalHealthAlert::run();
+
+        Notification::assertSentTo($superAdmin, CriticalHealthAlert::class);
+    }
+
+    public function test_a_legacy_snooze_with_no_recorded_failures_does_not_suppress_current_failures(): void
+    {
+        Role::findOrCreate(UserRole::SuperAdmin->value, 'web');
+        $superAdmin = User::factory()->create();
+        $superAdmin->assignRole(UserRole::SuperAdmin->value);
+        // Simulates a snooze taken before this column existed / with no
+        // failures recorded — must not silently suppress everything.
+        StoreSetting::current()->update([
+            'health_alerts_snoozed_until' => now()->addDay(),
+            'health_alerts_snoozed_failures' => null,
+        ]);
 
         SendCriticalHealthAlert::run();
 

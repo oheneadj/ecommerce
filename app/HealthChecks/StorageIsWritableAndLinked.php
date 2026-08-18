@@ -25,8 +25,22 @@ class StorageIsWritableAndLinked extends Check
 
         $publicPath = public_path('storage');
 
-        if (! is_link($publicPath) && ! is_dir($publicPath)) {
-            return $result->failed('public/storage does not exist — uploaded files will 404 for every visitor. Fix: php artisan storage:link');
+        // Must be a real symlink, not merely something occupying that
+        // path — a stray plain directory there (e.g. left over from a
+        // broken deploy, created before `storage:link` was ever run)
+        // passed this check before, while every upload still 404ed for
+        // visitors: the write-probe below writes straight to
+        // storage/app/public regardless, so it stayed green the entire
+        // time public/storage wasn't actually routing there.
+        if (! is_link($publicPath)) {
+            return $result->failed('public/storage is not a symlink (uploaded files will 404 for every visitor even if this path exists as a plain directory). Fix: php artisan storage:link');
+        }
+
+        $target = readlink($publicPath);
+        $expectedTarget = storage_path('app/public');
+
+        if ($target === false || realpath($target) !== realpath($expectedTarget)) {
+            return $result->failed("public/storage is a symlink but points somewhere unexpected ({$target}) instead of storage/app/public — uploaded files will 404. Fix: php artisan storage:link --force");
         }
 
         $probeFile = 'health-check-write-probe.txt';
@@ -43,6 +57,6 @@ class StorageIsWritableAndLinked extends Check
             return $result->failed('The public disk is not writable. Fix: check filesystem permissions on storage/app/public.');
         }
 
-        return $result->ok('The public storage symlink exists and the disk is writable.');
+        return $result->ok('The public storage symlink exists, points to the right place, and the disk is writable.');
     }
 }

@@ -150,6 +150,52 @@ class HealthChecksTest extends TestCase
         $this->assertSame(Status::ok(), StorageIsWritableAndLinked::new()->run()->status);
     }
 
+    /**
+     * A stray plain directory at public/storage (left over from a broken
+     * deploy, or created before `storage:link` was ever run) used to pass
+     * this check just as well as a real symlink, while every upload still
+     * 404ed for visitors — the check now requires an actual symlink.
+     */
+    public function test_storage_is_writable_and_linked_fails_when_public_storage_is_a_plain_directory_not_a_symlink(): void
+    {
+        $tempPublicPath = sys_get_temp_dir().'/health-check-public-'.uniqid();
+        mkdir($tempPublicPath.'/storage', recursive: true);
+        app()->usePublicPath($tempPublicPath);
+
+        try {
+            $result = StorageIsWritableAndLinked::new()->run();
+
+            $this->assertSame(Status::failed(), $result->status);
+            $this->assertStringContainsString('not a symlink', $result->notificationMessage);
+        } finally {
+            app()->usePublicPath(base_path('public'));
+            rmdir($tempPublicPath.'/storage');
+            rmdir($tempPublicPath);
+        }
+    }
+
+    public function test_storage_is_writable_and_linked_fails_when_the_symlink_points_somewhere_unexpected(): void
+    {
+        $tempPublicPath = sys_get_temp_dir().'/health-check-public-'.uniqid();
+        $wrongTarget = sys_get_temp_dir().'/health-check-wrong-target-'.uniqid();
+        mkdir($tempPublicPath, recursive: true);
+        mkdir($wrongTarget, recursive: true);
+        symlink($wrongTarget, $tempPublicPath.'/storage');
+        app()->usePublicPath($tempPublicPath);
+
+        try {
+            $result = StorageIsWritableAndLinked::new()->run();
+
+            $this->assertSame(Status::failed(), $result->status);
+            $this->assertStringContainsString('points somewhere unexpected', $result->notificationMessage);
+        } finally {
+            app()->usePublicPath(base_path('public'));
+            unlink($tempPublicPath.'/storage');
+            rmdir($tempPublicPath);
+            rmdir($wrongTarget);
+        }
+    }
+
     public function test_expired_reservations_are_being_released_fails_when_one_is_stuck(): void
     {
         StockReservation::factory()->create([

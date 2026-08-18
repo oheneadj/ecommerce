@@ -13,6 +13,7 @@ use App\Actions\Inventory\AdjustStockWithReservationCheck;
 use App\Actions\Inventory\RecordStockMovement;
 use App\Enums\StockMovementType;
 use App\Enums\VariantStatus;
+use App\Exceptions\ProductVariantLimitExceededException;
 use App\Filament\Support\MoneyInput;
 use App\Models\AttributeTerm;
 use App\Models\AttributeValue;
@@ -38,6 +39,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Size;
 use Filament\Support\Enums\Width;
+use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -241,6 +243,14 @@ class VariantsRelationManager extends RelationManager
                 /** @var Product $product */
                 $product = $this->getOwnerRecord();
 
+                $limit = (int) config('media.product_max_variants');
+
+                if ($product->variants()->count() >= $limit) {
+                    Notification::make()->title('Cannot add variant')->body((new ProductVariantLimitExceededException($limit))->getMessage())->danger()->send();
+
+                    throw new Halt;
+                }
+
                 /** @var ProductVariant $variant */
                 $variant = $product->variants()->create($data);
 
@@ -355,14 +365,20 @@ class VariantsRelationManager extends RelationManager
                     ->values()
                     ->all();
 
-                $created = GenerateProductVariants::run(
-                    $product,
-                    $termGroups,
-                    (int) $data['price'],
-                    (int) $data['stock'],
-                    $data['sku_prefix'],
-                    Auth::user(),
-                );
+                try {
+                    $created = GenerateProductVariants::run(
+                        $product,
+                        $termGroups,
+                        (int) $data['price'],
+                        (int) $data['stock'],
+                        $data['sku_prefix'],
+                        Auth::user(),
+                    );
+                } catch (ProductVariantLimitExceededException $e) {
+                    Notification::make()->title('Cannot generate variants')->body($e->getMessage())->danger()->send();
+
+                    return;
+                }
 
                 $combinationCount = collect($termGroups)->map(fn (array $ids): int => count($ids))->reduce(fn (int $carry, int $count): int => $carry * $count, 1);
                 $skipped = $combinationCount - $created->count();

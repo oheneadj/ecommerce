@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Catalog;
 
 use App\Actions\Catalog\GenerateProductVariants;
+use App\Exceptions\ProductVariantLimitExceededException;
 use App\Models\Attribute;
 use App\Models\AttributeTerm;
 use App\Models\Product;
@@ -102,5 +103,73 @@ class GenerateProductVariantsTest extends TestCase
         );
 
         $this->assertSame('SHIRT-EXTRA-LARGE', $product->variants()->sole()->sku);
+    }
+
+    public function test_generating_past_the_configured_variant_limit_is_rejected(): void
+    {
+        config(['media.product_max_variants' => 5]);
+        $product = Product::factory()->create();
+        $size = Attribute::factory()->create(['name' => 'Size']);
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $sizeTerms = AttributeTerm::factory()->count(3)->create(['attribute_id' => $size->id]);
+        $colorTerms = AttributeTerm::factory()->count(3)->create(['attribute_id' => $color->id]);
+
+        $this->expectException(ProductVariantLimitExceededException::class);
+
+        GenerateProductVariants::run(
+            $product,
+            [$sizeTerms->pluck('id')->all(), $colorTerms->pluck('id')->all()],
+            defaultPrice: 3000,
+            defaultStock: 10,
+            skuPrefix: 'SHIRT',
+        );
+    }
+
+    public function test_a_rejected_over_limit_generation_creates_no_variants_at_all(): void
+    {
+        config(['media.product_max_variants' => 5]);
+        $product = Product::factory()->create();
+        $size = Attribute::factory()->create(['name' => 'Size']);
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $sizeTerms = AttributeTerm::factory()->count(3)->create(['attribute_id' => $size->id]);
+        $colorTerms = AttributeTerm::factory()->count(3)->create(['attribute_id' => $color->id]);
+
+        try {
+            GenerateProductVariants::run(
+                $product,
+                [$sizeTerms->pluck('id')->all(), $colorTerms->pluck('id')->all()],
+                defaultPrice: 3000,
+                defaultStock: 10,
+                skuPrefix: 'SHIRT',
+            );
+        } catch (ProductVariantLimitExceededException) {
+            // expected
+        }
+
+        $this->assertSame(0, $product->variants()->count());
+    }
+
+    public function test_combinations_already_covered_by_existing_variants_dont_count_against_the_limit(): void
+    {
+        config(['media.product_max_variants' => 2]);
+        $product = Product::factory()->create();
+        $size = Attribute::factory()->create(['name' => 'Size']);
+        $m = AttributeTerm::factory()->create(['attribute_id' => $size->id, 'value' => 'M']);
+        $l = AttributeTerm::factory()->create(['attribute_id' => $size->id, 'value' => 'L']);
+
+        $existing = ProductVariant::factory()->create(['product_id' => $product->id]);
+        $existing->attributeTerms()->attach($m->id);
+
+        // Only "L" is genuinely new — re-requesting "M" is a no-op skip,
+        // so this must not count as 3 combinations against a limit of 2.
+        $created = GenerateProductVariants::run(
+            $product,
+            [[$m->id, $l->id]],
+            defaultPrice: 3000,
+            defaultStock: 10,
+            skuPrefix: 'SHIRT',
+        );
+
+        $this->assertSame(1, $created->count());
     }
 }

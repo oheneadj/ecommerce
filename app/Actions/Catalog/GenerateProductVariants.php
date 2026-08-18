@@ -13,6 +13,7 @@ namespace App\Actions\Catalog;
 use App\Actions\Inventory\RecordStockMovement;
 use App\Enums\StockMovementType;
 use App\Enums\VariantStatus;
+use App\Exceptions\ProductVariantLimitExceededException;
 use App\Models\AttributeTerm;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -28,6 +29,8 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * attributeTerms() pivot. Any combination that already exists on the
  * product (same set of term IDs, regardless of order) is skipped rather
  * than duplicated.
+ *
+ * @throws ProductVariantLimitExceededException when the resulting total (existing + newly generated) would exceed config('media.product_max_variants')
  */
 class GenerateProductVariants
 {
@@ -48,6 +51,19 @@ class GenerateProductVariants
         $termGroups = array_values(array_filter($termGroups, fn (array $group): bool => $group !== []));
         $combinations = $this->cartesianProduct($termGroups);
         $existingCombinations = $this->existingTermCombinations($product);
+
+        // Only combinations that would actually create a new variant count
+        // toward the cap — re-running "Generate variants" over an already-
+        // covered combination is a no-op, not new growth.
+        $newCombinationCount = collect($combinations)
+            ->reject(fn (array $termIds): bool => $existingCombinations->contains($this->combinationKey($termIds)))
+            ->count();
+
+        $limit = (int) config('media.product_max_variants');
+
+        if ($existingCombinations->count() + $newCombinationCount > $limit) {
+            throw new ProductVariantLimitExceededException($limit);
+        }
 
         $termsById = AttributeTerm::query()
             ->whereIn('id', $termGroups === [] ? [] : array_merge(...$termGroups))

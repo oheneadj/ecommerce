@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Products\RelationManagers;
 
 use App\Actions\Catalog\ConvertImageToWebp;
+use App\Exceptions\ProductImageLimitExceededException;
 use App\Models\AttributeTerm;
 use App\Models\Product;
 use App\Models\ProductImage;
@@ -21,9 +22,11 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
@@ -173,7 +176,7 @@ class ImagesRelationManager extends RelationManager
             ->label('Image(s)')
             ->image()
             ->multiple()
-            ->maxFiles(10)
+            ->maxFiles(fn (): int => config('media.product_max_images'))
             ->maxSize(config('media.max_upload_size_kb'))
             ->disk('public')
             ->directory('product-images')
@@ -227,6 +230,18 @@ class ImagesRelationManager extends RelationManager
 
         $paths = array_values((array) $data['images']);
         unset($data['images'], $data['path']);
+
+        // maxFiles() on the field only caps a single upload — an admin
+        // running "Add image" repeatedly could still exceed the product's
+        // total limit, so the real enforcement is this count against every
+        // image already on the product.
+        $limit = (int) config('media.product_max_images');
+
+        if ($product->images()->count() + count($paths) > $limit) {
+            Notification::make()->title('Cannot add image(s)')->body((new ProductImageLimitExceededException($limit))->getMessage())->danger()->send();
+
+            throw new Halt;
+        }
 
         $nextSortOrder = $product->images()->max('sort_order');
         $nextSortOrder = $nextSortOrder === null ? 0 : $nextSortOrder + 1;

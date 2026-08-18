@@ -1,16 +1,51 @@
-<div class="mx-auto max-w-xl space-y-6 text-center">
-    <div class="flex justify-center">
-        <div class="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600">
-            <x-app-icon name="check" class="size-8" />
+<div class="mx-auto max-w-xl space-y-6 text-center" @if ($this->hasPendingPayment) wire:poll.3s="refreshOrder" @endif>
+    @if ($this->hasPendingPayment)
+        <div class="flex justify-center">
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                <x-app-icon name="loading" class="size-8" />
+            </div>
         </div>
-    </div>
 
-    <div>
-        <h1 class="text-2xl font-semibold">{{ __('Thank you for your order!') }}</h1>
-        <p class="mt-2 text-sm text-zinc-500">
-            {{ __("We've received order :number and will let you know as soon as your payment is confirmed.", ['number' => $order->order_number]) }}
-        </p>
-    </div>
+        <div>
+            <h1 class="text-2xl font-semibold">{{ __('Confirming your payment...') }}</h1>
+            <p class="mt-2 text-sm text-zinc-500">
+                {{ __("We're waiting on confirmation from your payment provider — this page will update automatically.") }}
+            </p>
+        </div>
+    @elseif ($this->latestFailedPayment)
+        <div class="flex justify-center">
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-red-600">
+                <x-app-icon name="x-circle" class="size-8" />
+            </div>
+        </div>
+
+        <div>
+            <h1 class="text-2xl font-semibold">{{ __("Your payment didn't go through") }}</h1>
+            <p class="mt-2 text-sm text-zinc-500">
+                {{ $this->latestFailedPayment->metadata['error'] ?? __('Something went wrong starting your payment.') }}
+            </p>
+        </div>
+
+        <x-button wire:click="retryPayment" wire:target="retryPayment" variant="primary">
+            {{ __('Retry payment') }}
+        </x-button>
+        @error('retryPayment')
+            <p class="text-sm text-red-600">{{ $message }}</p>
+        @enderror
+    @else
+        <div class="flex justify-center">
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600">
+                <x-app-icon name="check" class="size-8" />
+            </div>
+        </div>
+
+        <div>
+            <h1 class="text-2xl font-semibold">{{ __('Thank you for your order!') }}</h1>
+            <p class="mt-2 text-sm text-zinc-500">
+                {{ __("We've received order :number and will let you know as soon as your payment is confirmed.", ['number' => $order->order_number]) }}
+            </p>
+        </div>
+    @endif
 
     <x-card>
         <div class="flex items-center justify-between text-sm">

@@ -185,4 +185,64 @@ class CartPageTest extends TestCase
             ->assertDontSee($otherVariant->sku)
             ->assertSee('Your cart is empty');
     }
+
+    /**
+     * The other half of the empty-cart confusion fix: landing on /cart
+     * with nothing in it can mean the customer's real cart is only
+     * "empty" because its order still has a payment in flight — redirect
+     * to that order's own status page instead of a bare empty cart.
+     */
+    public function test_a_customer_whose_cart_closed_on_a_pending_payment_is_redirected_to_the_order(): void
+    {
+        $user = User::factory()->create();
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+        $cart = GetCurrentCart::run($user);
+        AddItemToCart::run($cart, $variant, 1);
+        $address = Address::factory()->create(['user_id' => $user->id]);
+        $order = CreateOrderFromCart::run($cart, $address);
+        Payment::factory()->create(['order_id' => $order->id, 'status' => PaymentStatus::Pending]);
+
+        $this->actingAs($user);
+
+        Livewire::test(CartPage::class, ['lazy' => false])
+            ->assertRedirect(route('orders.confirmation', ['order' => $order]));
+    }
+
+    public function test_a_customer_whose_cart_closed_on_a_failed_payment_is_redirected_to_the_order(): void
+    {
+        $user = User::factory()->create();
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+        $cart = GetCurrentCart::run($user);
+        AddItemToCart::run($cart, $variant, 1);
+        $address = Address::factory()->create(['user_id' => $user->id]);
+        $order = CreateOrderFromCart::run($cart, $address);
+        Payment::factory()->create(['order_id' => $order->id, 'status' => PaymentStatus::Failed]);
+        // A cart with only a Failed payment stays "open" per scopeOpen()
+        // — force it closed the way GetCurrentCart would find it, by
+        // deleting the items directly (simulating the customer having
+        // genuinely nothing left after the attempt, e.g. retried until a
+        // Pending attempt existed then it later flipped to Failed).
+        $cart->items()->delete();
+
+        $this->actingAs($user);
+
+        Livewire::test(CartPage::class, ['lazy' => false])
+            ->assertRedirect(route('orders.confirmation', ['order' => $order]));
+    }
+
+    public function test_a_genuinely_empty_cart_shows_a_nudge_to_order_history_for_a_customer(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test(CartPage::class)
+            ->call('$refresh')
+            ->assertSee('Check your order history');
+    }
+
+    public function test_a_genuinely_empty_cart_shows_no_nudge_for_a_guest(): void
+    {
+        Livewire::test(CartPage::class)
+            ->call('$refresh')
+            ->assertDontSee('Check your order history');
+    }
 }

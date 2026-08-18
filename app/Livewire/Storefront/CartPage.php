@@ -11,6 +11,7 @@ namespace App\Livewire\Storefront;
 use App\Actions\Cart\RemoveItemFromCart;
 use App\Actions\Cart\ResolveCurrentCart;
 use App\Actions\Cart\UpdateCartItemQuantity;
+use App\Actions\Checkout\FindRecentUnresolvedOrder;
 use App\Exceptions\CartQuantityExceedsStockException;
 use App\Models\Cart;
 use App\Models\ProductVariant;
@@ -29,6 +30,27 @@ use Livewire\Component;
 #[Lazy]
 class CartPage extends Component
 {
+    /**
+     * Same guard CheckoutPage applies on its own empty-cart case — an
+     * empty cart here can mean the customer just has nothing in it, or it
+     * can mean their real cart is temporarily hidden because its order
+     * still has a payment in flight (see FindRecentUnresolvedOrder). Only
+     * redirects when there's actually somewhere more useful to send them;
+     * a genuinely empty cart still renders its own page normally.
+     */
+    public function mount(): void
+    {
+        if ($this->cart->items->isNotEmpty()) {
+            return;
+        }
+
+        $recentOrder = FindRecentUnresolvedOrder::run(Auth::user(), ResolveCurrentCart::guestSessionId());
+
+        if ($recentOrder !== null) {
+            $this->redirectRoute('orders.confirmation', ['order' => $recentOrder], navigate: true);
+        }
+    }
+
     #[Computed]
     public function cart(): Cart
     {

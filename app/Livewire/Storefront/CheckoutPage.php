@@ -11,10 +11,10 @@ namespace App\Livewire\Storefront;
 
 use App\Actions\Cart\ResolveCurrentCart;
 use App\Actions\Checkout\CreateOrderFromCart;
+use App\Actions\Checkout\FindRecentUnresolvedOrder;
 use App\Actions\Checkout\PreviewCouponDiscount;
 use App\Actions\Payment\InitiatePayment;
 use App\Enums\CouponType;
-use App\Enums\PaymentStatus;
 use App\Exceptions\CouponUsageLimitExceededException;
 use App\Exceptions\EmptyCartException;
 use App\Exceptions\InsufficientStockException;
@@ -95,12 +95,23 @@ class CheckoutPage extends Component
      * An empty cart is already rejected server-side in `placeOrder()`, so
      * this redirect is purely a UX guard, not a security one — nothing
      * about the checkout form itself is reachable/useful with nothing to
-     * pay for, so send the customer straight back to their cart instead
-     * of showing them a confusing empty page.
+     * pay for. Checks for a recent unresolved order first, since a cart
+     * this customer was just using can appear empty simply because its
+     * order still has a payment in flight (see FindRecentUnresolvedOrder)
+     * — sending them to their cart in that case would be just as
+     * confusing as sending them here.
      */
     public function mount(): void
     {
         if ($this->cart->items->isEmpty()) {
+            $recentOrder = FindRecentUnresolvedOrder::run(Auth::user(), ResolveCurrentCart::guestSessionId());
+
+            if ($recentOrder !== null) {
+                $this->redirectRoute('orders.confirmation', ['order' => $recentOrder], navigate: true);
+
+                return;
+            }
+
             $this->redirectRoute('cart.show', navigate: true);
 
             return;
@@ -330,13 +341,14 @@ class CheckoutPage extends Component
             return;
         }
 
+        // Every outcome — success, still-pending, or a synchronous failure
+        // at initiation — sends the customer to the order's own
+        // confirmation page rather than any of them being handled inline
+        // here. respondToPaymentInitiation's own fallback branch already
+        // does the right thing for a Failed payment (no redirect_url/
+        // access_code means it lands on orders.confirmation, which shows
+        // the failure and a retry option) — no special case needed.
         $payment = InitiatePayment::run($order, $this->paymentProvider);
-
-        if ($payment->status === PaymentStatus::Failed) {
-            $this->addError('cart', $payment->metadata['error'] ?? 'Payment could not be started. Please try again.');
-
-            return;
-        }
 
         $this->respondToPaymentInitiation($payment, $order);
     }

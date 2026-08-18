@@ -13,6 +13,7 @@ namespace Tests\Feature\Storefront;
 use App\Actions\Cart\AddItemToCart;
 use App\Actions\Cart\GetCurrentCart;
 use App\Actions\Cart\ResolveCurrentCart;
+use App\Actions\Checkout\CreateOrderFromCart;
 use App\Enums\CouponType;
 use App\Enums\PaymentProvider;
 use App\Enums\PaymentStatus;
@@ -319,6 +320,29 @@ class CheckoutPageTest extends TestCase
             ->assertRedirect(route('cart.show'));
     }
 
+    /**
+     * The other half of the empty-cart confusion fix: landing on
+     * /checkout with nothing in the cart can mean the customer's real
+     * cart is only "empty" because its order still has a payment in
+     * flight — redirect to that order's own status page instead of
+     * bouncing them to a bare empty cart.
+     */
+    public function test_checkout_redirects_to_a_pending_order_instead_of_the_cart_page_when_one_exists(): void
+    {
+        $user = User::factory()->create();
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+        $cart = GetCurrentCart::run($user);
+        AddItemToCart::run($cart, $variant, 1);
+        $address = Address::factory()->create(['user_id' => $user->id]);
+        $order = CreateOrderFromCart::run($cart, $address);
+        Payment::factory()->create(['order_id' => $order->id, 'status' => PaymentStatus::Pending]);
+
+        $this->actingAs($user);
+
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
+            ->assertRedirect(route('orders.confirmation', ['order' => $order]));
+    }
+
     public function test_placing_an_order_without_an_address_is_rejected(): void
     {
         $user = User::factory()->create();
@@ -510,7 +534,13 @@ class CheckoutPageTest extends TestCase
             ->assertNoRedirect();
     }
 
-    public function test_a_failed_payment_initiation_shows_an_error_instead_of_redirecting(): void
+    /**
+     * A synchronous failure at initiation now redirects to the order's own
+     * confirmation page, same as every other outcome (success, still-
+     * pending) already does — instead of leaving the customer stuck on
+     * checkout with only an inline error and no order-level context.
+     */
+    public function test_a_failed_payment_initiation_redirects_to_the_order_confirmation_page(): void
     {
         FakePaymentGateway::$initiateSucceeds = false;
 
@@ -525,7 +555,7 @@ class CheckoutPageTest extends TestCase
             ->set('selectedAddressId', $address->id)
             ->set('selectedShippingMethodId', $shippingMethod->id)
             ->call('placeOrder')
-            ->assertHasErrors('cart');
+            ->assertRedirect(route('orders.confirmation', ['order' => Order::query()->sole()]));
 
         $this->assertSame(1, Order::query()->count());
         $this->assertNull(Auth::user()?->orders()->first()?->payments()->where('status', PaymentStatus::Success)->first());
@@ -553,12 +583,12 @@ class CheckoutPageTest extends TestCase
         $address = Address::factory()->create(['user_id' => $user->id, 'is_default' => true]);
         $shippingMethod = ShippingMethod::factory()->create(['active' => true]);
 
-        // First attempt: fails.
+        // First attempt: fails, redirects to the order's own confirmation page.
         Livewire::test(CheckoutPage::class, ['lazy' => false])
             ->set('selectedAddressId', $address->id)
             ->set('selectedShippingMethodId', $shippingMethod->id)
             ->call('placeOrder')
-            ->assertHasErrors('cart');
+            ->assertRedirect();
 
         $order = Order::query()->sole();
         $this->assertSame(1, $order->payments()->count());
@@ -576,7 +606,7 @@ class CheckoutPageTest extends TestCase
             ->set('selectedAddressId', $address->id)
             ->set('selectedShippingMethodId', $shippingMethod->id)
             ->call('placeOrder')
-            ->assertHasErrors('cart');
+            ->assertRedirect();
 
         $this->assertSame(1, Order::query()->count());
         $this->assertSame($order->id, Order::query()->sole()->id);

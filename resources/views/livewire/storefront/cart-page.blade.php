@@ -4,6 +4,12 @@
     @if ($this->cart->items->isEmpty())
         <x-card>
             <p class="text-sm text-zinc-500">{{ __('Your cart is empty.') }}</p>
+            @auth
+                <p class="mt-2 text-sm text-zinc-500">
+                    {{ __('Looking for an order you just placed?') }}
+                    <a href="{{ route('account.orders') }}" wire:navigate class="font-medium text-brand-primary hover:underline">{{ __('Check your order history.') }}</a>
+                </p>
+            @endauth
         </x-card>
     @else
         <x-card>

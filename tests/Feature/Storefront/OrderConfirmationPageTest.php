@@ -15,10 +15,13 @@ use App\Livewire\Storefront\OrderConfirmationPage;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
+use App\Payments\PaymentManager;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
+use Tests\Feature\Payment\FakePaymentGateway;
 use Tests\TestCase;
 
 class OrderConfirmationPageTest extends TestCase
@@ -106,6 +109,68 @@ class OrderConfirmationPageTest extends TestCase
         $this->get("/orders/{$order->ulid}/confirmation?reference=some-ref")->assertOk();
 
         Queue::assertNotPushed(VerifyPaymentWithGateway::class);
+    }
+
+    public function test_a_pending_payment_shows_a_confirming_state_and_polls(): void
+    {
+        $order = Order::factory()->create(['user_id' => null, 'guest_email' => 'guest@example.com']);
+        Payment::factory()->create(['order_id' => $order->id, 'status' => PaymentStatus::Pending]);
+
+        $this->get("/orders/{$order->ulid}/confirmation")
+            ->assertOk()
+            ->assertSee('Confirming your payment')
+            ->assertSee('wire:poll', escape: false);
+    }
+
+    /**
+     * The core fix this page exists for: a synchronous failure at
+     * initiation (or one resolved failed later via webhook/poll) is shown
+     * honestly here — not the fixed "Thank you!" message every outcome
+     * used to get regardless of what actually happened — with a retry
+     * option, for a guest exactly the same as an authenticated customer.
+     */
+    public function test_a_failed_payment_shows_a_retry_button_for_a_guest(): void
+    {
+        $order = Order::factory()->create(['user_id' => null, 'guest_email' => 'guest@example.com']);
+        Payment::factory()->create(['order_id' => $order->id, 'provider' => 'moolre', 'status' => PaymentStatus::Failed]);
+
+        $this->get("/orders/{$order->ulid}/confirmation")
+            ->assertOk()
+            ->assertSee("Your payment didn't go through")
+            ->assertSee('Retry payment');
+    }
+
+    public function test_a_failed_payment_shows_a_retry_button_for_an_authenticated_customer(): void
+    {
+        $user = User::factory()->create();
+        $order = Order::factory()->create(['user_id' => $user->id]);
+        Payment::factory()->create(['order_id' => $order->id, 'provider' => 'moolre', 'status' => PaymentStatus::Failed]);
+        $this->actingAs($user);
+
+        $this->get("/orders/{$order->ulid}/confirmation")->assertSee('Retry payment');
+    }
+
+    public function test_a_guest_can_retry_a_failed_payment(): void
+    {
+        FakePaymentGateway::reset();
+        FakePaymentGateway::$initiateSucceeds = true;
+        $this->app->make(PaymentManager::class)->extend('moolre', fn () => new FakePaymentGateway);
+        DB::table('payment_provider_settings')->insert([
+            'provider' => 'moolre',
+            'enabled' => true,
+            'sort_order' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $order = Order::factory()->create(['user_id' => null, 'guest_email' => 'guest@example.com']);
+        Payment::factory()->create(['order_id' => $order->id, 'provider' => 'moolre', 'status' => PaymentStatus::Failed]);
+
+        Livewire::test(OrderConfirmationPage::class, ['orderUlid' => $order->ulid])
+            ->call('retryPayment')
+            ->assertHasNoErrors();
+
+        $this->assertTrue($order->payments()->where('status', PaymentStatus::Pending)->exists());
     }
 
     private function paymentIdOf(VerifyPaymentWithGateway $job): int

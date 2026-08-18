@@ -1,14 +1,9 @@
 <?php
 
 /**
- * Shown right after a customer places an order — confirms it was received
- * and links onward to its own tracking page. Authoritative payment
- * confirmation still only ever comes from a driver's own verify() call
- * (webhook-triggered, or the polling fallback) — never from the customer
- * simply having landed here — but Paystack's redirect appends the
- * transaction reference to this page's URL specifically so a caller can
- * check sooner than the ~2-minute polling sweep, rather than always
- * waiting on it.
+ * Shown right after a customer places an order — the one page every checkout
+ * outcome (success, still-pending, or a failed payment attempt) lands on,
+ * for guest and authenticated customers alike.
  */
 
 declare(strict_types=1);
@@ -17,20 +12,29 @@ namespace App\Livewire\Storefront;
 
 use App\Enums\PaymentStatus;
 use App\Jobs\VerifyPaymentWithGateway;
+use App\Livewire\Storefront\Concerns\TracksPaymentStatus;
 use App\Models\Order;
+use App\Models\Payment;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
+/**
+ * @property-read Payment|null $latestFailedPayment
+ * @property-read bool $hasPendingPayment
+ */
 #[Title('Order confirmed')]
 class OrderConfirmationPage extends Component
 {
+    use TracksPaymentStatus;
+
     public Order $order;
 
     public function mount(string $orderUlid): void
     {
         $this->order = Order::query()
+            ->with(['payments', 'statusHistories', 'shipment'])
             ->where('ulid', $orderUlid)
             ->when(
                 Auth::check(),
@@ -57,7 +61,7 @@ class OrderConfirmationPage extends Component
             return;
         }
 
-        $payment = $this->order->payments()->latest('id')->first();
+        $payment = $this->order->payments->sortByDesc('id')->first();
 
         if ($payment?->status === PaymentStatus::Pending) {
             VerifyPaymentWithGateway::dispatch($payment->id);

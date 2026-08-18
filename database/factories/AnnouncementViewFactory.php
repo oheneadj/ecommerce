@@ -22,7 +22,6 @@ class AnnouncementViewFactory extends Factory
             'announcement_id' => Announcement::factory(),
             'viewer_key' => 'guest_'.fake()->uuid(),
             'viewed_at' => now(),
-            'dismissed_at' => null,
         ];
     }
 }

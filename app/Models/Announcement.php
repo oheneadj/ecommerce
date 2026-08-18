@@ -20,9 +20,9 @@ use Illuminate\Support\Carbon;
 
 /**
  * Rows are never deleted once they've collected views — an expired one
- * stays as a queryable record of what was shown and how many people
- * dismissed it (see `AnnouncementView`), the same "audit trail, not
- * ephemeral state" treatment `BackupRun` gets.
+ * stays as a queryable record of what was shown and its reach (see
+ * `AnnouncementView`), the same "audit trail, not ephemeral state"
+ * treatment `BackupRun` gets.
  *
  * @property int $id
  * @property string $title

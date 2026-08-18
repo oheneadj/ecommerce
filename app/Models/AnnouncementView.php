@@ -1,7 +1,7 @@
 <?php
 
 /**
- * One row per (announcement, viewer) — records that a specific visitor saw an announcement, and whether they dismissed it.
+ * One row per (announcement, viewer) — records that a specific visitor saw an announcement.
  */
 
 declare(strict_types=1);
@@ -18,19 +18,19 @@ use Illuminate\Support\Carbon;
 /**
  * `viewer_key` covers both logged-in customers ("user_{id}") and guests
  * (the same session-id convention `ResolveCurrentCart::guestSessionId()`
- * already uses for guest carts) — one shared shape, so reach/dismiss
- * counts work identically for both without a nullable user_id column.
- * `dismissed_at` is permanent once set — App\Livewire\Storefront\
- * AnnouncementBanner never shows this announcement to this viewer again,
- * by design (no snooze/re-show).
+ * already uses for guest carts) — one shared shape, so reach counts work
+ * identically for both without a nullable user_id column. A row is a
+ * reach/impression record only — there's no dismissal to track;
+ * `App\Livewire\Storefront\AnnouncementBanner` keeps showing an
+ * announcement to everyone it targets for as long as its own
+ * schedule/active flag says it should, by design.
  *
  * @property int $id
  * @property int $announcement_id
  * @property string $viewer_key
  * @property Carbon $viewed_at
- * @property Carbon|null $dismissed_at
  */
-#[Fillable(['announcement_id', 'viewer_key', 'viewed_at', 'dismissed_at'])]
+#[Fillable(['announcement_id', 'viewer_key', 'viewed_at'])]
 class AnnouncementView extends Model
 {
     /** @use HasFactory<AnnouncementViewFactory> */
@@ -47,7 +47,6 @@ class AnnouncementView extends Model
     {
         return [
             'viewed_at' => 'datetime',
-            'dismissed_at' => 'datetime',
         ];
     }
 

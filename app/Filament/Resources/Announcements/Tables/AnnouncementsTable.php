@@ -41,16 +41,11 @@ class AnnouncementsTable
                     ->sortable(),
                 TextColumn::make('priority')
                     ->sortable(),
-                // Reach/dismiss counts — the "sent-log" this feature was
-                // scoped around. views_count is every viewer who's ever
-                // been shown it; dismissed_count (a filtered aggregate,
-                // see AnnouncementResource::getEloquentQuery()) is how
-                // many of those actively closed it.
+                // Reach — the "sent-log" this feature was scoped around:
+                // every distinct viewer who's ever been shown it.
                 TextColumn::make('views_count')
-                    ->label('Views')
+                    ->label('Reach')
                     ->counts('views'),
-                TextColumn::make('dismissed_count')
-                    ->label('Dismissed'),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([

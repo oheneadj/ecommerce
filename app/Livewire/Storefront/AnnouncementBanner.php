@@ -19,9 +19,10 @@ use Livewire\Component;
 /**
  * Shows at most one announcement at a time — the highest-priority
  * currently-running one that matches this specific visitor's audience
- * segment and that they haven't already dismissed. Dismissal is
- * permanent (see AnnouncementView's own docblock for why) — no snooze,
- * no re-show.
+ * segment. Deliberately not dismissible — an announcement stays visible
+ * to everyone it targets for as long as its own schedule/active flag says
+ * it should; a visitor can't opt out of seeing it, only an admin turning
+ * it off or letting it expire ends it.
  *
  * @property-read Announcement|null $announcement
  */
@@ -38,27 +39,17 @@ class AnnouncementBanner extends Component
     #[Computed]
     public function announcement(): ?Announcement
     {
-        $viewerKey = AnnouncementViewerKey::current();
         $user = Auth::user();
 
-        $candidates = Announcement::query()
+        $match = Announcement::query()
             ->currentlyRunning()
             ->orderByDesc('priority')
             ->orderByDesc('id')
-            ->get();
-
-        $dismissedIds = AnnouncementView::query()
-            ->where('viewer_key', $viewerKey)
-            ->whereIn('announcement_id', $candidates->pluck('id'))
-            ->whereNotNull('dismissed_at')
-            ->pluck('announcement_id');
-
-        $match = $candidates
-            ->reject(fn (Announcement $announcement): bool => $dismissedIds->contains($announcement->id))
+            ->get()
             ->first(fn (Announcement $announcement): bool => $announcement->audience->matches($user));
 
         if ($match !== null) {
-            $this->recordView($match, $viewerKey);
+            $this->recordView($match);
         }
 
         return $match;
@@ -66,35 +57,15 @@ class AnnouncementBanner extends Component
 
     /**
      * Upserts rather than a plain create — the unique constraint on
-     * (announcement_id, viewer_key) means a repeat visit before dismissal
-     * must never throw, and must never touch the original viewed_at.
+     * (announcement_id, viewer_key) means a repeat visit must never
+     * throw, and must never touch the original viewed_at.
      */
-    private function recordView(Announcement $announcement, string $viewerKey): void
+    private function recordView(Announcement $announcement): void
     {
         AnnouncementView::query()->firstOrCreate(
-            ['announcement_id' => $announcement->id, 'viewer_key' => $viewerKey],
+            ['announcement_id' => $announcement->id, 'viewer_key' => AnnouncementViewerKey::current()],
             ['viewed_at' => now()],
         );
-    }
-
-    /**
-     * Permanent — see AnnouncementView's own docblock for why this
-     * announcement never comes back for this viewer after this.
-     */
-    public function dismiss(): void
-    {
-        $announcement = $this->announcement;
-
-        if ($announcement === null) {
-            return;
-        }
-
-        AnnouncementView::query()
-            ->where('announcement_id', $announcement->id)
-            ->where('viewer_key', AnnouncementViewerKey::current())
-            ->update(['dismissed_at' => now()]);
-
-        unset($this->announcement);
     }
 
     public function render(): View

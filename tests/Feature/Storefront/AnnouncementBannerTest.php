@@ -1,8 +1,10 @@
 <?php
 
 /**
- * Covers the storefront announcement banner — targeting, scheduling,
- * priority, and permanent per-viewer dismissal.
+ * Covers the storefront announcement banner — targeting, scheduling, and
+ * priority. Deliberately not dismissible (see AnnouncementBanner's own
+ * docblock for why) — a visitor sees it on every matching visit for as
+ * long as it's running.
  */
 
 declare(strict_types=1);
@@ -99,36 +101,26 @@ class AnnouncementBannerTest extends TestCase
         $this->assertSame(1, AnnouncementView::query()->where('announcement_id', $announcement->id)->count());
     }
 
-    public function test_dismissing_hides_the_announcement_and_never_shows_it_again(): void
+    public function test_the_same_visitor_still_sees_it_on_a_repeat_visit(): void
     {
         $user = User::factory()->create();
-        $announcement = Announcement::factory()->create(['title' => 'Dismiss me']);
+        Announcement::factory()->create(['title' => 'Still here']);
         $this->actingAs($user);
 
-        Livewire::test(AnnouncementBanner::class)
-            ->assertSee('Dismiss me')
-            ->call('dismiss')
-            ->assertDontSee('Dismiss me');
-
-        $view = AnnouncementView::query()->where('announcement_id', $announcement->id)->sole();
-        $this->assertNotNull($view->dismissed_at);
-
-        // A fresh component instance (e.g. a later page load) must still
-        // never show it again — dismissal is permanent, not per-mount.
-        Livewire::test(AnnouncementBanner::class)->assertDontSee('Dismiss me');
+        Livewire::test(AnnouncementBanner::class)->assertSee('Still here');
+        Livewire::test(AnnouncementBanner::class)->assertSee('Still here');
     }
 
-    public function test_dismissing_one_customers_view_never_affects_another_customer(): void
+    public function test_a_repeat_visit_does_not_record_a_second_view_row(): void
     {
-        $customerA = User::factory()->create();
-        $customerB = User::factory()->create();
-        Announcement::factory()->create(['title' => 'Shared announcement']);
+        $user = User::factory()->create();
+        $announcement = Announcement::factory()->create();
+        $this->actingAs($user);
 
-        $this->actingAs($customerA);
-        Livewire::test(AnnouncementBanner::class)->call('dismiss');
+        Livewire::test(AnnouncementBanner::class);
+        Livewire::test(AnnouncementBanner::class);
 
-        $this->actingAs($customerB);
-        Livewire::test(AnnouncementBanner::class)->assertSee('Shared announcement');
+        $this->assertSame(1, AnnouncementView::query()->where('announcement_id', $announcement->id)->count());
     }
 
     public function test_the_banner_is_hidden_on_the_cart_page(): void

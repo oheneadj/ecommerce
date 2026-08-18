@@ -87,17 +87,15 @@ class AnnouncementResourceTest extends TestCase
         $this->assertFalse($announcement->fresh()->active);
     }
 
-    public function test_the_list_page_shows_view_and_dismiss_counts(): void
+    public function test_the_list_page_shows_the_reach_count(): void
     {
         $this->actingAs($this->admin());
 
         $announcement = Announcement::factory()->create();
-        AnnouncementView::factory()->for($announcement)->create(['dismissed_at' => null]);
-        AnnouncementView::factory()->for($announcement)->create(['dismissed_at' => now()]);
+        AnnouncementView::factory()->for($announcement)->count(2)->create();
 
         Livewire::test(ListAnnouncements::class)
-            ->assertTableColumnStateSet('views_count', 2, $announcement)
-            ->assertTableColumnStateSet('dismissed_count', 1, $announcement);
+            ->assertTableColumnStateSet('views_count', 2, $announcement);
     }
 
     public function test_store_keeper_cannot_access_the_resource(): void

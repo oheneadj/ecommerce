@@ -23,9 +23,9 @@
                                 <p class="mt-4 text-sm text-zinc-500">
                                     {{ __('Your email address is unverified.') }}
 
-                                    <a class="cursor-pointer text-sm hover:underline" wire:click.prevent="resendVerificationNotification">
+                                    <x-button variant="link" wire:click.prevent="resendVerificationNotification">
                                         {{ __('Click here to re-send the verification email.') }}
-                                    </a>
+                                    </x-button>
                                 </p>
                             </div>
                         @endif
@@ -45,9 +45,9 @@
 
                 @if ($this->verifiedPhone && ! $changingPhone)
                     <p class="mt-1 text-sm text-zinc-500">{{ __('Verified') }}: {{ $this->verifiedPhone }}</p>
-                    <button type="button" wire:click="startPhoneChange" class="mt-4 text-sm font-medium text-brand-primary hover:underline">
+                    <x-button variant="link-primary" wire:click="startPhoneChange" class="mt-4">
                         {{ __('Change number') }}
-                    </button>
+                    </x-button>
                 @else
                     <p class="mt-1 text-sm text-zinc-500">
                         {{ $this->verifiedPhone
@@ -61,9 +61,9 @@
                             <div class="flex items-center gap-4">
                                 <x-button variant="primary" type="submit" class="whitespace-nowrap">{{ __('Send code') }}</x-button>
                                 @if ($this->verifiedPhone)
-                                    <button type="button" wire:click="cancelPhoneChange" class="text-sm text-zinc-500 hover:underline">
+                                    <x-button variant="link" wire:click="cancelPhoneChange">
                                         {{ __('Cancel') }}
-                                    </button>
+                                    </x-button>
                                 @endif
                             </div>
                         </form>
@@ -73,9 +73,9 @@
                             <x-input wire:model="phoneOtpCode" :label="__('Verification code')" type="text" inputmode="numeric" placeholder="{{ __('6-digit code') }}" autofocus />
                             <div class="flex items-center gap-4">
                                 <x-button variant="primary" type="submit">{{ __('Verify') }}</x-button>
-                                <button type="button" wire:click="cancelPhoneVerification" class="text-sm text-zinc-500 hover:underline">
+                                <x-button variant="link" wire:click="cancelPhoneVerification">
                                     {{ __('Use a different number') }}
-                                </button>
+                                </x-button>
                             </div>
                         </form>
                     @endif

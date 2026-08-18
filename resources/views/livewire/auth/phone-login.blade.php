@@ -33,9 +33,9 @@
                     {{ __('Verify & log in') }}
                 </x-button>
 
-                <button type="button" wire:click="useDifferentNumber" class="text-center text-sm text-zinc-500 hover:underline">
+                <x-button variant="link" wire:click="useDifferentNumber" class="text-center">
                     {{ __('Use a different number') }}
-                </button>
+                </x-button>
             </form>
         @endif
 

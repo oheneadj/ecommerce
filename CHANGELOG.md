@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed — reusable-components audit: extracted a shared text-link button
+- CLAUDE.md Section 10 audit found the same raw `<button class="text-sm ... hover:underline">` markup repeated 6 times across the app (Profile's phone-change/cancel actions added this session, plus pre-existing ones in product filtering and phone login) with no shared component behind it. `<x-button>` already existed and already handled the wire:loading-disable-while-in-flight behavior these raw buttons never had — extended it with `link`/`link-primary` variants instead of adding a new component, so all 6 sites now share one implementation and gained the auto-disable behavior for free.
+- No behavior change beyond that auto-disable; existing tests for every affected page re-verified green.
 ### Docs — Google Drive backup setup runbook
 - New `docs/HOWTO-setup-google-drive-backups.md` — the full click-by-click walkthrough for the one-time per-deployment Google Cloud service-account setup (`infrastructure-deployment.md` §2 only had the condensed 5-step version), plus a troubleshooting table for the most likely failure modes (missing credentials, service account not shared on the folder, etc.).
 

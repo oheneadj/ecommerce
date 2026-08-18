@@ -254,9 +254,9 @@
                 </div>
             </x-card>
 
-            <button wire:click="resetFilters" type="button" class="text-sm font-medium text-brand-primary hover:underline">
+            <x-button variant="link-primary" wire:click="resetFilters">
                 {{ __('Clear filters') }}
-            </button>
+            </x-button>
         </div>
 
         <div class="lg:col-span-3">

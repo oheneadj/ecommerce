@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Settings;
 
-use App\Concerns\PasswordValidationRules;
+use App\Livewire\Concerns\ManagesAdditionalLoginMethods;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -23,7 +23,7 @@ use Livewire\Component;
 #[Layout('layouts.storefront')]
 class Security extends Component
 {
-    use PasswordValidationRules;
+    use ManagesAdditionalLoginMethods;
 
     public string $current_password = '';
 

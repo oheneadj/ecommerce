@@ -129,4 +129,70 @@ class SecurityTest extends TestCase
 
         $response->assertHasErrors(['current_password']);
     }
+
+    public function test_the_update_password_card_is_hidden_for_an_account_with_no_password_yet(): void
+    {
+        $user = User::factory()->create(['password' => null, 'google_id' => 'google-123', 'email' => 'a@example.com', 'email_verified_at' => now()]);
+
+        $this->actingAs($user)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->get(route('security.edit'))
+            ->assertOk()
+            ->assertDontSee('Ensure your account is using a long, random password to stay secure');
+    }
+
+    public function test_a_verified_google_only_account_can_set_its_first_password(): void
+    {
+        $user = User::factory()->create(['password' => null, 'google_id' => 'google-123', 'email' => 'a@example.com', 'email_verified_at' => now()]);
+        $this->actingAs($user);
+
+        Livewire::test(Security::class)
+            ->set('newAccountPassword', 'brand-new-password')
+            ->set('newAccountPassword_confirmation', 'brand-new-password')
+            ->call('setInitialPassword')
+            ->assertHasNoErrors();
+
+        $this->assertTrue(Hash::check('brand-new-password', $user->refresh()->password));
+    }
+
+    public function test_setting_a_password_is_refused_for_an_account_with_an_unverified_email(): void
+    {
+        $user = User::factory()->create(['password' => null, 'email' => 'a@example.com', 'email_verified_at' => null]);
+        $this->actingAs($user);
+
+        Livewire::test(Security::class)
+            ->set('newAccountPassword', 'brand-new-password')
+            ->set('newAccountPassword_confirmation', 'brand-new-password')
+            ->call('setInitialPassword');
+
+        $this->assertNull($user->fresh()->password);
+    }
+
+    public function test_setting_a_password_is_refused_when_the_account_already_has_one(): void
+    {
+        $user = User::factory()->create(['password' => Hash::make('existing-password'), 'email_verified_at' => now()]);
+        $this->actingAs($user);
+
+        Livewire::test(Security::class)
+            ->set('newAccountPassword', 'brand-new-password')
+            ->set('newAccountPassword_confirmation', 'brand-new-password')
+            ->call('setInitialPassword');
+
+        $this->assertTrue(Hash::check('existing-password', $user->fresh()->password));
+    }
+
+    public function test_the_connect_google_button_shows_only_when_not_already_linked(): void
+    {
+        $unlinked = User::factory()->create(['google_id' => null]);
+        $this->actingAs($unlinked)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->get(route('security.edit'))
+            ->assertDontSee('Connected');
+
+        $linked = User::factory()->create(['google_id' => 'google-123']);
+        $this->actingAs($linked)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->get(route('security.edit'))
+            ->assertSee('Connected');
+    }
 }

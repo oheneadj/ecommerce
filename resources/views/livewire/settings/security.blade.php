@@ -5,49 +5,61 @@
         <div class="space-y-6">
             <h1 class="text-2xl font-semibold">{{ __('Security') }}</h1>
 
-            <x-card>
-                <h2 class="flex items-center gap-2 text-lg font-medium">
-                    <x-app-icon name="lock-closed" class="size-5 text-zinc-400" />
-                    {{ __('Update password') }}
-                </h2>
-                <p class="mt-1 text-sm text-zinc-500">{{ __('Ensure your account is using a long, random password to stay secure') }}</p>
+            <x-auth-session-status :status="session('status')" />
 
-                <form method="POST" wire:submit="updatePassword" class="mt-6 space-y-6">
-                    <x-input
-                        wire:model="current_password"
-                        :label="__('Current password')"
-                        type="password"
-                        placeholder="{{ __('Enter your current password') }}"
-                        required
-                        autocomplete="current-password"
-                        viewable
-                    />
-                    <x-input
-                        wire:model="password"
-                        :label="__('New password')"
-                        type="password"
-                        placeholder="{{ __('Enter a new password') }}"
-                        required
-                        autocomplete="new-password"
-                        passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                        viewable
-                    />
-                    <x-input
-                        wire:model="password_confirmation"
-                        :label="__('Confirm password')"
-                        type="password"
-                        placeholder="{{ __('Re-enter the new password') }}"
-                        required
-                        autocomplete="new-password"
-                        passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                        viewable
-                    />
+            @if (session('error'))
+                <x-callout variant="danger" icon="x-circle">
+                    {{ session('error') }}
+                </x-callout>
+            @endif
 
-                    <div class="flex items-center gap-4">
-                        <x-button variant="primary" type="submit" data-test="update-password-button">{{ __('Save') }}</x-button>
-                    </div>
-                </form>
-            </x-card>
+            @if ($this->hasPassword)
+                <x-card>
+                    <h2 class="flex items-center gap-2 text-lg font-medium">
+                        <x-app-icon name="lock-closed" class="size-5 text-zinc-400" />
+                        {{ __('Update password') }}
+                    </h2>
+                    <p class="mt-1 text-sm text-zinc-500">{{ __('Ensure your account is using a long, random password to stay secure') }}</p>
+
+                    <form method="POST" wire:submit="updatePassword" class="mt-6 space-y-6">
+                        <x-input
+                            wire:model="current_password"
+                            :label="__('Current password')"
+                            type="password"
+                            placeholder="{{ __('Enter your current password') }}"
+                            required
+                            autocomplete="current-password"
+                            viewable
+                        />
+                        <x-input
+                            wire:model="password"
+                            :label="__('New password')"
+                            type="password"
+                            placeholder="{{ __('Enter a new password') }}"
+                            required
+                            autocomplete="new-password"
+                            passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
+                            viewable
+                        />
+                        <x-input
+                            wire:model="password_confirmation"
+                            :label="__('Confirm password')"
+                            type="password"
+                            placeholder="{{ __('Re-enter the new password') }}"
+                            required
+                            autocomplete="new-password"
+                            passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
+                            viewable
+                        />
+
+                        <div class="flex items-center gap-4">
+                            <x-button variant="primary" type="submit" data-test="update-password-button">{{ __('Save') }}</x-button>
+                        </div>
+                    </form>
+                </x-card>
+            @endif
+
+            @include('livewire.settings.partials.login-methods')
 
             @if ($canManageTwoFactor)
                 <x-card>

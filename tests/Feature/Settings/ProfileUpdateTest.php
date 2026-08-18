@@ -361,4 +361,38 @@ class ProfileUpdateTest extends TestCase
 
         $this->assertNull($user->refresh()->phone);
     }
+
+    public function test_a_phone_only_verified_account_can_set_its_first_password(): void
+    {
+        $user = User::factory()->create(['password' => null, 'phone' => '+233201234567', 'email' => 'a@example.com', 'email_verified_at' => now()]);
+        $this->actingAs($user);
+
+        Livewire::test(Profile::class)
+            ->set('newAccountPassword', 'brand-new-password')
+            ->set('newAccountPassword_confirmation', 'brand-new-password')
+            ->call('setInitialPassword')
+            ->assertHasNoErrors();
+
+        $this->assertTrue(Hash::check('brand-new-password', $user->refresh()->password));
+    }
+
+    public function test_the_password_form_is_hidden_until_email_is_verified(): void
+    {
+        $user = User::factory()->create(['password' => null, 'email' => 'a@example.com', 'email_verified_at' => null]);
+        $this->actingAs($user);
+
+        $this->get('/settings/profile')
+            ->assertOk()
+            ->assertSee('Verify your email above to enable password sign-in.')
+            ->assertDontSee('Set password');
+    }
+
+    public function test_the_connect_google_button_shows_only_when_not_already_linked(): void
+    {
+        $unlinked = User::factory()->create(['google_id' => null]);
+        $this->actingAs($unlinked)->get('/settings/profile')->assertDontSee('Connected');
+
+        $linked = User::factory()->create(['google_id' => 'google-123']);
+        $this->actingAs($linked)->get('/settings/profile')->assertSee('Connected');
+    }
 }

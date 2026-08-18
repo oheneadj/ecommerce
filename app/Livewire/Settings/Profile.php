@@ -9,6 +9,7 @@ use App\Exceptions\InvalidOtpException;
 use App\Exceptions\OtpRateLimitedException;
 use App\Exceptions\PhoneAlreadyLinkedException;
 use App\Exceptions\TooManyOtpVerificationAttemptsException;
+use App\Livewire\Concerns\ManagesAdditionalLoginMethods;
 use App\Livewire\Concerns\NormalizesPhoneNumber;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -21,6 +22,7 @@ use Livewire\Component;
 #[Layout('layouts.storefront')]
 class Profile extends Component
 {
+    use ManagesAdditionalLoginMethods;
     use NormalizesPhoneNumber;
     use ProfileValidationRules;
 

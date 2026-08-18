@@ -5,6 +5,14 @@
         <div class="space-y-6">
             <h1 class="text-2xl font-semibold">{{ __('Profile') }}</h1>
 
+            <x-auth-session-status :status="session('status')" />
+
+            @if (session('error'))
+                <x-callout variant="danger" icon="x-circle">
+                    {{ session('error') }}
+                </x-callout>
+            @endif
+
             <x-card>
                 <h2 class="flex items-center gap-2 text-lg font-medium">
                     <x-app-icon name="user" class="size-5 text-zinc-400" />
@@ -67,6 +75,8 @@
                     @endif
                 @endif
             </x-card>
+
+            @include('livewire.settings.partials.login-methods')
 
             <livewire:settings.delete-user-form />
         </div>

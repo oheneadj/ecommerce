@@ -47,7 +47,7 @@ This system is designed as a **reusable product**, not a one-off single-business
 |---|---|---|
 | **Super Admin** | Full system owner | Full access, including managing other admins and roles |
 | **Admin** | Day-to-day store operations | Products, orders, payments, coupons — no role/permission management |
-| **Store Keeper** | Inventory-focused staff | Inventory, stock levels, product variants — no access to orders or payments |
+| **Store Keeper** | Catalog & inventory staff | Full product catalog (create/edit products, variants, stock levels) — cannot delete products, and has no access to orders, payments, coupons, or staff management |
 | **Customer (registered)** | Shoppers with an account | Storefront only — no access to admin panel |
 | **Customer (guest)** | Shoppers without an account | Can browse and complete checkout without registering |
 
@@ -177,7 +177,7 @@ This system is designed as a **reusable product**, not a one-off single-business
 4. Reviews require **proof of purchase** (linked order/order item).
 5. Guest customers may complete a full purchase without an account, but must provide contact details for order communication.
 6. Only Super Admin may manage staff roles and permissions.
-7. Store Keeper access is limited to inventory and catalog stock; order and payment data are out of scope for this role.
+7. Store Keeper owns day-to-day catalog work end-to-end — creating products, editing their details (name, description, category, brand, price), managing variants, and adjusting stock. Product deletion, and order/payment/coupon/staff data, are out of scope for this role.
 8. **The cart never locks in a price.** A customer is always charged the product's price at the moment they complete checkout (Order creation), not the price at the time an item was added to their cart. Once an Order is created, its item prices are permanently fixed regardless of later catalog price changes.
 9. Every incoming payment webhook must pass signature verification before being processed; unverified requests are rejected and logged.
 10. Coupon usage limits are enforced against actual recorded usage under a database lock, not a cached counter, to prevent two simultaneous checkouts from both consuming the last available use.

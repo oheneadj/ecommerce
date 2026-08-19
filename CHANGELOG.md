@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Docs — Store Keeper's product catalog access is intentional, not a bug
+- A prior audit flagged Store Keeper being able to create/edit full product records (name, description, price, category, brand) as contradicting the BRD's "inventory and catalog stock" wording. Confirmed with the project owner: this is deliberate — a small store's owner delegating day-to-day catalog data entry to a Store Keeper is a normal operating model, and a product's own fields carry no access to money movement (orders/payments/coupons stay fully out of reach regardless, unaffected by this). Updated the BRD's role table and business rule 7 to describe actual/intended behavior; product deletion remains Admin/SuperAdmin-only, unchanged. 3 new tests documenting the intended access as an asserted contract rather than an untested gap.
+
 ### Fixed — a genuinely free order ($0 total) had no way to complete checkout
 - `InitiatePayment` always called the payment gateway, which rejects zero-amount transactions — a free/giveaway product, or a 100%-off coupon with no tax/shipping, produced an order that could never be paid for; every attempt failed at the gateway. Now settles a $0 order directly through the same `SettlePaymentSuccess` fulfillment path a real successful payment uses (stock consumed, order marked Paid, invoice generated, confirmation sent), with no gateway call and no `payment_api_logs` entry for a call that never happened. 3 new tests.
 

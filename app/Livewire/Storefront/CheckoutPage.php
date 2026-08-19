@@ -15,6 +15,7 @@ use App\Actions\Checkout\FindRecentUnresolvedOrder;
 use App\Actions\Checkout\PreviewCouponDiscount;
 use App\Actions\Payment\InitiatePayment;
 use App\Enums\CouponType;
+use App\Exceptions\CouponAttemptsRateLimitedException;
 use App\Exceptions\CouponUsageLimitExceededException;
 use App\Exceptions\EmptyCartException;
 use App\Exceptions\InsufficientStockException;
@@ -242,7 +243,7 @@ class CheckoutPage extends Component
                 Auth::id(),
                 Auth::check() ? null : ($this->guestEmail !== '' ? $this->guestEmail : null),
             );
-        } catch (InvalidCouponException|CouponUsageLimitExceededException $e) {
+        } catch (InvalidCouponException|CouponUsageLimitExceededException|CouponAttemptsRateLimitedException $e) {
             $this->addError('couponCode', $e->getMessage());
 
             return;

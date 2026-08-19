@@ -9,10 +9,12 @@ declare(strict_types=1);
 namespace App\Actions\Checkout;
 
 use App\Actions\Checkout\Support\ValidateCoupon;
+use App\Exceptions\CouponAttemptsRateLimitedException;
 use App\Exceptions\CouponUsageLimitExceededException;
 use App\Exceptions\InvalidCouponException;
 use App\Models\Cart;
 use App\Models\Coupon;
+use Illuminate\Support\Facades\RateLimiter;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
@@ -31,6 +33,7 @@ use Lorisleiva\Actions\Concerns\AsAction;
  *                                minimum order amount
  * @throws CouponUsageLimitExceededException when usage_limit or
  *                                           usage_limit_per_user has already been reached
+ * @throws CouponAttemptsRateLimitedException when this cart has attempted too many codes too quickly
  */
 class PreviewCouponDiscount
 {
@@ -41,6 +44,17 @@ class PreviewCouponDiscount
      */
     public function handle(Cart $cart, string $code, ?int $userId, ?string $guestEmail): array
     {
+        // No other guard exists against brute-forcing coupon codes — the
+        // checkout page's "Apply" button had no throttle at all, letting
+        // a script try codes at unbounded rate against a single cart.
+        $rateLimitKey = "coupon-preview:{$cart->id}";
+
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 10)) {
+            throw new CouponAttemptsRateLimitedException;
+        }
+
+        RateLimiter::hit($rateLimitKey, 300);
+
         $coupon = Coupon::query()->where('code', $code)->first();
 
         if ($coupon === null) {

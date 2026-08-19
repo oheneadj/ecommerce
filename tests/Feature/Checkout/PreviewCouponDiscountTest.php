@@ -13,6 +13,7 @@ namespace Tests\Feature\Checkout;
 use App\Actions\Cart\AddItemToCart;
 use App\Actions\Checkout\PreviewCouponDiscount;
 use App\Enums\CouponType;
+use App\Exceptions\CouponAttemptsRateLimitedException;
 use App\Exceptions\CouponUsageLimitExceededException;
 use App\Exceptions\InvalidCouponException;
 use App\Models\Cart;
@@ -96,5 +97,46 @@ class PreviewCouponDiscountTest extends TestCase
         $this->expectException(CouponUsageLimitExceededException::class);
 
         PreviewCouponDiscount::run($cart, $coupon->code, null, 'guest@example.com');
+    }
+
+    /**
+     * No other guard existed against brute-forcing coupon codes — the
+     * checkout page's "Apply" button had no throttle at all.
+     */
+    public function test_too_many_attempts_against_one_cart_are_rate_limited(): void
+    {
+        $cart = $this->cartWithItem();
+
+        for ($i = 0; $i < 10; $i++) {
+            try {
+                PreviewCouponDiscount::run($cart, 'DOES-NOT-EXIST', null, 'guest@example.com');
+            } catch (InvalidCouponException) {
+                // expected — the codes themselves are invalid, only the count matters here
+            }
+        }
+
+        $this->expectException(CouponAttemptsRateLimitedException::class);
+
+        PreviewCouponDiscount::run($cart, 'DOES-NOT-EXIST', null, 'guest@example.com');
+    }
+
+    public function test_the_coupon_rate_limit_is_scoped_per_cart(): void
+    {
+        $cart = $this->cartWithItem();
+        $otherCart = $this->cartWithItem();
+        $coupon = Coupon::factory()->create(['type' => CouponType::Fixed, 'value' => 500]);
+
+        for ($i = 0; $i < 10; $i++) {
+            try {
+                PreviewCouponDiscount::run($cart, 'DOES-NOT-EXIST', null, 'guest@example.com');
+            } catch (InvalidCouponException) {
+                // expected
+            }
+        }
+
+        // A different cart is unaffected by the first cart's rate limit.
+        $result = PreviewCouponDiscount::run($otherCart, $coupon->code, null, 'guest@example.com');
+
+        $this->assertSame(500, $result['discount']);
     }
 }

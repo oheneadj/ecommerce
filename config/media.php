@@ -18,6 +18,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Max Image Pixel Count
+    |--------------------------------------------------------------------------
+    |
+    | A file well under max_upload_size_kb can still decode to an enormous
+    | resolution (a "decompression bomb") — GD allocates a full bitmap
+    | (width x height x 4 bytes) at decode time regardless of the
+    | compressed file size, which can exhaust PHP's memory_limit on the
+    | synchronous request App\Actions\Catalog\ConvertImageToWebp runs on.
+    | Checked via a cheap header-only read (getimagesize()) before any
+    | decode is attempted. Default caps at roughly a 6000x6666 image —
+    | generous for any real product/logo photo.
+    |
+    */
+
+    'max_image_pixels' => (int) env('MEDIA_MAX_IMAGE_PIXELS', 40_000_000),
+
+    /*
+    |--------------------------------------------------------------------------
     | Catalog Limits
     |--------------------------------------------------------------------------
     |

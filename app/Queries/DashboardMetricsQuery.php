@@ -111,11 +111,81 @@ class DashboardMetricsQuery
     }
 
     /**
+     * Same as ordersCountInRange(), but every day in the range in one
+     * query instead of one query per day — used by dashboard charts
+     * plotting a daily series, which previously called
+     * ordersCountInRange() once per day in the range (e.g. 60+ queries
+     * for a two-month chart). Missing days (no orders at all) simply
+     * aren't in the result; callers should default to 0.
+     *
+     * @return Collection<string, int> keyed by 'Y-m-d'
+     */
+    public function ordersCountByDay(string $start, string $end): Collection
+    {
+        return Order::query()
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as count')
+            ->whereDate('created_at', '>=', $start)
+            ->whereDate('created_at', '<=', $end)
+            ->groupBy('day')
+            ->pluck('count', 'day');
+    }
+
+    /**
      * New customer signups between two optional dates (inclusive).
      */
     public function newCustomersCountInRange(?string $start, ?string $end): int
     {
         return $this->scopeToRange(User::query()->whereDoesntHave('roles'), $start, $end)->count();
+    }
+
+    /**
+     * Same as newCustomersCountInRange(), but every day in one query —
+     * see ordersCountByDay()'s docblock for why.
+     *
+     * @return Collection<string, int> keyed by 'Y-m-d'
+     */
+    public function newCustomersCountByDay(string $start, string $end): Collection
+    {
+        return User::query()
+            ->whereDoesntHave('roles')
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as count')
+            ->whereDate('created_at', '>=', $start)
+            ->whereDate('created_at', '<=', $end)
+            ->groupBy('day')
+            ->pluck('count', 'day');
+    }
+
+    /**
+     * Same as revenueInRange(), but every day in the range in two queries
+     * (one for payments, one for refunds) instead of two queries per day
+     * — see ordersCountByDay()'s docblock for why.
+     *
+     * @return Collection<string, int> net revenue (minor units) keyed by 'Y-m-d'
+     */
+    public function revenueByDay(string $start, string $end): Collection
+    {
+        $paymentsByDay = Payment::query()
+            ->where('status', PaymentStatus::Success)
+            ->selectRaw('DATE(created_at) as day, SUM(amount) as total')
+            ->whereDate('created_at', '>=', $start)
+            ->whereDate('created_at', '<=', $end)
+            ->groupBy('day')
+            ->pluck('total', 'day');
+
+        $refundsByDay = Refund::query()
+            ->where('status', RefundStatus::Success)
+            ->selectRaw('DATE(created_at) as day, SUM(amount) as total')
+            ->whereDate('created_at', '>=', $start)
+            ->whereDate('created_at', '<=', $end)
+            ->groupBy('day')
+            ->pluck('total', 'day');
+
+        return $paymentsByDay->keys()
+            ->merge($refundsByDay->keys())
+            ->unique()
+            ->mapWithKeys(fn (string $day): array => [
+                $day => (int) ($paymentsByDay[$day] ?? 0) - (int) ($refundsByDay[$day] ?? 0),
+            ]);
     }
 
     /**
@@ -347,22 +417,37 @@ class DashboardMetricsQuery
     {
         $statuses = array_map(fn (OrderStatus $status) => $status->value, self::VERIFIED_ORDER_STATUSES);
 
-        $orderCounts = User::query()
-            ->whereDoesntHave('roles')
-            ->withCount(['orders' => function (Builder $query) use ($statuses, $start, $end): Builder {
-                $query->whereIn('status', $statuses);
+        // Bucketed entirely in SQL — this previously pulled every customer
+        // row into PHP (via ->get()) just to bucket order counts with
+        // ->filter(), a full-table load on every dashboard render that
+        // gets worse as the customer base grows. A customer with zero
+        // qualifying orders in the range never appears in this GROUP BY at
+        // all, matching the original code's own `> 0` filter (they never
+        // counted toward any segment either way).
+        $perCustomerOrderCounts = Order::query()
+            ->select('user_id')
+            ->selectRaw('COUNT(*) as order_count')
+            ->whereIn('status', $statuses)
+            ->whereNotNull('user_id')
+            ->whereHas('user', fn (Builder $query): Builder => $query->whereDoesntHave('roles'))
+            ->tap(fn (Builder $query) => $this->scopeToRange($query, $start, $end))
+            ->groupBy('user_id');
 
-                return $this->scopeToRange($query, $start, $end);
-            }])
-            ->get()
-            ->pluck('orders_count')
-            ->filter(fn (int $count) => $count > 0);
+        $buckets = DB::query()
+            ->fromSub($perCustomerOrderCounts, 'per_customer_order_counts')
+            ->selectRaw('
+                SUM(CASE WHEN order_count = 1 THEN 1 ELSE 0 END) as one_time,
+                SUM(CASE WHEN order_count BETWEEN 2 AND 3 THEN 1 ELSE 0 END) as occasional,
+                SUM(CASE WHEN order_count BETWEEN 4 AND 9 THEN 1 ELSE 0 END) as regular,
+                SUM(CASE WHEN order_count >= 10 THEN 1 ELSE 0 END) as vip
+            ')
+            ->first();
 
         return [
-            'one_time' => $orderCounts->filter(fn (int $count) => $count === 1)->count(),
-            'occasional' => $orderCounts->filter(fn (int $count) => $count >= 2 && $count <= 3)->count(),
-            'regular' => $orderCounts->filter(fn (int $count) => $count >= 4 && $count <= 9)->count(),
-            'vip' => $orderCounts->filter(fn (int $count) => $count >= 10)->count(),
+            'one_time' => (int) ($buckets->one_time ?? 0),
+            'occasional' => (int) ($buckets->occasional ?? 0),
+            'regular' => (int) ($buckets->regular ?? 0),
+            'vip' => (int) ($buckets->vip ?? 0),
         ];
     }
 

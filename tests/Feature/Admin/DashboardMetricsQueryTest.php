@@ -19,6 +19,7 @@ use App\Models\StockMovement;
 use App\Models\User;
 use App\Queries\DashboardMetricsQuery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -243,5 +244,134 @@ class DashboardMetricsQueryTest extends TestCase
         $this->assertCount(1, $results);
         $this->assertSame($productA->id, $results->first()['product_id']);
         $this->assertSame(10, $results->first()['quantity_sold']);
+    }
+
+    public function test_customer_segments_buckets_customers_by_verified_order_count(): void
+    {
+        $oneTime = User::factory()->create();
+        Order::factory()->create(['user_id' => $oneTime->id, 'status' => OrderStatus::Paid]);
+
+        $occasional = User::factory()->create();
+        Order::factory()->count(2)->create(['user_id' => $occasional->id, 'status' => OrderStatus::Paid]);
+
+        $regular = User::factory()->create();
+        Order::factory()->count(4)->create(['user_id' => $regular->id, 'status' => OrderStatus::Paid]);
+
+        $vip = User::factory()->create();
+        Order::factory()->count(10)->create(['user_id' => $vip->id, 'status' => OrderStatus::Paid]);
+
+        $result = $this->metrics->customerSegments();
+
+        $this->assertSame(1, $result['one_time']);
+        $this->assertSame(1, $result['occasional']);
+        $this->assertSame(1, $result['regular']);
+        $this->assertSame(1, $result['vip']);
+    }
+
+    public function test_customer_segments_excludes_a_customer_with_no_qualifying_orders(): void
+    {
+        User::factory()->create();
+
+        $result = $this->metrics->customerSegments();
+
+        $this->assertSame(0, $result['one_time'] + $result['occasional'] + $result['regular'] + $result['vip']);
+    }
+
+    public function test_customer_segments_excludes_staff_accounts(): void
+    {
+        Role::findOrCreate(UserRole::Admin->value, 'web');
+        $staff = User::factory()->create();
+        $staff->assignRole(UserRole::Admin->value);
+        Order::factory()->create(['user_id' => $staff->id, 'status' => OrderStatus::Paid]);
+
+        $result = $this->metrics->customerSegments();
+
+        $this->assertSame(0, $result['one_time'] + $result['occasional'] + $result['regular'] + $result['vip']);
+    }
+
+    public function test_customer_segments_only_counts_orders_within_the_date_range(): void
+    {
+        $customer = User::factory()->create();
+        Order::factory()->create(['user_id' => $customer->id, 'status' => OrderStatus::Paid, 'created_at' => now()]);
+        Order::factory()->create(['user_id' => $customer->id, 'status' => OrderStatus::Paid, 'created_at' => now()->subDays(30)]);
+
+        $result = $this->metrics->customerSegmentsInRange(now()->subDays(2)->toDateString(), now()->toDateString());
+
+        $this->assertSame(1, $result['one_time']);
+    }
+
+    /**
+     * This previously loaded every customer row into PHP (via ->get())
+     * just to bucket order counts with ->filter() — a real, scaling
+     * full-table load on every dashboard render. Now bucketed entirely in
+     * SQL via a single aggregate query.
+     */
+    public function test_customer_segments_computes_in_a_single_query(): void
+    {
+        User::factory()->count(20)->create()->each(function (User $customer): void {
+            Order::factory()->create(['user_id' => $customer->id, 'status' => OrderStatus::Paid]);
+        });
+
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
+        $this->metrics->customerSegments();
+
+        $this->assertSame(1, $queryCount);
+    }
+
+    public function test_orders_count_by_day_groups_correctly_across_the_range(): void
+    {
+        Order::factory()->count(2)->create(['created_at' => now()->subDays(2)]);
+        Order::factory()->create(['created_at' => now()]);
+        Order::factory()->create(['created_at' => now()->subDays(30)]);
+
+        $result = $this->metrics->ordersCountByDay(now()->subDays(5)->toDateString(), now()->toDateString());
+
+        $this->assertSame(2, $result[now()->subDays(2)->toDateString()]);
+        $this->assertSame(1, $result[now()->toDateString()]);
+        $this->assertArrayNotHasKey(now()->subDays(30)->toDateString(), $result->toArray());
+    }
+
+    public function test_new_customers_count_by_day_groups_correctly_across_the_range(): void
+    {
+        User::factory()->count(3)->create(['created_at' => now()->subDays(1)]);
+
+        $result = $this->metrics->newCustomersCountByDay(now()->subDays(5)->toDateString(), now()->toDateString());
+
+        $this->assertSame(3, $result[now()->subDays(1)->toDateString()]);
+    }
+
+    public function test_new_customers_count_by_day_excludes_staff_accounts(): void
+    {
+        Role::findOrCreate(UserRole::Admin->value, 'web');
+        $staff = User::factory()->create(['created_at' => now()]);
+        $staff->assignRole(UserRole::Admin->value);
+
+        $result = $this->metrics->newCustomersCountByDay(now()->subDays(5)->toDateString(), now()->toDateString());
+
+        $this->assertArrayNotHasKey(now()->toDateString(), $result->toArray());
+    }
+
+    public function test_revenue_by_day_nets_successful_payments_against_successful_refunds_per_day(): void
+    {
+        Payment::factory()->create(['status' => PaymentStatus::Success, 'amount' => 1000, 'created_at' => now()]);
+        Refund::factory()->create(['status' => RefundStatus::Success, 'amount' => 300, 'created_at' => now()]);
+        Payment::factory()->create(['status' => PaymentStatus::Failed, 'amount' => 9999, 'created_at' => now()]);
+
+        $result = $this->metrics->revenueByDay(now()->subDays(5)->toDateString(), now()->toDateString());
+
+        $this->assertSame(700, $result[now()->toDateString()]);
+    }
+
+    public function test_revenue_by_day_only_includes_days_within_the_range(): void
+    {
+        Payment::factory()->create(['status' => PaymentStatus::Success, 'amount' => 1000, 'created_at' => now()->subDays(30)]);
+
+        $result = $this->metrics->revenueByDay(now()->subDays(5)->toDateString(), now()->toDateString());
+
+        $this->assertArrayNotHasKey(now()->subDays(30)->toDateString(), $result->toArray());
     }
 }

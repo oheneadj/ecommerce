@@ -18,6 +18,7 @@ use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\WishlistItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -96,5 +97,32 @@ class WishlistButtonTest extends TestCase
             ->assertOk()
             ->assertSee('Wishlist Listing Test')
             ->assertSeeHtml('wire:click="toggle"');
+    }
+
+    /**
+     * Every product card on a listing page embeds its own WishlistButton
+     * instance — without a cross-instance cache, each one ran its own
+     * `wishlist_items` existence query (an N+1-shaped cost invisible to
+     * `Model::preventLazyLoading()` since it's component composition, not
+     * a relation traversal). Proves the query count for the wishlist
+     * check doesn't scale with the number of cards on the page.
+     */
+    public function test_checking_wishlist_status_for_many_cards_issues_only_one_query(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $variants = ProductVariant::factory()->count(10)->create(['status' => VariantStatus::Active, 'stock' => 5]);
+
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
+        foreach ($variants as $variant) {
+            Livewire::test(WishlistButton::class, ['variant' => $variant]);
+        }
+
+        $this->assertSame(1, $queryCount);
     }
 }

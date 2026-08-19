@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — StoreSetting's singleton row could race into two competing rows
+- `StoreSetting::current()`'s `firstOrCreate([])` is a SELECT then an INSERT, not atomic — two concurrent first-touch requests against an empty table (e.g. two admin tabs loading Store Settings right after a fresh deploy) could both see no row and both insert, permanently orphaning one. New `singleton_key` column with a unique constraint is what actually prevents a second row from ever existing; `current()` now catches the resulting constraint violation on the losing request and re-fetches the winner's row. 4 new tests.
+
+### Added — a configurable store display timezone, used on customer-facing order timestamps
+- Order history, order detail, and invoice PDFs showed `created_at` in raw UTC with no conversion — a late-night order could display on the wrong calendar day for a store operating outside UTC. New `StoreSetting.timezone` (admin-configurable, defaults to UTC) and `Order`/`OrderStatusHistory::placed_at` accessors (via a shared `DisplaysInStoreTimezone` trait, mirroring the existing `HasFormattedMoney` pattern) convert at the display boundary only — everything is still stored and computed in UTC everywhere else, per this project's own convention. 4 new tests.
+
+### Fixed — the wishlist heart on every product card issued its own database query
+- Each product-card `WishlistButton` is a separate Livewire component instance; with no cross-instance cache, a listing page with N cards ran N `wishlist_items` existence queries for a logged-in customer — invisible to `Model::preventLazyLoading()` since it's component composition, not an Eloquent relation traversal. Now memoized per request via the array cache store, invalidated on toggle. 1 new test proving the query count no longer scales with the number of cards on the page.
+
 ### Fixed — every admin "Export" bulk action crashed, and customer names could carry a CSV/Excel formula-injection payload
 - Every `ExportBulkAction` (Customers, Products, Orders, Payments, StockMovements) passed plain column-name strings to `withColumns()`, which only accepts `pxlrbt\FilamentExcel\Columns\Column` instances — clicking "Export" on any of them fataled ("Call to a member function getName() on string"). Fixed across all five.
 - Separately: the Customers export's `name` column (and Products' `name`, StockMovements' `note`) is free text a lower-trust user can set — a customer setting their display name to `=HYPERLINK("http://evil.example","x")` would have that formula execute the moment an admin opened the exported file in Excel. New `App\Support\SanitizesExportFormulas` prefixes a literal quote on any cell starting with `=`, `+`, `-`, or `@` (the standard mitigation), wired into all three free-text columns. 13 new tests.

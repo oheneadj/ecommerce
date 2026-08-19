@@ -16,7 +16,9 @@ use App\Actions\Wishlist\RemoveFromWishlist;
 use App\Models\ProductVariant;
 use App\Models\WishlistItem;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -27,6 +29,28 @@ class WishlistButton extends Component
 {
     public ProductVariant $variant;
 
+    /**
+     * Every product card on a listing page embeds its own instance of
+     * this component — with no cross-instance cache, each one ran its own
+     * `wishlist_items` existence query, an N+1-shaped cost invisible to
+     * `Model::preventLazyLoading()` since it's component composition, not
+     * an Eloquent relation traversal. Memoized per request via the array
+     * cache store (resolved fresh from the container each request — and
+     * each test, unlike a raw static class property, which would leak
+     * stale data across PHPUnit test methods run in the same process).
+     *
+     * @return Collection<int, int>
+     */
+    private static function wishlistedVariantIds(): Collection
+    {
+        $userId = Auth::id();
+
+        return Cache::store('array')->rememberForever(
+            "wishlist-button:wishlisted-variant-ids:{$userId}",
+            fn () => WishlistItem::query()->where('user_id', $userId)->pluck('product_variant_id'),
+        );
+    }
+
     #[Computed]
     public function isWishlisted(): bool
     {
@@ -34,10 +58,7 @@ class WishlistButton extends Component
             return false;
         }
 
-        return WishlistItem::query()
-            ->where('user_id', Auth::id())
-            ->where('product_variant_id', $this->variant->id)
-            ->exists();
+        return self::wishlistedVariantIds()->contains($this->variant->id);
     }
 
     /**
@@ -61,6 +82,7 @@ class WishlistButton extends Component
             $this->dispatch('toast', variant: 'success', message: 'Added to wishlist.');
         }
 
+        Cache::store('array')->forget('wishlist-button:wishlisted-variant-ids:'.Auth::id());
         unset($this->isWishlisted);
     }
 

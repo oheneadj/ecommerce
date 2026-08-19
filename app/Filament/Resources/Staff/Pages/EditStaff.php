@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Staff\Pages;
 
+use App\Enums\UserRole;
 use App\Filament\Resources\Staff\StaffResource;
 use App\Models\User;
 use Filament\Resources\Pages\EditRecord;
@@ -42,6 +43,14 @@ class EditStaff extends EditRecord
 
         $role = $data['role'];
         unset($data['role']);
+
+        // The form's rendered options and its own validation rule already
+        // restrict this to Admin/Store Keeper, but this handler doesn't
+        // trust either alone — Super Admin accounts are CLI-only, never
+        // grantable from this panel, so this is the actual guarantee.
+        if (! in_array($role, [UserRole::Admin->value, UserRole::StoreKeeper->value], true)) {
+            throw new RuntimeException('Staff accounts can only be assigned the Admin or Store Keeper role.');
+        }
 
         $previousRole = $record->roles()->value('name');
 

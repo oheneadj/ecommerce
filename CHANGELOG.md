@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — a tampered staff form submission could create a Super Admin account (full-system bug hunt, 6/7)
+- The Staff form's role `Select` only *rendered* Admin/Store Keeper as options — nothing validated a submitted value against that set, and neither `CreateStaff::handleRecordCreation()` nor `EditStaff::handleRecordUpdate()` checked it either. `InviteStaffMember`'s own docblock claimed a safeguard ("this Action doesn't trust that alone") that didn't actually exist in the code. A manipulated payload (devtools, a raw Livewire request) could submit `role=super_admin` and have it accepted — creating a Super Admin account outside the documented CLI-only path, invisible to the Staff resource's own list afterward (it's scoped to Admin/Store Keeper only) and unmanageable from the panel.
+- Added real enforcement at all three layers: a form-level `Rule::in()` validation rule (not just the rendered options), and an explicit check in both `InviteStaffMember` and `EditStaff::handleRecordUpdate` before the role is ever assigned.
+- 4 new tests: tampered create/edit rejected via the form, and a direct Action-level test proving the second layer works independently of Filament's own validation.
+
 ### Fixed — duplicating a product broke the stock-ledger invariant (full-system bug hunt, 5/7)
 - `DuplicateProduct` copied a variant's `stock` value directly onto the new row with zero `stock_movements` entries — breaking the "cached stock always matches its ledger" invariant this codebase enforces everywhere else a variant is created with nonzero stock (`GenerateProductVariants`), and that a health check watches for.
 - The new variant is now always created at `stock: 0`, with a `Restock` movement recorded via `RecordStockMovement` when the original had any — same pattern already used elsewhere, attributed to whichever admin triggered the duplicate.

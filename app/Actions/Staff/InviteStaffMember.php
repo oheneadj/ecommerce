@@ -12,6 +12,7 @@ use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Support\Str;
 use Lorisleiva\Actions\Concerns\AsAction;
+use RuntimeException;
 
 /**
  * Never a null password — a random, unguessable placeholder
@@ -19,9 +20,10 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * as every other User creation in this app) instead, so there's no
  * null-password edge case in credential checking to worry about. The
  * account can't be logged into until the invite link is used. `$role` is
- * constrained to Admin/Store Keeper by the calling form's Select options,
- * but this Action doesn't trust that alone — a form restriction isn't a
- * guarantee.
+ * also restricted by the calling form's Select options and its own
+ * validation rule, but this Action doesn't trust either alone — Super
+ * Admin accounts are CLI-only (never created from this panel), so this is
+ * the actual guarantee, not just a form-level convenience restriction.
  */
 class InviteStaffMember
 {
@@ -29,6 +31,10 @@ class InviteStaffMember
 
     public function handle(string $name, string $email, string $phone, UserRole $role): User
     {
+        if (! in_array($role, [UserRole::Admin, UserRole::StoreKeeper], true)) {
+            throw new RuntimeException('Staff accounts can only be created with the Admin or Store Keeper role.');
+        }
+
         $staff = User::query()->create([
             'name' => $name,
             'email' => $email,

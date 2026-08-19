@@ -12,6 +12,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Validation\Rule;
 
 class StaffForm
 {
@@ -34,6 +35,18 @@ class StaffForm
                                         UserRole::StoreKeeper->value => UserRole::StoreKeeper->label(),
                                     ])
                                     ->required()
+                                    // The rendered options above only
+                                    // restrict what a normal submission can
+                                    // contain — Filament doesn't
+                                    // automatically add a matching
+                                    // validation rule, so a manipulated
+                                    // payload could otherwise submit
+                                    // role=super_admin and have it accepted.
+                                    // Re-enforced here (and again in
+                                    // InviteStaffMember/EditStaff — belt and
+                                    // suspenders on a genuine privilege-
+                                    // escalation path).
+                                    ->rule(Rule::in([UserRole::Admin->value, UserRole::StoreKeeper->value]))
                                     ->helperText('Super Admin accounts are created via the CLI only, not from here.')
                                     // Not a real column — a Spatie role. Deliberately
                                     // still dehydrated (included in $data) since both

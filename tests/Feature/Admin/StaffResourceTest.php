@@ -162,6 +162,46 @@ class StaffResourceTest extends TestCase
     }
 
     /**
+     * Bug hunt regression: the role Select only ever *rendered*
+     * Admin/Store Keeper as options — nothing validated a submitted value
+     * against that set, so a manipulated payload (browser devtools, a
+     * raw Livewire request) could submit role=super_admin and have it
+     * accepted, creating a Super Admin account outside the CLI-only path
+     * this app documents, and invisible to this very resource's own list
+     * afterward.
+     */
+    public function test_creating_a_staff_member_with_a_tampered_super_admin_role_is_rejected(): void
+    {
+        $this->actingAs($this->superAdmin());
+
+        Livewire::test(CreateStaff::class)
+            ->fillForm([
+                'name' => 'Jane Doe',
+                'email' => 'jane@example.com',
+                'phone' => '+233551234567',
+                'role' => UserRole::SuperAdmin->value,
+            ])
+            ->call('create')
+            ->assertHasFormErrors(['role']);
+
+        $this->assertNull(User::query()->where('email', 'jane@example.com')->first());
+    }
+
+    public function test_editing_a_staff_member_with_a_tampered_super_admin_role_is_rejected(): void
+    {
+        $this->actingAs($this->superAdmin());
+        $staff = $this->staffMember(UserRole::Admin);
+
+        Livewire::test(EditStaff::class, ['record' => $staff->getRouteKey()])
+            ->fillForm(['role' => UserRole::SuperAdmin->value])
+            ->call('save')
+            ->assertHasFormErrors(['role']);
+
+        $this->assertTrue($staff->fresh()->hasRole(UserRole::Admin->value));
+        $this->assertFalse($staff->fresh()->hasRole(UserRole::SuperAdmin->value));
+    }
+
+    /**
      * syncRoles() writes directly to the model_has_roles pivot table and
      * never fires Eloquent's save/update events, so User's
      * LogsAdminActivity hooks (which listen on those events) never see a

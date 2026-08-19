@@ -12,9 +12,11 @@ namespace Tests\Feature\Staff;
 use App\Actions\Staff\InviteStaffMember;
 use App\Actions\Staff\SendStaffInviteNotification;
 use App\Enums\UserRole;
+use App\Models\User;
 use App\Notifications\StaffInvited;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use RuntimeException;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -71,6 +73,28 @@ class InviteStaffMemberTest extends TestCase
         SendStaffInviteNotification::run($staff);
 
         Notification::assertSentTimes(StaffInvited::class, 2);
+    }
+
+    /**
+     * Bug hunt regression: the calling form's Select only ever rendered
+     * Admin/Store Keeper as options, which this Action's own docblock
+     * claimed as a reason it "doesn't trust that alone" — but nothing
+     * here actually enforced it, so calling this Action directly (or via
+     * a manipulated form payload) with UserRole::SuperAdmin silently
+     * succeeded, creating a Super Admin account outside the CLI-only path
+     * this app documents.
+     */
+    public function test_it_refuses_to_create_a_super_admin_account(): void
+    {
+        Notification::fake();
+
+        $this->expectException(RuntimeException::class);
+
+        try {
+            InviteStaffMember::run('Eve', 'eve@example.com', '0551234567', UserRole::SuperAdmin);
+        } finally {
+            $this->assertNull(User::query()->where('email', 'eve@example.com')->first());
+        }
     }
 
     private function attemptLogin(string $email, string $password): bool

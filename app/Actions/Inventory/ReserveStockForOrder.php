@@ -10,6 +10,7 @@ namespace App\Actions\Inventory;
 
 use App\Enums\StockReservationStatus;
 use App\Exceptions\InsufficientStockException;
+use App\Exceptions\InvalidReservationQuantityException;
 use App\Models\Order;
 use App\Models\ProductVariant;
 use App\Models\StockReservation;
@@ -34,9 +35,14 @@ class ReserveStockForOrder
 
     /**
      * @throws InsufficientStockException when available stock can't cover the request
+     * @throws InvalidReservationQuantityException when $quantity is zero or negative
      */
     public function handle(ProductVariant $variant, int $quantity, Order $order): StockReservation
     {
+        if ($quantity <= 0) {
+            throw new InvalidReservationQuantityException;
+        }
+
         return DB::transaction(function () use ($variant, $quantity, $order): StockReservation {
             $locked = ProductVariant::query()->whereKey($variant->id)->lockForUpdate()->firstOrFail();
 

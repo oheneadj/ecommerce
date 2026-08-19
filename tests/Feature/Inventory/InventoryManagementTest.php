@@ -11,6 +11,7 @@ use App\Actions\Inventory\ReserveStockForOrder;
 use App\Enums\StockMovementType;
 use App\Enums\StockReservationStatus;
 use App\Exceptions\InsufficientStockException;
+use App\Exceptions\InvalidReservationQuantityException;
 use App\Exceptions\InvalidStockMovementQuantityException;
 use App\Exceptions\NegativeStockException;
 use App\Models\Order;
@@ -108,6 +109,37 @@ class InventoryManagementTest extends TestCase
 
         $this->assertSame(3, $reservation->quantity);
         $this->assertSame(StockReservationStatus::Active, $reservation->status);
+    }
+
+    public function test_reserving_a_zero_quantity_is_rejected(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
+
+        $this->expectException(InvalidReservationQuantityException::class);
+
+        ReserveStockForOrder::run($variant, 0, Order::factory()->create());
+    }
+
+    public function test_reserving_a_negative_quantity_is_rejected(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
+
+        $this->expectException(InvalidReservationQuantityException::class);
+
+        ReserveStockForOrder::run($variant, -1, Order::factory()->create());
+    }
+
+    public function test_a_rejected_zero_quantity_reservation_never_touches_the_database(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
+
+        try {
+            ReserveStockForOrder::run($variant, 0, Order::factory()->create());
+        } catch (InvalidReservationQuantityException) {
+            // expected
+        }
+
+        $this->assertSame(0, StockReservation::query()->where('product_variant_id', $variant->id)->count());
     }
 
     public function test_reservation_fails_when_it_would_exceed_available_stock(): void

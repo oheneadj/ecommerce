@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — a genuinely free order ($0 total) had no way to complete checkout
+- `InitiatePayment` always called the payment gateway, which rejects zero-amount transactions — a free/giveaway product, or a 100%-off coupon with no tax/shipping, produced an order that could never be paid for; every attempt failed at the gateway. Now settles a $0 order directly through the same `SettlePaymentSuccess` fulfillment path a real successful payment uses (stock consumed, order marked Paid, invoice generated, confirmation sent), with no gateway call and no `payment_api_logs` entry for a call that never happened. 3 new tests.
+
+### Fixed — admin-panel phone fields could bypass normalization entirely
+- Staff phone, a staff member's own profile phone, and the store's contact phone all normalized only via a client-side Livewire blur event — skippable via Enter key, autofill, or a fast form fill. A submission that skipped it persisted the raw local-format number verbatim instead of the canonical E.164 form every other phone input path stores, silently breaking SMS delivery and uniqueness matching. Added `dehydrateStateUsing()` to all three fields, which runs server-side on every save regardless of whether blur ever fired. 2 new tests.
+
+### Fixed — a Filament `visible()`-only gate didn't actually block a payment view action from being invoked directly
+- The Payments relation manager's `ViewAction` (surfacing raw provider callback metadata) was restricted to Super Admin via `visible()` alone, which hides the button but doesn't stop a crafted request from mounting the action directly — unlike the standalone Payments resource's own `ViewAction`, this one renders inline via an explicit `->schema()` with no page-route `canAccess()` to fall back on. Added `authorize()` to both this action and the standalone table's equivalent (defense-in-depth, since the latter is already backstopped by its page). 3 new tests.
+
+### Fixed — two dependency advisories with high-severity DoS issues
+- `composer audit` flagged `league/commonmark` (4 high-severity DoS advisories) and `guzzlehttp/guzzle` (a high-severity host-check bypass); `npm audit` flagged `nanoid` (high) and `postcss` (moderate). Updated to patched versions; full test suite and frontend build both verified green afterward.
+
+### Fixed — a dashboard widget loaded the entire customer table into PHP to compute a stat
+- `CustomerSegmentsWidget` (via `DashboardMetricsQuery::customerSegmentsInRange()`) pulled every customer row into memory just to bucket order counts with `->filter()` — a full-table load on every dashboard render that gets worse as the customer base grows. Rewritten as a single SQL aggregate query. 5 new tests, including one asserting the query count.
+
+### Fixed — three dashboard charts issued one (or two) queries per day in a custom date range
+- `CustomerGrowthWidget`, `MonthlyRevenueChart`, and `OrdersYearOverYearWidget` each looped over every day in a selected range calling a single-day query per iteration — up to 120 queries for a 60-day range from one ordinary admin filter action. New `ordersCountByDay()`/`newCustomersCountByDay()`/`revenueByDay()` on `DashboardMetricsQuery` group by day in one query (two for revenue: payments and refunds) regardless of range length. 8 new tests.
+
+### Fixed — two dashboard widgets hand-rolled money formatting instead of using the established helper
+- `DashboardStatsOverview` and `ProductsOverviewWidget` built `'GH₵'.number_format(...)` directly instead of the `HasFormattedMoney` trait every other money display in the app uses — not currently wrong, but a silent divergence that would mis-render if the store currency were ever made configurable. Both now use the shared trait.
+
+### Fixed — two Actions accepted a zero/negative quantity with no guard
+- `AddItemToCart` had no `quantity > 0` check (inconsistent with `UpdateCartItemQuantity`'s explicit handling) and `ReserveStockForOrder` silently accepted `quantity = 0`, creating a meaningless reservation row. Both currently unreachable through the UI (every caller hardcodes a positive quantity), so latent rather than live — closed for consistency and to guard any future caller. 6 new tests.
+
 ### Fixed — StoreSetting's singleton row could race into two competing rows
 - `StoreSetting::current()`'s `firstOrCreate([])` is a SELECT then an INSERT, not atomic — two concurrent first-touch requests against an empty table (e.g. two admin tabs loading Store Settings right after a fresh deploy) could both see no row and both insert, permanently orphaning one. New `singleton_key` column with a unique constraint is what actually prevents a second row from ever existing; `current()` now catches the resulting constraint violation on the losing request and re-fetches the winner's row. 4 new tests.
 

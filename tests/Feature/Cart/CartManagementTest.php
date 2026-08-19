@@ -9,6 +9,7 @@ use App\Actions\Cart\MergeGuestCartIntoUser;
 use App\Actions\Cart\RemoveItemFromCart;
 use App\Actions\Cart\UpdateCartItemQuantity;
 use App\Exceptions\CartQuantityExceedsStockException;
+use App\Exceptions\InvalidCartQuantityException;
 use App\Models\Cart;
 use App\Models\ProductVariant;
 use App\Models\User;
@@ -140,6 +141,40 @@ class CartManagementTest extends TestCase
         $this->expectException(CartQuantityExceedsStockException::class);
 
         AddItemToCart::run($cart, $variant, 4);
+    }
+
+    public function test_adding_a_zero_quantity_is_rejected(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
+        $cart = Cart::factory()->create();
+
+        $this->expectException(InvalidCartQuantityException::class);
+
+        AddItemToCart::run($cart, $variant, 0);
+    }
+
+    public function test_adding_a_negative_quantity_is_rejected(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
+        $cart = Cart::factory()->create();
+
+        $this->expectException(InvalidCartQuantityException::class);
+
+        AddItemToCart::run($cart, $variant, -1);
+    }
+
+    public function test_a_rejected_zero_quantity_never_creates_a_cart_item(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
+        $cart = Cart::factory()->create();
+
+        try {
+            AddItemToCart::run($cart, $variant, 0);
+        } catch (InvalidCartQuantityException) {
+            // expected
+        }
+
+        $this->assertSame(0, $cart->items()->count());
     }
 
     public function test_adding_to_cart_twice_cannot_exceed_stock_in_total(): void

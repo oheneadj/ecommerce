@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace App\Actions\Cart;
 
 use App\Exceptions\CartQuantityExceedsStockException;
+use App\Exceptions\InvalidCartQuantityException;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\ProductVariant;
@@ -35,6 +36,7 @@ use Lorisleiva\Actions\Concerns\AsAction;
  *
  * @throws CartQuantityExceedsStockException when the resulting quantity
  *                                           (existing cart quantity + this call's) would exceed the variant's stock
+ * @throws InvalidCartQuantityException when $quantity is zero or negative
  */
 class AddItemToCart
 {
@@ -45,6 +47,10 @@ class AddItemToCart
      */
     public function handle(Cart $cart, ProductVariant $variant, int $quantity): CartItem
     {
+        if ($quantity <= 0) {
+            throw new InvalidCartQuantityException;
+        }
+
         return DB::transaction(function () use ($cart, $variant, $quantity): CartItem {
             Cart::query()->whereKey($cart->id)->lockForUpdate()->first();
 

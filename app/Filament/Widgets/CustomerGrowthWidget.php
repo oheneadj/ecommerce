@@ -77,7 +77,9 @@ class CustomerGrowthWidget extends ChartWidget
             }
 
             $dates = collect(range(0, (int) max(0, $days - 1)))->map(fn (int|float $offset) => $start->addDays((int) $offset));
-            $counts = $dates->map(fn (CarbonImmutable $date) => $metrics->newCustomersCountInRange($date->toDateString(), $date->toDateString()));
+            // One query for the whole range instead of one per day.
+            $countsByDay = $metrics->newCustomersCountByDay($start->toDateString(), $end->toDateString());
+            $counts = $dates->map(fn (CarbonImmutable $date) => (int) ($countsByDay[$date->toDateString()] ?? 0));
 
             return [
                 'datasets' => [

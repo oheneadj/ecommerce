@@ -88,11 +88,12 @@ class OrdersYearOverYearWidget extends ChartWidget
             }
 
             $dates = collect(range(0, (int) max(0, $days - 1)))->map(fn (int|float $offset) => $start->addDays((int) $offset));
-            $current = $dates->map(fn (CarbonImmutable $date) => $metrics->ordersCountInRange($date->toDateString(), $date->toDateString()));
-            $prior = $dates->map(fn (CarbonImmutable $date) => $metrics->ordersCountInRange(
-                $date->subYear()->toDateString(),
-                $date->subYear()->toDateString(),
-            ));
+            // Two queries total (current range + prior-year range) instead
+            // of two queries per day.
+            $currentByDay = $metrics->ordersCountByDay($start->toDateString(), $end->toDateString());
+            $priorByDay = $metrics->ordersCountByDay($start->subYear()->toDateString(), $end->subYear()->toDateString());
+            $current = $dates->map(fn (CarbonImmutable $date) => (int) ($currentByDay[$date->toDateString()] ?? 0));
+            $prior = $dates->map(fn (CarbonImmutable $date) => (int) ($priorByDay[$date->subYear()->toDateString()] ?? 0));
 
             return [
                 'datasets' => [

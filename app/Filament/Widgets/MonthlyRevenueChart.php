@@ -68,7 +68,9 @@ class MonthlyRevenueChart extends ChartWidget
             }
 
             $dates = collect(range(0, (int) max(0, $days - 1)))->map(fn (int|float $offset) => $start->addDays((int) $offset));
-            $revenue = $dates->map(fn (CarbonImmutable $date) => $metrics->revenueInRange($date->toDateString(), $date->toDateString()) / 100);
+            // One pair of queries for the whole range instead of a pair per day.
+            $revenueByDay = $metrics->revenueByDay($start->toDateString(), $end->toDateString());
+            $revenue = $dates->map(fn (CarbonImmutable $date) => (int) ($revenueByDay[$date->toDateString()] ?? 0) / 100);
 
             return [
                 'datasets' => [

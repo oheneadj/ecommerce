@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Widgets;
 
+use App\Concerns\HasFormattedMoney;
 use App\Enums\UserRole;
 use App\Queries\DashboardMetricsQuery;
 use Filament\Support\Icons\Heroicon;
@@ -32,7 +33,7 @@ use Illuminate\Support\Facades\Auth;
  */
 class DashboardStatsOverview extends StatsOverviewWidget
 {
-    use InteractsWithPageFilters;
+    use HasFormattedMoney, InteractsWithPageFilters;
 
     protected static ?int $sort = 1;
 
@@ -66,7 +67,7 @@ class DashboardStatsOverview extends StatsOverviewWidget
         $newCustomers = $hasRange ? $metrics->newCustomersCountInRange($startDate, $endDate) : $metrics->newCustomersCount();
 
         return [
-            Stat::make('Sales', $this->formatMoney($sales))
+            Stat::make('Sales', $this->formattedMoney($sales))
                 ->description($hasRange ? 'Selected period, net of refunds' : "Today's sales, net of refunds")
                 ->descriptionIcon(Heroicon::OutlinedArrowTrendingUp)
                 ->color('success')
@@ -80,10 +81,5 @@ class DashboardStatsOverview extends StatsOverviewWidget
                 ->chart($metrics->dailyNewCustomersTrend())
                 ->chartColor('primary'),
         ];
-    }
-
-    private function formatMoney(int $minorUnits): string
-    {
-        return 'GH₵'.number_format($minorUnits / 100, 2);
     }
 }

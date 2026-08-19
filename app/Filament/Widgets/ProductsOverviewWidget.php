@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Widgets;
 
+use App\Concerns\HasFormattedMoney;
 use App\Enums\VariantStatus;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -25,6 +26,8 @@ use Illuminate\Support\Facades\DB;
  */
 class ProductsOverviewWidget extends StatsOverviewWidget
 {
+    use HasFormattedMoney;
+
     /**
      * Forced to 3 for uniformity across every StatsOverviewWidget in the
      * admin panel, rather than relying on Filament's count-based default.
@@ -54,7 +57,7 @@ class ProductsOverviewWidget extends StatsOverviewWidget
                 ->chart(array_fill(0, 7, $totalStockUnits))
                 ->chartColor('info'),
 
-            Stat::make('Inventory Value', 'GH₵'.number_format($totalInventoryValue / 100, 2))
+            Stat::make('Inventory Value', $this->formattedMoney($totalInventoryValue))
                 ->description('Stock × price, active variants only')
                 ->descriptionIcon(Heroicon::OutlinedBanknotes)
                 ->color('success')

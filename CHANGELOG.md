@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — every admin "Export" bulk action crashed, and customer names could carry a CSV/Excel formula-injection payload
+- Every `ExportBulkAction` (Customers, Products, Orders, Payments, StockMovements) passed plain column-name strings to `withColumns()`, which only accepts `pxlrbt\FilamentExcel\Columns\Column` instances — clicking "Export" on any of them fataled ("Call to a member function getName() on string"). Fixed across all five.
+- Separately: the Customers export's `name` column (and Products' `name`, StockMovements' `note`) is free text a lower-trust user can set — a customer setting their display name to `=HYPERLINK("http://evil.example","x")` would have that formula execute the moment an admin opened the exported file in Excel. New `App\Support\SanitizesExportFormulas` prefixes a literal quote on any cell starting with `=`, `+`, `-`, or `@` (the standard mitigation), wired into all three free-text columns. 13 new tests.
+
+### Fixed — registration and password-reset requests had no rate limiting
+- Unlike login/2FA/OTP/search (all already throttled), `/register` and `/forgot-password`/`/reset-password` carried no throttle at all in Fortify's own route file — a script could mass-create accounts, or flood a victim's inbox with reset links / probe which emails exist, at unbounded rate. Added a `guest-auth-forms` limiter applied globally to the `web` middleware group, branching by route name (`Limit::none()` for everything else, so it has zero effect elsewhere). 4 new tests.
+
+### Fixed — coupon codes at checkout had no brute-force protection
+- `CheckoutPage::applyCoupon()` called into a DB lookup with no throttle on every attempt. `PreviewCouponDiscount` now rate-limits to 10 attempts per 5 minutes per cart. 2 new tests.
+
+### Fixed — a small image file could exhaust server memory on upload, and a corrupt one could crash instead of falling back
+- `ConvertImageToWebp` never checked pixel dimensions before decoding — a small-file-size, huge-resolution image (a "decompression bomb") could exhaust PHP's memory_limit on the synchronous admin upload request. Now rejected via a cheap header-only `getimagesize()` check before any decode is attempted (`config('media.max_image_pixels')`, env `MEDIA_MAX_IMAGE_PIXELS`).
+- Separately, the action only caught `Illuminate\Image\ImageException`, but the underlying decode call isn't wrapped by Laravel's Image component — a corrupt (or bomb-triggered) file threw Intervention Image's own exception hierarchy uncaught instead of hitting the intended "keep the original" fallback. Now caught alongside. 4 new tests.
+
+### Fixed — backup restore didn't validate symlink entries in the archive
+- `ZipArchive::extractTo()` already blocks `..`-based path traversal at the PHP extension level, but still extracts symlink entries verbatim without validating their target (CVE-2014-9767) — only exploitable if an attacker already has write access to the Google Drive backup folder, but a restore is destructive enough to fail closed regardless. Now rejects any archive containing a symlink entry before extraction. 1 new test.
+
+### Fixed — guest carts could grow without bound
+- `ResolveCurrentCart` creates a fresh, empty cart row for every guest visit with no live cart — nothing ever cleaned these up, so a script hitting `/cart`/`/checkout` repeatedly with cookies stripped between requests could grow the table indefinitely. New daily-scheduled `PruneStaleGuestCarts` deletes guest carts older than the session lifetime that were never converted into an order. 5 new tests.
+
 ### Fixed — a stolen session survived the exact security actions meant to lock it out
 - Changing your password, enabling/disabling 2FA, or removing a passkey never invalidated any other active session — an attacker holding a stolen-password session kept full account access even after the legitimate owner changed their password or turned on 2FA specifically to lock them out. New `App\Actions\Auth\LogOutOtherSessions` deletes every other `sessions` row for the user; wired into all five security-relevant actions in `App\Livewire\Settings\Security`. 4 new tests.
 

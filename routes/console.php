@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Backup\RunScheduledBackup;
+use App\Actions\Cart\PruneStaleGuestCarts;
 use App\Actions\Health\SendCriticalHealthAlert;
 use App\Actions\Inventory\CheckLowStockLevels;
 use App\Actions\Inventory\ReleaseExpiredReservations;
@@ -26,6 +27,11 @@ Schedule::call(fn () => VerifyPendingPayments::run())
 Schedule::call(fn () => CheckLowStockLevels::run())
     ->daily()
     ->name('check-low-stock-levels')
+    ->withoutOverlapping();
+
+Schedule::call(fn () => PruneStaleGuestCarts::run())
+    ->daily()
+    ->name('prune-stale-guest-carts')
     ->withoutOverlapping();
 
 // Health check heartbeats (docs/TASK-system-health-checks.md Step 1) —

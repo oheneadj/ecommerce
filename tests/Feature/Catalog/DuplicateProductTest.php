@@ -175,7 +175,7 @@ class DuplicateProductTest extends TestCase
         Storage::disk('public')->assertExists($copyProductImage->path);
     }
 
-    public function test_reviews_and_stock_history_are_never_copied(): void
+    public function test_reviews_and_the_originals_own_stock_history_are_never_copied(): void
     {
         $product = Product::factory()->create();
         $variant = ProductVariant::factory()->create(['product_id' => $product->id, 'stock' => 5]);
@@ -186,6 +186,46 @@ class DuplicateProductTest extends TestCase
 
         $this->assertSame(0, $copy->reviews()->count());
         $copyVariant = $copy->variants()->sole();
+        // The original's own movement history is real history, not
+        // template data — never copied. But the copy still needs exactly
+        // one movement of its own, explaining its own starting stock (see
+        // the next test) — it's not simply "zero movements".
+        $this->assertSame(1, $copyVariant->stockMovements()->count());
+    }
+
+    /**
+     * Bug hunt regression: the copy's variant used to be created with
+     * `stock` set directly to the original's value, with zero
+     * stock_movements rows — breaking the ledger-matches-cache invariant
+     * this codebase enforces everywhere else a variant's stock is set on
+     * creation (see GenerateProductVariants). Now created at 0 and, if
+     * the original had stock, a Restock movement is recorded so the
+     * copy's own ledger explains its own cached total.
+     */
+    public function test_a_variant_with_stock_gets_a_matching_initial_stock_movement_on_the_copy(): void
+    {
+        $product = Product::factory()->create();
+        ProductVariant::factory()->create(['product_id' => $product->id, 'stock' => 7]);
+        $admin = $this->admin();
+
+        $copy = DuplicateProduct::run($product, $admin);
+
+        $copyVariant = $copy->variants()->sole();
+        $this->assertSame(7, $copyVariant->stock);
+        $movement = $copyVariant->stockMovements()->sole();
+        $this->assertSame(7, $movement->quantity);
+        $this->assertSame($admin->id, $movement->user_id);
+    }
+
+    public function test_a_variant_with_zero_stock_gets_no_stock_movement_on_the_copy(): void
+    {
+        $product = Product::factory()->create();
+        ProductVariant::factory()->create(['product_id' => $product->id, 'stock' => 0]);
+
+        $copy = DuplicateProduct::run($product);
+
+        $copyVariant = $copy->variants()->sole();
+        $this->assertSame(0, $copyVariant->stock);
         $this->assertSame(0, $copyVariant->stockMovements()->count());
     }
 }

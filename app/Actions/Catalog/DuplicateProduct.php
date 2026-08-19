@@ -9,10 +9,13 @@ declare(strict_types=1);
 
 namespace App\Actions\Catalog;
 
+use App\Actions\Inventory\RecordStockMovement;
 use App\Enums\ProductStatus;
+use App\Enums\StockMovementType;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -37,9 +40,9 @@ class DuplicateProduct
 {
     use AsAction;
 
-    public function handle(Product $product): Product
+    public function handle(Product $product, ?User $actor = null): Product
     {
-        return DB::transaction(function () use ($product): Product {
+        return DB::transaction(function () use ($product, $actor): Product {
             $copy = $this->duplicateProduct($product);
 
             $copy->attributes()->sync($product->attributes()->pluck('attributes.id'));
@@ -49,7 +52,7 @@ class DuplicateProduct
             }
 
             foreach ($product->variants()->get() as $variant) {
-                $this->duplicateVariant($variant, $copy);
+                $this->duplicateVariant($variant, $copy, $actor);
             }
 
             return $copy;
@@ -106,19 +109,27 @@ class DuplicateProduct
      * pattern as the product's slug), its custom attribute values, its
      * shared global attribute-term links (the terms themselves are
      * catalog-wide, so only the link needs copying, not the term), and
-     * its own images.
+     * its own images. Stock is never copied directly onto the new row —
+     * created at 0 and, if the original had any, applied via
+     * RecordStockMovement so the new variant's stock_movements ledger
+     * always explains its cached stock total, same invariant
+     * GenerateProductVariants already enforces at creation time.
      */
-    private function duplicateVariant(ProductVariant $variant, Product $newProduct): void
+    private function duplicateVariant(ProductVariant $variant, Product $newProduct, ?User $actor): void
     {
         $newVariant = $newProduct->variants()->create([
             'sku' => (string) Str::uuid(),
             'price' => $variant->price,
-            'stock' => $variant->stock,
+            'stock' => 0,
             'low_stock_threshold' => $variant->low_stock_threshold,
             'status' => $variant->status,
         ]);
 
         $newVariant->update(['sku' => "{$variant->sku}-COPY-{$newVariant->id}"]);
+
+        if ($variant->stock > 0) {
+            RecordStockMovement::run($newVariant, StockMovementType::Restock, $variant->stock, $actor, 'Initial stock copied from duplicated product');
+        }
 
         $newVariant->attributeTerms()->sync($variant->attributeTerms()->pluck('attribute_terms.id'));
 

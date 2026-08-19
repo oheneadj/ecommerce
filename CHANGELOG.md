@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — duplicating a product broke the stock-ledger invariant (full-system bug hunt, 5/7)
+- `DuplicateProduct` copied a variant's `stock` value directly onto the new row with zero `stock_movements` entries — breaking the "cached stock always matches its ledger" invariant this codebase enforces everywhere else a variant is created with nonzero stock (`GenerateProductVariants`), and that a health check watches for.
+- The new variant is now always created at `stock: 0`, with a `Restock` movement recorded via `RecordStockMovement` when the original had any — same pattern already used elsewhere, attributed to whichever admin triggered the duplicate.
+- 2 new tests; 1 existing test updated (it previously asserted zero stock movements on the copy, which was actually the bug).
+
 ### Fixed — categories could be set as their own parent, creating a cycle (full-system bug hunt, 4/7)
 - The "Parent category" select offered every category including the one being edited, with no check anywhere (model, form, or DB constraint) preventing an A → B → A cycle. A future breadcrumb or category-tree feature would infinite-loop the first time it hit one.
 - The select's options now exclude the record being edited and every one of its own descendants (new `Category::descendantIds()`), and a matching server-side validation rule enforces the same thing — hiding an option client-side was proven insufficient by a separate bug-hunt finding (staff role tampering), so the check is re-enforced on the submitted value too.

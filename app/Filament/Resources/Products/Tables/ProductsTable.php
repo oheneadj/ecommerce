@@ -22,6 +22,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 use pxlrbt\FilamentExcel\Actions\ExportBulkAction;
 use pxlrbt\FilamentExcel\Columns\Column;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
@@ -66,7 +67,7 @@ class ProductsTable
                     ->requiresConfirmation()
                     ->modalDescription('Creates a full copy of this product (variants, attributes, and images) as a new Draft product.')
                     ->action(function (Product $record): void {
-                        $copy = DuplicateProduct::run($record);
+                        $copy = DuplicateProduct::run($record, Auth::user());
 
                         Notification::make()
                             ->title('Product duplicated')

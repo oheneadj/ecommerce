@@ -15,6 +15,7 @@ use App\Enums\VariantStatus;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class SearchProductsTest extends TestCase
@@ -112,5 +113,29 @@ class SearchProductsTest extends TestCase
         $results = SearchProducts::run(str_repeat('a', 5000));
 
         $this->assertTrue($results->isEmpty());
+    }
+
+    /**
+     * A LIMIT with no ORDER BY has no guaranteed row set — once the
+     * catalog exceeds CANDIDATE_LIMIT, which rows land in the candidate
+     * batch is implementation-defined and can change between otherwise-
+     * identical requests, making a genuinely matching product
+     * intermittently missing from results.
+     */
+    public function test_the_candidate_query_orders_deterministically_before_its_limit(): void
+    {
+        $this->purchasableProduct('Nike Air Max');
+
+        $queries = [];
+        DB::listen(function ($query) use (&$queries): void {
+            $queries[] = $query->sql;
+        });
+
+        SearchProducts::run('Nike');
+
+        $candidateQuery = collect($queries)->first(fn (string $sql): bool => str_contains($sql, 'from "products"') || str_contains($sql, 'from `products`'));
+
+        $this->assertNotNull($candidateQuery);
+        $this->assertStringContainsString('order by', mb_strtolower((string) $candidateQuery));
     }
 }

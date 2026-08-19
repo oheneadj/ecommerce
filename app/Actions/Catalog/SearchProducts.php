@@ -71,6 +71,14 @@ class SearchProducts
                 'variants' => fn ($query) => $query->where('status', VariantStatus::Active)->orderBy('price'),
                 'variants.images',
             ])
+            // A LIMIT with no ORDER BY has no guaranteed row set — without
+            // this, once the catalog exceeds CANDIDATE_LIMIT, which
+            // products land in this batch is implementation-defined and
+            // can change between otherwise-identical requests, making a
+            // genuinely matching product intermittently missing from
+            // results. `id` is arbitrary but stable, which is all that's
+            // needed here.
+            ->orderBy('id')
             ->limit(self::CANDIDATE_LIMIT)
             ->get();
 

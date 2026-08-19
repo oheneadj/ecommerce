@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — a stolen session survived the exact security actions meant to lock it out
+- Changing your password, enabling/disabling 2FA, or removing a passkey never invalidated any other active session — an attacker holding a stolen-password session kept full account access even after the legitimate owner changed their password or turned on 2FA specifically to lock them out. New `App\Actions\Auth\LogOutOtherSessions` deletes every other `sessions` row for the user; wired into all five security-relevant actions in `App\Livewire\Settings\Security`. 4 new tests.
+
+### Fixed — staff role changes were invisible to the admin activity log
+- `EditStaff::handleRecordUpdate()` applies a role change via `syncRoles()`, which writes straight to the `model_has_roles` pivot table and never fires Eloquent's save/update events — so `User`'s `LogsAdminActivity` hooks never saw it. A Super Admin promoting or demoting a staff member left zero audit trail, unlike every other staff-account mutation (the disable/enable toggle was already correctly logged). Now logs an explicit `role changed` entry, attributed to the acting admin, only when the role actually changes. 2 new tests.
+
+### Fixed — product search could silently return incomplete or inconsistent results at scale
+- `SearchProducts`' candidate query capped at 300 rows with no `ORDER BY` — an unordered `LIMIT`'s row set is implementation-defined, so once the catalog exceeds 300 active in-stock products, a genuinely matching product could intermittently fail to appear in search, with no data change between requests. Now ordered deterministically by `id` before the limit. 1 new test.
+
 ### Fixed — order status could skip required states, and cancelling a paid order never restocked
 - `UpdateOrderStatus` accepted any status change with no validation — both the admin's single-record and bulk "Update status" actions offered the full status list regardless of the order's current state, so an order could jump `Pending` straight to `Delivered` (skipping payment/stock decrement entirely) or move backwards out of a later status. `OrderStatus::allowedNextStatuses()` now defines the legal transition graph; anything outside it throws `InvalidOrderStatusTransitionException`, caught in the admin UI as a clean notification instead of an uncaught exception. The single-record action's Select is also now restricted to only the record's actual valid next statuses.
 - Separately: cancelling an order that had already been `Paid`/`Processing`/`Shipped` (stock already decremented on settlement) never returned that stock to inventory — the goods were gone from the count forever. `UpdateOrderStatus` now records a `Return` stock movement for every item when cancelling from a status where stock was known to be decremented, exactly once (the new transition guard makes `Cancelled` terminal, so this can't double-fire for the same order).

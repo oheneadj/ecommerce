@@ -28,4 +28,15 @@ trait HasFormattedMoney
 
         return $symbol.number_format(($minorUnits ?? 0) / 100, 2);
     }
+
+    /**
+     * Convert an integer minor-unit amount into a plain decimal string
+     * with no currency symbol (e.g. 1550 -> "15.50") — for contexts that
+     * need a machine-readable number rather than a display string, such
+     * as a schema.org `price` value in JSON-LD.
+     */
+    protected function decimalMoney(?int $minorUnits): string
+    {
+        return number_format(($minorUnits ?? 0) / 100, 2, '.', '');
+    }
 }

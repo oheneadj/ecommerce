@@ -39,6 +39,14 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $contact_email
  * @property string|null $contact_phone
  * @property string|null $contact_address
+ * @property string|null $address_street
+ * @property string|null $address_city
+ * @property string|null $address_region
+ * @property string|null $address_postal_code
+ * @property string $address_country
+ * @property float|null $latitude
+ * @property float|null $longitude
+ * @property string|null $ga_measurement_id
  * @property string|null $facebook_url
  * @property string|null $instagram_url
  * @property string|null $x_url
@@ -66,6 +74,14 @@ use Illuminate\Support\Facades\Storage;
     'contact_email',
     'contact_phone',
     'contact_address',
+    'address_street',
+    'address_city',
+    'address_region',
+    'address_postal_code',
+    'address_country',
+    'latitude',
+    'longitude',
+    'ga_measurement_id',
     'facebook_url',
     'instagram_url',
     'x_url',
@@ -101,6 +117,8 @@ class StoreSetting extends Model
             'active_remote_storage_provider' => RemoteStorageProvider::class,
             'backup_auto_enabled' => 'boolean',
             'backup_frequency' => BackupFrequency::class,
+            'latitude' => 'float',
+            'longitude' => 'float',
         ];
     }
 
@@ -203,5 +221,25 @@ class StoreSetting extends Model
     public function showsWhatsappChatBubble(): bool
     {
         return $this->whatsapp_chat_enabled && filled($this->whatsapp_url);
+    }
+
+    /**
+     * Whether enough structured address data is on file to render a
+     * meaningful `PostalAddress`/`geo` block in the `LocalBusiness`
+     * JSON-LD schema — the free-text `contact_address` field alone isn't
+     * structured enough for that, so this checks the dedicated fields.
+     */
+    public function hasStructuredAddress(): bool
+    {
+        return filled($this->address_street) && filled($this->address_city);
+    }
+
+    /**
+     * Whether Google Analytics should load on the storefront — only when
+     * an admin has actually set a measurement ID.
+     */
+    public function hasGoogleAnalytics(): bool
+    {
+        return filled($this->ga_measurement_id);
     }
 }

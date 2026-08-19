@@ -751,6 +751,35 @@ This is the one place where the otherwise-correct instinct to "wrap it in a tran
 
 ---
 
+## 6a. Storefront SEO & Local SEO
+
+Audited 2026-08-19 against general on-page/technical SEO standards and local-SEO
+requirements (this is a Ghana-based single-store deployment — GHS currency,
+`+233` phone format, physical address). Findings and the build status below;
+update the status column as each item ships.
+
+| Area | Finding | Status |
+|---|---|---|
+| Open Graph / Twitter Card tags | Missing app-wide (product-share previews showed the site logo, not the product image) | ✅ Fixed — `partials/head.blade.php` renders `og:*`/`twitter:*` from per-page `$title`/`$ogImage`/`$ogDescription`/`$ogType`, applied to product pages and static pages |
+| `sitemap.xml` | Did not exist at all — no crawl-discovery signal for products/categories/static pages | Building now |
+| `robots.txt` | Bare `User-agent: * / Disallow:` — no `Sitemap:` reference, nothing excluded | Building now |
+| `noindex` on cart/checkout/account pages | Not set — these pages are fully indexable despite having zero search value | Building now |
+| Canonical tags | Missing everywhere — the product listing page has 5 `#[Url]`-bound filter/sort query params, each combination a distinct crawlable URL with near-duplicate content | Building now |
+| Structured data (JSON-LD) | None anywhere — no `Product` schema (name/price/availability/rating), no `BreadcrumbList` despite breadcrumbs already being computed for display | Building now |
+| `LocalBusiness`/`Organization` schema | Missing — the main lever for local-pack/Maps visibility | Building now |
+| Structured NAP data | `store_settings.contact_address` is a single free-text field — no street/city/region/postal-code components, no latitude/longitude, so a `PostalAddress`/`geo` schema can't be populated precisely | Building now — adding structured address fields + lat/long to `store_settings` |
+| Google Analytics (GA4) | Not integrated | Building now — `store_settings.ga_measurement_id`, gtag snippet loaded conditionally in the head partial |
+| `hreflang` / geo meta | Not present | Not building — single-country, single-language store; explicitly out of scope (YAGNI) |
+| Heading hierarchy (h1) | One real, content-derived `<h1>` per page (home, listing, detail) | ✅ Already correct |
+| Image `alt` text | Present on all product images, correctly set to the product name | ✅ Already correct |
+
+Local SEO note: with structured address fields and lat/long added to
+`store_settings`, the `LocalBusiness` JSON-LD schema can render a precise
+`PostalAddress` + `geo` block — this is the single highest-leverage change for
+local (Maps/local-pack) visibility on a store with a physical address.
+
+---
+
 ## 7. Open Items Carried from BRD
 
 - ~~Reservation expiry window~~ — resolved: admin-configurable via `store_settings.stock_reservation_minutes`, default 15 minutes, no code change needed to adjust

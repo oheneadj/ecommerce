@@ -65,6 +65,14 @@ class ManageStoreSettings extends Page implements HasForms
         'contact_email',
         'contact_phone',
         'contact_address',
+        'address_street',
+        'address_city',
+        'address_region',
+        'address_postal_code',
+        'address_country',
+        'latitude',
+        'longitude',
+        'ga_measurement_id',
         'facebook_url',
         'instagram_url',
         'x_url',
@@ -148,8 +156,62 @@ class ManageStoreSettings extends Page implements HasForms
                                     ->placeholder('e.g. +233201234567 or 0201234567'),
 
                                 TextInput::make('contact_address')
-                                    ->maxLength(255),
+                                    ->maxLength(255)
+                                    ->helperText('Free-text, shown on the storefront/receipts. Fill in the structured fields below too — they power the local-search (Google Maps) listing data.'),
                             ]),
+                    ]),
+
+                Section::make('Local SEO — structured address & location')
+                    ->description('Powers the LocalBusiness structured data Google reads for Maps and local search results. The street and city are the minimum needed for that to render at all.')
+                    ->schema([
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('address_street')
+                                    ->label('Street address')
+                                    ->maxLength(255)
+                                    ->placeholder('e.g. 12 Independence Ave'),
+
+                                TextInput::make('address_city')
+                                    ->label('City')
+                                    ->maxLength(255)
+                                    ->placeholder('e.g. Accra'),
+
+                                TextInput::make('address_region')
+                                    ->label('Region')
+                                    ->maxLength(255)
+                                    ->placeholder('e.g. Greater Accra'),
+
+                                TextInput::make('address_postal_code')
+                                    ->label('Postal / digital address code')
+                                    ->maxLength(255)
+                                    ->placeholder('e.g. GA-184-9821'),
+
+                                TextInput::make('address_country')
+                                    ->label('Country code')
+                                    ->maxLength(2)
+                                    ->helperText('ISO 3166-1 alpha-2, e.g. GH.'),
+
+                                TextInput::make('latitude')
+                                    ->numeric()
+                                    ->step('0.0000001')
+                                    ->placeholder('e.g. 5.6037168'),
+
+                                TextInput::make('longitude')
+                                    ->numeric()
+                                    ->step('0.0000001')
+                                    ->placeholder('e.g. -0.1869644'),
+                            ]),
+                    ]),
+
+                Section::make('Google Analytics')
+                    ->description('Adds the GA4 tracking snippet to every storefront page once a measurement ID is set. Leave blank to disable tracking entirely.')
+                    ->schema([
+                        TextInput::make('ga_measurement_id')
+                            ->label('GA4 measurement ID')
+                            ->maxLength(255)
+                            ->placeholder('e.g. G-XXXXXXXXXX')
+                            ->rule('nullable|regex:/^G-[A-Z0-9]+$/')
+                            ->helperText('Found in Google Analytics under Admin → Data Streams → your web stream.'),
                     ]),
 
                 Section::make('Social media')

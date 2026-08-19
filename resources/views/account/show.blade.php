@@ -1,4 +1,4 @@
-<x-layouts::storefront :title="__('My Account')">
+<x-layouts::storefront :title="__('My Account')" :noindex="true">
     <x-account.layout>
         <div class="space-y-6">
             <div>

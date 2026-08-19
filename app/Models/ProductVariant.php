@@ -202,6 +202,16 @@ class ProductVariant extends Model
     }
 
     /**
+     * The variant's price as a plain decimal string with no currency
+     * symbol (e.g. "15.50") — for machine-readable contexts like a
+     * schema.org `price` value in JSON-LD.
+     */
+    public function getPriceDecimalAttribute(): string
+    {
+        return $this->decimalMoney($this->price);
+    }
+
+    /**
      * A human label distinguishing this variant from its siblings, for UI
      * that needs to list variants directly rather than through a global
      * Attribute selector (e.g. a product with no Attributes attached, only

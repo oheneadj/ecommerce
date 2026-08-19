@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — technical & local SEO, Google Analytics
+- Full-app SEO audit (see `docs/technical-design-ecommerce.md` §6a) found no sitemap, a bare `robots.txt`, no canonical tags, no `noindex` on cart/checkout/account, no structured data anywhere, and no way to represent the store's physical address in a form search engines can actually use for local/Maps results.
+- Added `/sitemap.xml` (homepage, product listing, every active product, every published static page) and a dynamic `/robots.txt` (references the sitemap by absolute URL, disallows cart/checkout/account/wishlist/login) — both served by routes rather than static files, since this app is deployed per-business behind different domains.
+- Added a `<link rel="canonical">` tag app-wide (strips query params, so the product listing page's five `#[Url]`-bound filter/sort params no longer create crawlable near-duplicate-content URLs) and a `noindex` meta tag on cart, checkout, account (all sub-pages), wishlist, order confirmation, and the phone-login page.
+- Added `Product` + `BreadcrumbList` JSON-LD structured data on product pages (name, price, availability, brand), and site-wide `LocalBusiness` JSON-LD (once a structured address is on file) for local search/Maps visibility.
+- Added structured address fields (street/city/region/postal code/country) and latitude/longitude to `store_settings`, editable from a new "Local SEO" section on the Store Settings page — the previous single free-text `contact_address` field couldn't populate a `PostalAddress`/`geo` schema precisely.
+- Added Google Analytics (GA4): a `ga_measurement_id` setting, with the gtag snippet only loading once an admin sets one.
+- 9 new tests.
+
 ### Added — disable/enable a customer account from the admin panel
 - The bug-hunt fix that made `disabled_at` actually block login (phone OTP, Google, password) surfaced a gap: nothing in the admin panel could actually *set* `disabled_at` on a customer account — staff had disable/enable already (`StaffTable`), customers didn't. The Customers resource's own policy docblock explicitly called it "read-only".
 - Added "Disable"/"Enable" row actions and matching bulk actions to the Customers table, a status column, and a new `setDisabledState` policy ability (Admin/Super Admin only, matching every other capability on this resource). New `App\Actions\Customer\SetCustomerDisabledState` — disabling kills any active session immediately (the `sessions` table, same mechanism `SetStaffDisabledState` already uses), re-enabling is a plain flag flip with no password reset (unlike staff, a customer has no invite flow to resend, and many have no password at all).

@@ -11,9 +11,14 @@ declare(strict_types=1);
 namespace Tests\Feature\Payment;
 
 use App\Actions\Payment\InitiatePayment;
+use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Enums\StockReservationStatus;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\PaymentApiLog;
+use App\Models\ProductVariant;
+use App\Models\StockReservation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -97,5 +102,52 @@ class InitiatePaymentTest extends TestCase
         $payment = InitiatePayment::run($order, 'moolre');
 
         $this->assertSame(PaymentStatus::Failed, $payment->status);
+    }
+
+    /**
+     * A $0 order (a free product, or a coupon/tax/shipping combination
+     * that zeroes the total) previously had no path to completion — every
+     * gateway rejects a zero-amount charge, so InitiatePayment always
+     * produced a Failed payment and the order could never be paid for.
+     */
+    public function test_a_zero_total_order_is_settled_without_calling_any_gateway(): void
+    {
+        $variant = ProductVariant::factory()->create(['price' => 0, 'stock' => 5]);
+        $order = Order::factory()->create(['grand_total' => 0, 'status' => OrderStatus::Pending]);
+        OrderItem::factory()->create(['order_id' => $order->id, 'product_variant_id' => $variant->id, 'quantity' => 1]);
+        StockReservation::factory()->create([
+            'product_variant_id' => $variant->id,
+            'order_id' => $order->id,
+            'quantity' => 1,
+            'status' => StockReservationStatus::Active,
+        ]);
+
+        $payment = InitiatePayment::run($order, 'paystack');
+
+        $this->assertSame(PaymentStatus::Success, $payment->status);
+        $this->assertSame('free', $payment->provider);
+        $this->assertSame(0, $payment->amount);
+        $this->assertSame(OrderStatus::Paid, $order->fresh()->status);
+        $this->assertSame(4, $variant->fresh()->stock);
+    }
+
+    public function test_a_zero_total_order_never_logs_a_payment_api_call(): void
+    {
+        $order = Order::factory()->create(['grand_total' => 0]);
+
+        InitiatePayment::run($order, 'paystack');
+
+        $this->assertSame(0, PaymentApiLog::query()->where('order_id', $order->id)->count());
+    }
+
+    public function test_a_zero_total_order_is_idempotent_per_order(): void
+    {
+        $order = Order::factory()->create(['grand_total' => 0]);
+
+        $first = InitiatePayment::run($order, 'paystack');
+        $second = InitiatePayment::run($order, 'paystack');
+
+        $this->assertSame($first->id, $second->id);
+        $this->assertSame(1, $order->payments()->count());
     }
 }

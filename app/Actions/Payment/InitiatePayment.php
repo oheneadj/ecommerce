@@ -69,6 +69,25 @@ class InitiatePayment
             return $existing;
         }
 
+        // A $0 order (a free product, or a coupon/tax/shipping combination
+        // that zeroes the total) has nothing to charge — every gateway
+        // rejects a zero-amount transaction, and previously nothing here
+        // special-cased it, so a genuinely free order could never be
+        // completed: InitiatePayment would create a Failed payment every
+        // single time. Settled directly through the same fulfillment path
+        // a real successful payment uses (SettlePaymentSuccess), rather
+        // than duplicating stock/order-status logic here.
+        if ($order->grand_total === 0) {
+            // A free-order settlement transitions straight to Success
+            // within this same call, so the ordinary "existing Pending
+            // payment" idempotency check above never matches it on a
+            // second call — checked separately here against any payment
+            // at all for this order, not just a Pending one.
+            $existingSettled = $order->payments()->latest('id')->first();
+
+            return $existingSettled ?? $this->settleFreeOrder($order);
+        }
+
         $isEnabled = DB::table('payment_provider_settings')->where('provider', $provider)->where('enabled', true)->exists();
         $requestPayload = ['order_id' => $order->id, 'order_number' => $order->order_number, 'amount' => $order->grand_total];
 
@@ -126,5 +145,30 @@ class InitiatePayment
                 'error' => $errorMessage,
             ],
         ]);
+    }
+
+    /**
+     * No gateway call, no `payment_api_logs` entry (nothing was actually
+     * sent anywhere) — creates a Pending payment and immediately settles
+     * it through the same `SettlePaymentSuccess` path a real webhook
+     * would use, so stock reservations are consumed, the order transitions
+     * to Paid, the invoice is generated, and the confirmation notification
+     * sends exactly as it would for any other successful payment.
+     */
+    private function settleFreeOrder(Order $order): Payment
+    {
+        $payment = Payment::query()->create([
+            'order_id' => $order->id,
+            'provider' => 'free',
+            'provider_reference' => null,
+            'amount' => 0,
+            'currency' => 'GHS',
+            'status' => PaymentStatus::Pending,
+            'metadata' => ['note' => 'Order total is zero — settled automatically, no payment gateway involved.'],
+        ]);
+
+        SettlePaymentSuccess::run($payment);
+
+        return $payment->fresh() ?? $payment;
     }
 }

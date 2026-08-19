@@ -17,6 +17,7 @@ use Spatie\Health\Checks\Checks\QueueCheck;
 use Spatie\Health\Checks\Checks\ScheduleCheck;
 use Spatie\Health\Enums\Status;
 use Spatie\Health\Facades\Health;
+use Throwable;
 
 /**
  * `--critical` is meant to be wired into the post-deploy step so a failing
@@ -62,7 +63,23 @@ class SystemCheckCommand extends Command
                 continue;
             }
 
-            $result = $check->run();
+            // A check throwing (a bug in the check itself, an unseeded
+            // dependency, a DB connectivity blip) must never abort this
+            // whole command — this is the deploy-gate command, so an
+            // uncaught exception here would fail a deploy with a raw
+            // stack trace instead of the actionable per-check report,
+            // and skip every remaining check in both loops. Same
+            // tolerance ListCriticalHealthFailures already applies for
+            // the same reason on the admin bar's own health summary.
+            try {
+                $result = $check->run();
+            } catch (Throwable $e) {
+                $this->reportLine($check->getLabel(), 'crashed', $e->getMessage());
+                $anyCriticalFailing = true;
+
+                continue;
+            }
+
             $isFailing = in_array($result->status, [Status::failed(), Status::crashed()], true);
 
             if ($onlyCritical && ! $isFailing) {

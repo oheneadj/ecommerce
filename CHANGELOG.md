@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — a crashing health check could abort the deploy-gate command (full-system bug hunt, 7/7)
+- `system:check --critical` (the post-deploy gate) called each registered check's `run()` with no exception handling — a check throwing (a bug in the check itself, an unseeded dependency, a DB connectivity blip) aborted the whole command with an uncaught exception and a raw stack trace instead of the intended clean per-check report, silently skipping every remaining check in both loops. `ListCriticalHealthFailures` (the admin bar's own health summary) already guards against exactly this for the same reason; this command didn't.
+- Now catches `Throwable` around each check's `run()` and reports it as `crashed` with the exception message, same as any other failing check, and continues to the rest — a single bad check can no longer take down deploy gating.
+- 1 new regression test (a check that throws is reported as crashed, command still exits non-zero as expected, rest of the run completes).
+
 ### Fixed — a tampered staff form submission could create a Super Admin account (full-system bug hunt, 6/7)
 - The Staff form's role `Select` only *rendered* Admin/Store Keeper as options — nothing validated a submitted value against that set, and neither `CreateStaff::handleRecordCreation()` nor `EditStaff::handleRecordUpdate()` checked it either. `InviteStaffMember`'s own docblock claimed a safeguard ("this Action doesn't trust that alone") that didn't actually exist in the code. A manipulated payload (devtools, a raw Livewire request) could submit `role=super_admin` and have it accepted — creating a Super Admin account outside the documented CLI-only path, invisible to the Staff resource's own list afterward (it's scoped to Admin/Store Keeper only) and unmanageable from the panel.
 - Added real enforcement at all three layers: a form-level `Rule::in()` validation rule (not just the rendered options), and an explicit check in both `InviteStaffMember` and `EditStaff::handleRecordUpdate` before the role is ever assigned.

@@ -8,11 +8,13 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Concerns\DisplaysInStoreTimezone;
 use App\Concerns\HasFormattedMoney;
 use App\Concerns\HasUlid;
 use App\Concerns\LogsAdminActivity;
 use App\Enums\OrderStatus;
 use App\Observers\OrderObserver;
+use Carbon\CarbonInterface;
 use Database\Factories\OrderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -68,7 +70,7 @@ use Illuminate\Support\Carbon;
 class Order extends Model
 {
     /** @use HasFactory<OrderFactory> */
-    use HasFactory, HasFormattedMoney, HasUlid, LogsAdminActivity;
+    use DisplaysInStoreTimezone, HasFactory, HasFormattedMoney, HasUlid, LogsAdminActivity;
 
     /**
      * @return array<string, string>
@@ -201,5 +203,19 @@ class Order extends Model
     public function getTaxTotalFormattedAttribute(): string
     {
         return $this->formattedMoney($this->tax_total);
+    }
+
+    /**
+     * `created_at` converted to the store's configured display timezone
+     * (`StoreSetting::timezone`, default UTC) — everything is stored in
+     * UTC per CLAUDE.md's rule, but showing a raw UTC timestamp to a
+     * customer outside that offset can display their order as placed on
+     * the wrong calendar day. Every customer-facing view (order history,
+     * order detail, invoice PDF) should read this instead of `created_at`
+     * directly.
+     */
+    public function getPlacedAtAttribute(): ?CarbonInterface
+    {
+        return $this->inStoreTimezone($this->created_at);
     }
 }

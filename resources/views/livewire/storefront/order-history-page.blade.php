@@ -10,7 +10,7 @@
                     <a href="{{ route('account.orders.show', $order) }}" wire:navigate wire:key="order-{{ $order->id }}" class="flex items-center justify-between gap-4 py-3 hover:bg-zinc-50">
                         <div>
                             <p class="font-medium">{{ $order->order_number }}</p>
-                            <p class="text-sm text-zinc-500">{{ $order->created_at->format('d M Y') }}</p>
+                            <p class="text-sm text-zinc-500">{{ $order->placed_at->format('d M Y') }}</p>
                         </div>
                         <div class="flex items-center gap-3">
                             <span class="font-medium">{{ $order->grand_total_formatted }}</span>

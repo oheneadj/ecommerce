@@ -8,7 +8,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Concerns\DisplaysInStoreTimezone;
 use App\Enums\OrderStatus;
+use Carbon\CarbonInterface;
 use Database\Factories\OrderStatusHistoryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -28,7 +30,7 @@ use Illuminate\Support\Carbon;
 class OrderStatusHistory extends Model
 {
     /** @use HasFactory<OrderStatusHistoryFactory> */
-    use HasFactory;
+    use DisplaysInStoreTimezone, HasFactory;
 
     public const UPDATED_AT = null;
 
@@ -60,5 +62,14 @@ class OrderStatusHistory extends Model
     public function changedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'changed_by');
+    }
+
+    /**
+     * `created_at` converted to the store's configured display timezone —
+     * see `Order::getPlacedAtAttribute()` for why.
+     */
+    public function getPlacedAtAttribute(): ?CarbonInterface
+    {
+        return $this->inStoreTimezone($this->created_at);
     }
 }

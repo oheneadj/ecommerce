@@ -2,7 +2,7 @@
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-semibold">{{ $order->order_number }}</h1>
-            <p class="text-sm text-zinc-500">{{ __('Placed on :date', ['date' => $order->created_at->format('d M Y, H:i')]) }}</p>
+            <p class="text-sm text-zinc-500">{{ __('Placed on :date', ['date' => $order->placed_at->format('d M Y, H:i')]) }}</p>
         </div>
         <x-status-badge :color="$order->status->getColor()">{{ $order->status->getLabel() }}</x-status-badge>
     </div>
@@ -42,7 +42,7 @@
                             <li wire:key="status-history-{{ $history->id }}" class="flex items-start gap-3">
                                 <x-status-badge :color="$history->status->getColor()">{{ $history->status->getLabel() }}</x-status-badge>
                                 <div>
-                                    <p class="text-sm text-zinc-500">{{ $history->created_at?->format('d M Y, H:i') }}</p>
+                                    <p class="text-sm text-zinc-500">{{ $history->placed_at?->format('d M Y, H:i') }}</p>
                                     @if ($history->note)
                                         <p class="text-sm">{{ $history->note }}</p>
                                     @endif

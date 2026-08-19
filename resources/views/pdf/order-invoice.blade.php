@@ -47,7 +47,7 @@
 
     <h1>Invoice {{ $order->order_number }}</h1>
     <p>
-        Date: {{ $order->created_at->format('d M Y') }}<br>
+        Date: {{ $order->placed_at->format('d M Y') }}<br>
         Customer: {{ $order->user->name ?? $order->guest_email ?? 'Guest' }}
     </p>
 

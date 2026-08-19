@@ -77,6 +77,7 @@ class ManageStoreSettings extends Page implements HasForms
         'backup_frequency',
         'backup_retention_days',
         'tax_rate',
+        'timezone',
         'stock_reservation_minutes',
         'low_stock_threshold',
     ];
@@ -250,6 +251,13 @@ class ManageStoreSettings extends Page implements HasForms
                                     ->required()
                                     ->minValue(0)
                                     ->maxValue(100),
+
+                                Select::make('timezone')
+                                    ->label('Display timezone')
+                                    ->helperText('Everything is stored in UTC — this only controls what customers see on order confirmations, order history, and invoices.')
+                                    ->options(array_combine(timezone_identifiers_list(), timezone_identifiers_list()))
+                                    ->searchable()
+                                    ->required(),
 
                                 TextInput::make('stock_reservation_minutes')
                                     ->label('Stock reservation window (minutes)')

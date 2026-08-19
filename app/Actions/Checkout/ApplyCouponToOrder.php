@@ -19,9 +19,9 @@ use Illuminate\Support\Facades\DB;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
- * One of only two Actions in the whole system that requires row-level
- * locking (the other is ReserveStockForOrder) — coupon usage is a finite,
- * contested resource exactly like stock. The Coupon row is locked, actual
+ * One of three Actions in the whole system that requires row-level locking
+ * (the others are ReserveStockForOrder and RecordStockMovement) — coupon
+ * usage is a finite, contested resource exactly like stock. The Coupon row is locked, actual
  * `coupon_usages` rows are counted (never a cached counter column — a
  * counter can drift, rows cannot), and the usage limits are enforced
  * before the usage row is inserted, all inside the one locked transaction.

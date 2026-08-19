@@ -101,6 +101,55 @@ class InventoryManagementTest extends TestCase
         $this->assertSame(0, $variant->fresh()->stock);
     }
 
+    /**
+     * Bug hunt regression: the negative-stock guard used to read
+     * `$variant->stock` from PHP memory with no row lock, while the
+     * decrement itself was a separate atomic SQL statement — two
+     * concurrent calls for the same variant could each read the same
+     * pre-decrement stock, both pass the check, and both apply, leaving
+     * stock negative despite each individually "validating"
+     * non-negativity. True parallel threads aren't exercisable against
+     * this suite's SQLite connection, so — matching this file's existing
+     * `test_concurrent_checkout_on_last_unit_prevents_overselling`
+     * convention — this proves the same invariant sequentially: stock
+     * only ever depletes to exactly zero and never below it, however many
+     * decrement attempts land at the boundary.
+     */
+    public function test_stock_never_goes_negative_across_repeated_decrements_at_the_boundary(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 1]);
+
+        RecordStockMovement::run($variant, StockMovementType::Sale, -1);
+
+        $rejectedCount = 0;
+
+        for ($i = 0; $i < 4; $i++) {
+            try {
+                RecordStockMovement::run($variant->fresh(), StockMovementType::Sale, -1);
+            } catch (NegativeStockException) {
+                $rejectedCount++;
+            }
+        }
+
+        $this->assertSame(4, $rejectedCount);
+        $this->assertSame(0, $variant->fresh()->stock);
+    }
+
+    /**
+     * AdjustStockWithReservationCheck reads $variant->stock immediately
+     * after RecordStockMovement returns and expects the new value —
+     * locking against a separately-fetched row must not leave the
+     * caller's own passed-in instance stale.
+     */
+    public function test_the_passed_in_variant_instances_stock_reflects_the_new_value_immediately(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+
+        RecordStockMovement::run($variant, StockMovementType::Restock, 5);
+
+        $this->assertSame(15, $variant->stock);
+    }
+
     public function test_reservation_creation_respects_available_stock(): void
     {
         $variant = ProductVariant::factory()->create(['stock' => 5]);

@@ -19,11 +19,12 @@ use Illuminate\Support\Facades\DB;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
- * One of only two Actions in the whole system that requires row-level
- * locking (the other is ApplyCouponToOrder) — stock is a finite, contested
- * resource, so the availability check and the reservation insert must
- * happen inside the same locked transaction. Checking outside the lock and
- * inserting inside it would defeat the mechanism entirely (BRD FR-2.5/FR-2.8).
+ * One of three Actions in the whole system that requires row-level locking
+ * (the others are ApplyCouponToOrder and RecordStockMovement) — stock is a
+ * finite, contested resource, so the availability check and the
+ * reservation insert must happen inside the same locked transaction.
+ * Checking outside the lock and inserting inside it would defeat the
+ * mechanism entirely (BRD FR-2.5/FR-2.8).
  *
  * The lock is taken on the variant row, not on `stock_reservations` — every
  * writer affecting a variant's available stock must take this same lock

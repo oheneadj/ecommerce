@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — concurrent stock decrements could drive stock negative (full-system bug hunt, 2/7)
+- `RecordStockMovement`'s negative-stock guard read `$variant->stock` from PHP memory with no row lock, while the actual decrement was a separate atomic SQL statement — two concurrent calls for the same variant (e.g. two `HandleLatePaymentConfirmation::fulfill()` calls, which is documented as an accepted unlocked check-then-act) could each read the same pre-decrement stock, both pass the check, and both apply, leaving stock negative despite the class's own docblock promising this couldn't happen.
+- Now locks the variant row (`lockForUpdate()`) for the duration of its own transaction, so the check and the decrement are atomic — matching `ReserveStockForOrder`/`ApplyCouponToOrder`'s existing pattern for the other two contested resources in this system. Safe to call from inside a caller's own outer transaction (Laravel savepoints); the caller's passed-in `$variant` instance is kept in sync with the new stock value, since `AdjustStockWithReservationCheck` reads it immediately afterward.
+- Updated stale docblocks on `ReserveStockForOrder`/`ApplyCouponToOrder`/`AdjustStockWithReservationCheck` that claimed only two Actions (now three) needed locking, or that this class had none.
+- 2 new tests: a sequential boundary-depletion regression (this suite's existing convention for proving a locking invariant, since true parallel threads aren't exercisable against the test SQLite connection) and one confirming the caller's variant instance stays in sync.
+
 ### Fixed — disabled customer accounts could still log in (full-system bug hunt, 1/7)
 - `disabled_at` only ever gated the Filament admin panel (`User::canAccessPanel()`) — a disabled customer account could still authenticate via password, phone OTP, or Google with zero effect. A Super Admin disabling an account after a fraud/abuse report didn't actually block anything.
 - Password login: added a `Fortify::authenticateUsing()` override (Fortify's own documented extension point) that rejects disabled accounts with a normal validation error, alongside its existing credential check — the rest of Fortify's pipeline (throttling, 2FA challenge) is untouched.

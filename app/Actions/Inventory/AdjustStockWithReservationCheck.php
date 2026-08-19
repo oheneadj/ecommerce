@@ -31,8 +31,9 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * restock); a later payment against an `at_risk` reservation is handled by
  * HandleLatePaymentConfirmation, not by this Action.
  *
- * No locking here — only ReserveStockForOrder and ApplyCouponToOrder need
- * lockForUpdate() in this system.
+ * No locking of its own — RecordStockMovement locks the variant row
+ * internally for the duration of its own transaction (see that class),
+ * which is sufficient for the write this Action makes.
  */
 class AdjustStockWithReservationCheck
 {

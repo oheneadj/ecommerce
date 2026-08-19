@@ -33,6 +33,17 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * crosses from above its threshold to at-or-below it, not on every
  * subsequent sale while already low, to avoid spamming Store Keeper.
  *
+ * Locks the variant row for the duration of its own transaction — the
+ * negative-stock check and the actual decrement must happen atomically, or
+ * two concurrent calls for the same variant can each read the same
+ * pre-decrement stock, both pass the check, and both apply, driving stock
+ * negative despite each individually "validating" non-negativity first
+ * (found in the full-system bug hunt: this was previously a plain
+ * in-memory read with no lock at all). Safe to call from inside a caller's
+ * own outer transaction — Laravel uses savepoints for the nesting, and the
+ * row lock itself is held by the real underlying transaction regardless of
+ * which nesting level acquired it.
+ *
  * @throws InvalidStockMovementQuantityException when quantity is zero
  * @throws NegativeStockException when the movement would leave stock below zero
  */
@@ -52,30 +63,41 @@ class RecordStockMovement
             throw new InvalidStockMovementQuantityException;
         }
 
-        $stockBefore = $variant->stock;
+        $movement = DB::transaction(function () use ($variant, $type, $quantity, $user, $note, $reference): StockMovement {
+            $locked = ProductVariant::query()->whereKey($variant->id)->lockForUpdate()->firstOrFail();
 
-        if ($stockBefore + $quantity < 0) {
-            throw new NegativeStockException;
-        }
+            $stockBefore = $locked->stock;
 
-        $movement = StockMovement::query()->create([
-            'product_variant_id' => $variant->id,
-            'type' => $type,
-            'quantity' => $quantity,
-            'reference_type' => $reference?->getMorphClass(),
-            'reference_id' => $reference?->getKey(),
-            'note' => $note,
-            'user_id' => $user?->id,
-        ]);
+            if ($stockBefore + $quantity < 0) {
+                throw new NegativeStockException;
+            }
 
-        $variant->increment('stock', $quantity);
+            $movement = StockMovement::query()->create([
+                'product_variant_id' => $locked->id,
+                'type' => $type,
+                'quantity' => $quantity,
+                'reference_type' => $reference?->getMorphClass(),
+                'reference_id' => $reference?->getKey(),
+                'note' => $note,
+                'user_id' => $user?->id,
+            ]);
 
-        if ($quantity < 0 && $stockBefore > $variant->effectiveLowStockThreshold() && $variant->isLowStock()) {
-            DB::afterCommit(fn () => SafeNotifier::send(
-                StaffRecipients::forRole(UserRole::StoreKeeper->value),
-                new LowStockAlert($variant),
-            ));
-        }
+            $locked->increment('stock', $quantity);
+
+            // Keep the caller's own instance in sync — external code
+            // (e.g. AdjustStockWithReservationCheck) reads $variant->stock
+            // immediately after this call returns and expects the new value.
+            $variant->stock = $locked->stock;
+
+            if ($quantity < 0 && $stockBefore > $locked->effectiveLowStockThreshold() && $locked->isLowStock()) {
+                DB::afterCommit(fn () => SafeNotifier::send(
+                    StaffRecipients::forRole(UserRole::StoreKeeper->value),
+                    new LowStockAlert($locked),
+                ));
+            }
+
+            return $movement;
+        });
 
         return $movement;
     }

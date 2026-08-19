@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — sharing a product link showed the store logo instead of the product photo
+- No Open Graph or Twitter Card meta tags existed anywhere in the app — with no `og:image`, a link-preview crawler (WhatsApp, Facebook, iMessage, etc.) fell back to whatever image it could find on the page, which in practice meant the header logo (the first `<img>` in the DOM on every page) instead of the thing actually being shared. `partials/head.blade.php` now renders `og:title`/`og:description`/`og:image`/`og:type` and matching Twitter Card tags on every page, with sane store-level defaults (logo, tagline) and per-page overrides.
+- Separately, the product page's `<title>` was hardcoded to the generic string "Product" — the outer page wrapper never had access to the resolved product, only the Livewire component nested inside it did. Now resolves the product once (cheaply, read-only) in the outer wrapper so the real name/description/primary image are present in the initial server-rendered HTML, which is what link-preview crawlers actually see (they don't wait for Livewire to hydrate).
+- Also wired `StaticPage.meta_description` into the same `og:description` mechanism — captured on the admin form since an earlier sprint but never actually rendered anywhere until now.
+- 8 new tests.
+
+### Fixed — invoice download disappeared once an order shipped (full-system bug hunt, 3/7)
+- `OrderDetailPage::canDownloadInvoice()` required `status === Paid` exactly, so the "Download invoice" button vanished the moment staff advanced the order to Processing/Shipped/Delivered — even though the invoice PDF was still sitting there and the admin panel's own equivalent (`OrderRecordActions::downloadInvoice()`) had no such restriction. Now gates on `invoice_path !== null` alone, matching the admin panel exactly — `invoice_path` is only ever populated once `SettlePaymentSuccess` generates it, so this already implies the order was paid.
+- 1 new regression test (a Shipped order can still download its invoice); existing paid/unpaid cases re-verified.
+
 ### Fixed — concurrent stock decrements could drive stock negative (full-system bug hunt, 2/7)
 - `RecordStockMovement`'s negative-stock guard read `$variant->stock` from PHP memory with no row lock, while the actual decrement was a separate atomic SQL statement — two concurrent calls for the same variant (e.g. two `HandleLatePaymentConfirmation::fulfill()` calls, which is documented as an accepted unlocked check-then-act) could each read the same pre-decrement stock, both pass the check, and both apply, leaving stock negative despite the class's own docblock promising this couldn't happen.
 - Now locks the variant row (`lockForUpdate()`) for the duration of its own transaction, so the check and the decrement are atomic — matching `ReserveStockForOrder`/`ApplyCouponToOrder`'s existing pattern for the other two contested resources in this system. Safe to call from inside a caller's own outer transaction (Laravel savepoints); the caller's passed-in `$variant` instance is kept in sync with the new stock value, since `AdjustStockWithReservationCheck` reads it immediately afterward.

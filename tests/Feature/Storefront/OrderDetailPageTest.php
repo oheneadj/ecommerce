@@ -247,6 +247,30 @@ class OrderDetailPageTest extends TestCase
     }
 
     /**
+     * Bug hunt regression: canDownloadInvoice() previously also required
+     * status === Paid exactly, so the button vanished the moment a paid
+     * order moved on to Processing/Shipped/Delivered — even though the
+     * invoice file was still sitting there. Matches
+     * OrderRecordActions::downloadInvoice()'s own gate (invoice_path
+     * !== null alone).
+     */
+    public function test_a_shipped_orders_invoice_can_still_be_downloaded(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->create();
+        $path = 'invoices/ORD-SHIPPED-TEST.pdf';
+        Storage::disk('local')->put($path, 'fake-pdf-content');
+        $order = Order::factory()->create(['user_id' => $user->id, 'status' => OrderStatus::Shipped, 'invoice_path' => $path]);
+        Payment::factory()->create(['order_id' => $order->id, 'status' => PaymentStatus::Success]);
+        $this->actingAs($user);
+
+        Livewire::test(OrderDetailPage::class, ['orderUlid' => $order->ulid])
+            ->assertSee('Download invoice')
+            ->call('downloadInvoice')
+            ->assertFileDownloaded("{$order->order_number}.pdf");
+    }
+
+    /**
      * A customer must never be able to trigger a download via a direct
      * component method call just because the button happens to be
      * server-side reachable — the same status/invoice_path guard the

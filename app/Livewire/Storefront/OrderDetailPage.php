@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace App\Livewire\Storefront;
 
 use App\Actions\Order\GenerateOrderInvoice;
-use App\Enums\OrderStatus;
 use App\Livewire\Storefront\Concerns\TracksPaymentStatus;
 use App\Models\Order;
 use App\Models\Payment;
@@ -44,16 +43,20 @@ class OrderDetailPage extends Component
     }
 
     /**
-     * Gates the "Download invoice" button — only shown once the order
-     * has actually settled. Downloading an "invoice" for something not
-     * yet paid for would be misleading, and `invoice_path` isn't even
-     * populated until `SettlePaymentSuccess` dispatches
-     * `GenerateOrderInvoicePdf`.
+     * Gates the "Download invoice" button — only shown once the invoice
+     * actually exists. `invoice_path` isn't populated until
+     * `SettlePaymentSuccess` dispatches `GenerateOrderInvoicePdf`, so this
+     * alone already implies the order was paid — requiring
+     * `status === Paid` *too* was a bug (bug hunt finding): it made the
+     * button disappear the moment a paid order moved on to
+     * Processing/Shipped/Delivered, even though the invoice file was
+     * still sitting there and stayed downloadable via direct URL/admin.
+     * Matches `OrderRecordActions::downloadInvoice()`'s own gate exactly.
      */
     #[Computed]
     public function canDownloadInvoice(): bool
     {
-        return $this->order->status === OrderStatus::Paid && $this->order->invoice_path !== null;
+        return $this->order->invoice_path !== null;
     }
 
     /**

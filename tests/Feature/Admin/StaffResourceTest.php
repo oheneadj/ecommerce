@@ -20,6 +20,7 @@ use App\Notifications\StaffInvited;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
+use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -131,6 +132,48 @@ class StaffResourceTest extends TestCase
 
         $this->assertTrue($staff->fresh()->hasRole(UserRole::StoreKeeper->value));
         $this->assertFalse($staff->fresh()->hasRole(UserRole::Admin->value));
+    }
+
+    /**
+     * syncRoles() writes directly to the model_has_roles pivot table and
+     * never fires Eloquent's save/update events, so User's
+     * LogsAdminActivity hooks (which listen on those events) never see a
+     * role change — this used to leave promoting/demoting a staff member
+     * completely unrecorded, unlike every other staff-account mutation.
+     */
+    public function test_changing_a_staff_members_role_is_recorded_in_the_activity_log(): void
+    {
+        $superAdmin = $this->superAdmin();
+        $this->actingAs($superAdmin);
+        $staff = $this->staffMember(UserRole::Admin);
+
+        Livewire::test(EditStaff::class, ['record' => $staff->getRouteKey()])
+            ->fillForm(['role' => UserRole::StoreKeeper->value])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $entry = Activity::query()
+            ->where('subject_type', User::class)
+            ->where('subject_id', $staff->id)
+            ->where('description', 'role changed')
+            ->sole();
+
+        $this->assertSame($superAdmin->id, $entry->causer_id);
+        $this->assertSame(UserRole::Admin->value, $entry->properties['old']['role']);
+        $this->assertSame(UserRole::StoreKeeper->value, $entry->properties['attributes']['role']);
+    }
+
+    public function test_saving_without_actually_changing_the_role_does_not_log_a_role_change(): void
+    {
+        $this->actingAs($this->superAdmin());
+        $staff = $this->staffMember(UserRole::Admin);
+
+        Livewire::test(EditStaff::class, ['record' => $staff->getRouteKey()])
+            ->fillForm(['role' => UserRole::Admin->value])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(0, Activity::query()->where('description', 'role changed')->count());
     }
 
     public function test_resend_invite_action_is_only_visible_for_an_unverified_staff_member(): void

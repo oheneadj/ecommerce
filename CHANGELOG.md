@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — staff-facing notifications rendered with a blank title in the admin bell
+- Follow-up to the fix below: once staff-only notifications were excluded from the customer-facing side, checking the admin bell for them showed the row existed but rendered blank — `BackupFailed`, `BackupSucceeded`, `CriticalHealthAlert`, `LowStockAlert`, and `ReservationsAtRiskAlert` all stored a `message` key in `toDatabase()`, but never Filament's own expected `title` key. The admin bell (`->databaseNotifications()`) reconstructs a `Filament\Notifications\Notification` from that raw payload via `Notification::fromArray()`, which reads `title` — missing it meant the bell entry existed but showed no headline text.
+- All five now include `title` (and a `status` for color: `danger`/`warning`/`success`) alongside the existing keys.
+- 5 new tests.
+
 ### Fixed — staff-only notifications (e.g. a failed backup) leaked into the customer-facing notification bell/page
 - A Super Admin account is still a plain `User` row, so logging into the customer-facing storefront with that same account surfaced internal ops alerts (`BackupFailed`, `CriticalHealthAlert`, `LowStockAlert`, etc.) in `NotificationsPage`/`NotificationIndicator` — both queried "every notification for this user" with no filtering, since the `notifications` table is shared between staff and customer accounts. The Filament admin bell (`->databaseNotifications()`) reads the same table by design and needed no equivalent filter; the storefront side did.
 - Added `App\Notifications\Support\CustomerFacingNotifications`, an explicit allow-list of customer-facing notification classes (`OrderPlaced`, `OrderShipped`, `PaymentSucceeded`, `PaymentFailed`, `CustomerBroadcastNotification`). Both storefront components now filter their queries against it.

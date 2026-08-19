@@ -81,11 +81,17 @@ class ReservationsAtRiskAlert extends Notification implements ShouldQueue
      */
     public function toDatabase(mixed $notifiable): array
     {
+        $message = "Stock adjustment on {$this->variant->sku} left ".count($this->reservationIds).' reservation(s) at risk.';
+
+        // `title`/`status` are Filament's own expected keys — see the
+        // matching note on CriticalHealthAlert::toDatabase().
         return [
             'product_variant_id' => $this->variant->id,
             'sku' => $this->variant->sku,
             'reservation_ids' => $this->reservationIds,
-            'message' => "Stock adjustment on {$this->variant->sku} left ".count($this->reservationIds).' reservation(s) at risk.',
+            'title' => $message,
+            'status' => 'warning',
+            'message' => $message,
         ];
     }
 

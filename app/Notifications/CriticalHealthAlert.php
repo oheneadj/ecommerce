@@ -90,11 +90,21 @@ class CriticalHealthAlert extends Notification implements ShouldQueue
      */
     public function toDatabase(mixed $notifiable): array
     {
+        $message = count($this->failures) === 1
+            ? "Critical check failing: {$this->failures[0]}"
+            : count($this->failures).' critical checks are failing.';
+
         return [
             'failures' => $this->failures,
-            'message' => count($this->failures) === 1
-                ? "Critical check failing: {$this->failures[0]}"
-                : count($this->failures).' critical checks are failing.',
+            // `title`/`status` are Filament's own expected keys — the
+            // admin bell (`->databaseNotifications()` in
+            // AdminPanelProvider) reconstructs a Filament Notification
+            // from this array via `Notification::fromArray()`, which
+            // renders a blank title if this key is missing. `message` is
+            // kept for anything reading the raw payload directly.
+            'title' => $message,
+            'status' => 'danger',
+            'message' => $message,
         ];
     }
 

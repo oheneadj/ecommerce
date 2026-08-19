@@ -68,7 +68,11 @@ class BackupSucceeded extends Notification implements ShouldQueue
      */
     public function toDatabase(mixed $notifiable): array
     {
+        // `title`/`status` are Filament's own expected keys — see the
+        // matching note on CriticalHealthAlert::toDatabase().
         return [
+            'title' => 'Backup completed successfully.',
+            'status' => 'success',
             'message' => 'Backup completed successfully.',
         ];
     }

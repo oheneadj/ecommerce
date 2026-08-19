@@ -75,12 +75,18 @@ class LowStockAlert extends Notification implements ShouldQueue
      */
     public function toDatabase(mixed $notifiable): array
     {
+        $message = "Low stock: {$this->variant->sku} has {$this->variant->stock} unit(s) left.";
+
+        // `title`/`status` are Filament's own expected keys — see the
+        // matching note on CriticalHealthAlert::toDatabase().
         return [
             'product_variant_id' => $this->variant->id,
             'sku' => $this->variant->sku,
             'stock' => $this->variant->stock,
             'threshold' => $this->variant->effectiveLowStockThreshold(),
-            'message' => "Low stock: {$this->variant->sku} has {$this->variant->stock} unit(s) left.",
+            'title' => $message,
+            'status' => 'warning',
+            'message' => $message,
         ];
     }
 

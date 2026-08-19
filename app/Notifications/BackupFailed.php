@@ -65,8 +65,14 @@ class BackupFailed extends Notification implements ShouldQueue
      */
     public function toDatabase(mixed $notifiable): array
     {
+        $message = "Backup failed ({$this->errorClass}).";
+
+        // `title`/`status` are Filament's own expected keys — see the
+        // matching note on CriticalHealthAlert::toDatabase().
         return [
-            'message' => "Backup failed ({$this->errorClass}).",
+            'title' => $message,
+            'status' => 'danger',
+            'message' => $message,
         ];
     }
 

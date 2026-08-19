@@ -130,6 +130,23 @@ class SecurityTest extends TestCase
         $response->assertHasErrors(['current_password']);
     }
 
+    /**
+     * True cross-session verification can't be exercised here — tests run
+     * on the `array` session driver (see phpunit.xml), which never
+     * persists to the `sessions` table LogOutOtherSessions operates on
+     * (see LogOutOtherSessionsTest for that action's own direct coverage).
+     * This instead proves every security-relevant action actually calls
+     * it — the wiring this fix depends on — same source-inspection
+     * pattern already used elsewhere in this suite for locking guarantees
+     * that can't be exercised against SQLite in-process either.
+     */
+    public function test_every_security_relevant_action_logs_out_other_sessions(): void
+    {
+        $source = (string) file_get_contents(app_path('Livewire/Settings/Security.php'));
+
+        $this->assertSame(5, substr_count($source, 'LogOutOtherSessions::run('));
+    }
+
     public function test_the_update_password_card_is_hidden_for_an_account_with_no_password_yet(): void
     {
         $user = User::factory()->create(['password' => null, 'google_id' => 'google-123', 'email' => 'a@example.com', 'email_verified_at' => now()]);

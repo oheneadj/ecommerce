@@ -2,9 +2,11 @@
 
 namespace App\Livewire\Settings;
 
+use App\Actions\Auth\LogOutOtherSessions;
 use App\Livewire\Concerns\ManagesAdditionalLoginMethods;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\ConfirmTwoFactorAuthentication;
 use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
@@ -113,6 +115,8 @@ class Security extends Component
             'password' => $validated['password'],
         ]);
 
+        LogOutOtherSessions::run(Auth::user(), Session::getId());
+
         $this->reset('current_password', 'password', 'password_confirmation');
 
         $this->dispatch('toast', variant: 'success', message: __('Password updated.'));
@@ -163,6 +167,8 @@ class Security extends Component
 
         $deletePasskey($user, $passkey);
 
+        LogOutOtherSessions::run($user, Session::getId());
+
         $this->closeDeleteModal();
         $this->loadPasskeys();
     }
@@ -186,6 +192,8 @@ class Security extends Component
 
         if (! $this->requiresConfirmation) {
             $this->twoFactorEnabled = auth()->user()->hasEnabledTwoFactorAuthentication();
+
+            LogOutOtherSessions::run(auth()->user(), Session::getId());
         }
 
         $this->loadSetupData();
@@ -235,6 +243,8 @@ class Security extends Component
 
         $confirmTwoFactorAuthentication(auth()->user(), $this->code);
 
+        LogOutOtherSessions::run(auth()->user(), Session::getId());
+
         $this->closeModal();
 
         $this->twoFactorEnabled = true;
@@ -256,6 +266,8 @@ class Security extends Component
     public function disable(DisableTwoFactorAuthentication $disableTwoFactorAuthentication): void
     {
         $disableTwoFactorAuthentication(auth()->user());
+
+        LogOutOtherSessions::run(auth()->user(), Session::getId());
 
         $this->twoFactorEnabled = false;
     }

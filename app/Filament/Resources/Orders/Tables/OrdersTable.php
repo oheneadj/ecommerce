@@ -22,6 +22,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use pxlrbt\FilamentExcel\Actions\ExportBulkAction;
+use pxlrbt\FilamentExcel\Columns\Column;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
 class OrdersTable
@@ -77,15 +78,18 @@ class OrdersTable
                         ->exports([
                             ExcelExport::make()
                                 ->fromTable()
+                                // Plain string column names previously fataled at export
+                                // time ("Call to a member function getName() on string")
+                                // — withColumns() only accepts Column instances.
                                 ->withColumns([
-                                    'order_number',
-                                    'status',
-                                    'subtotal',
-                                    'discount_total',
-                                    'shipping_total',
-                                    'tax_total',
-                                    'grand_total',
-                                    'created_at',
+                                    Column::make('order_number'),
+                                    Column::make('status'),
+                                    Column::make('subtotal'),
+                                    Column::make('discount_total'),
+                                    Column::make('shipping_total'),
+                                    Column::make('tax_total'),
+                                    Column::make('grand_total'),
+                                    Column::make('created_at'),
                                 ]),
                         ]),
                 ]),

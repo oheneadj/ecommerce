@@ -7,6 +7,7 @@ use App\Actions\Catalog\DeleteProductImageFiles;
 use App\Actions\Catalog\DuplicateProduct;
 use App\Enums\ProductStatus;
 use App\Models\Product;
+use App\Support\SanitizesExportFormulas;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -22,6 +23,7 @@ use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 use pxlrbt\FilamentExcel\Actions\ExportBulkAction;
+use pxlrbt\FilamentExcel\Columns\Column;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
 class ProductsTable
@@ -96,7 +98,19 @@ class ProductsTable
                         ->exports([
                             ExcelExport::make()
                                 ->fromTable()
-                                ->withColumns(['name', 'category.name', 'brand.name', 'status', 'created_at']),
+                                ->withColumns([
+                                    // Plain string column names here previously fataled at
+                                    // export time — withColumns() only accepts Column
+                                    // instances. `name` is sanitized against CSV/Excel
+                                    // formula injection since a lower-privileged Store
+                                    // Keeper could otherwise plant a payload for an
+                                    // Admin/SuperAdmin to later export and open.
+                                    Column::make('name')->formatStateUsing(fn (?string $state) => SanitizesExportFormulas::sanitize($state)),
+                                    Column::make('category.name'),
+                                    Column::make('brand.name'),
+                                    Column::make('status'),
+                                    Column::make('created_at'),
+                                ]),
                         ]),
                 ]),
             ])

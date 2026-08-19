@@ -22,6 +22,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use pxlrbt\FilamentExcel\Actions\ExportBulkAction;
+use pxlrbt\FilamentExcel\Columns\Column;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
 class PaymentsTable
@@ -66,12 +67,14 @@ class PaymentsTable
                         ->exports([
                             ExcelExport::make()
                                 ->fromTable()
+                                // Plain string column names previously fataled at export
+                                // time — withColumns() only accepts Column instances.
                                 ->withColumns([
-                                    'order.order_number',
-                                    'provider',
-                                    'amount',
-                                    'status',
-                                    'created_at',
+                                    Column::make('order.order_number'),
+                                    Column::make('provider'),
+                                    Column::make('amount'),
+                                    Column::make('status'),
+                                    Column::make('created_at'),
                                 ]),
                         ]),
                 ]),

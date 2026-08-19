@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\StockMovements\Tables;
 
 use App\Enums\StockMovementType;
+use App\Support\SanitizesExportFormulas;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Support\Icons\Heroicon;
@@ -12,6 +13,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use pxlrbt\FilamentExcel\Actions\ExportBulkAction;
+use pxlrbt\FilamentExcel\Columns\Column;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
 class StockMovementsTable
@@ -52,13 +54,18 @@ class StockMovementsTable
                         ->exports([
                             ExcelExport::make()
                                 ->fromTable()
+                                // Plain string column names previously fataled at export
+                                // time — withColumns() only accepts Column instances.
+                                // `note` is free text any staff role with create access
+                                // can set (StockMovementPolicy allows StoreKeeper), so
+                                // it's sanitized against CSV/Excel formula injection.
                                 ->withColumns([
-                                    'productVariant.sku',
-                                    'type',
-                                    'quantity',
-                                    'note',
-                                    'user.name',
-                                    'created_at',
+                                    Column::make('productVariant.sku'),
+                                    Column::make('type'),
+                                    Column::make('quantity'),
+                                    Column::make('note')->formatStateUsing(fn (?string $state) => SanitizesExportFormulas::sanitize($state)),
+                                    Column::make('user.name'),
+                                    Column::make('created_at'),
                                 ]),
                         ]),
                 ]),

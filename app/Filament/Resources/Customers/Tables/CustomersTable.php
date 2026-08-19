@@ -8,6 +8,7 @@ use App\Actions\Customer\SendEmailToCustomer;
 use App\Actions\Customer\SendSmsToCustomer;
 use App\Filament\Resources\Customers\CustomerRecordActions;
 use App\Models\User;
+use App\Support\SanitizesExportFormulas;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -24,6 +25,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use pxlrbt\FilamentExcel\Actions\ExportBulkAction;
+use pxlrbt\FilamentExcel\Columns\Column;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
 class CustomersTable
@@ -79,7 +81,20 @@ class CustomersTable
                         ->exports([
                             ExcelExport::make()
                                 ->fromTable()
-                                ->withColumns(['name', 'phone', 'email', 'orders_count', 'created_at']),
+                                ->withColumns([
+                                    // Plain string column names here previously fataled at
+                                    // export time ("Call to a member function getName() on
+                                    // string") — withColumns() only accepts Column instances.
+                                    // `name` is also customer-controlled free text, so it's
+                                    // sanitized against CSV/Excel formula injection (a
+                                    // customer setting their name to `=HYPERLINK(...)` could
+                                    // otherwise execute when an admin opens the export).
+                                    Column::make('name')->formatStateUsing(fn (?string $state) => SanitizesExportFormulas::sanitize($state)),
+                                    Column::make('phone'),
+                                    Column::make('email'),
+                                    Column::make('orders_count'),
+                                    Column::make('created_at'),
+                                ]),
                         ]),
                 ]),
             ])

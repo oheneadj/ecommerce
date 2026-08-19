@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Auth;
 
+use App\Exceptions\AccountDisabledException;
 use App\Exceptions\GoogleEmailConflictException;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -43,6 +44,7 @@ class LoginWithGoogle
 
     /**
      * @throws GoogleEmailConflictException when a first-time sign-in matches an account whose email isn't independently verified
+     * @throws AccountDisabledException when the resolved account has been disabled
      */
     public function handle(SocialiteUser $googleUser): User
     {
@@ -51,6 +53,10 @@ class LoginWithGoogle
         $user = User::query()->where('google_id', $googleUser->getId())->first();
 
         if ($user) {
+            if ($user->disabled_at !== null) {
+                throw new AccountDisabledException;
+            }
+
             // A normal repeat login, not a linking decision — this Google
             // account is already this account's own. Still worth topping
             // up email_verified_at if Google now confirms an email this
@@ -73,6 +79,10 @@ class LoginWithGoogle
                 $this->sendConflictVerificationEmail($matchingEmailUser);
 
                 throw new GoogleEmailConflictException;
+            }
+
+            if ($matchingEmailUser->disabled_at !== null) {
+                throw new AccountDisabledException;
             }
 
             $matchingEmailUser->forceFill(['google_id' => $googleUser->getId()])->save();

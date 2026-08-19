@@ -10,6 +10,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Actions\Auth\LinkAccountIdentifier;
 use App\Actions\Auth\LoginWithGoogle;
+use App\Exceptions\AccountDisabledException;
 use App\Exceptions\AccountIdentifierAlreadyLinkedException;
 use App\Exceptions\GoogleEmailAlreadyTakenException;
 use App\Exceptions\GoogleEmailConflictException;
@@ -63,7 +64,7 @@ class GoogleAuthController extends Controller
 
         try {
             LoginWithGoogle::run($googleUser);
-        } catch (GoogleEmailConflictException $e) {
+        } catch (GoogleEmailConflictException|AccountDisabledException $e) {
             return redirect()->route('login.phone')->with('error', $e->getMessage());
         }
 

@@ -10,6 +10,7 @@ namespace App\Livewire\Auth;
 
 use App\Actions\Auth\RequestOtp;
 use App\Actions\Auth\VerifyOtp;
+use App\Exceptions\AccountDisabledException;
 use App\Exceptions\InvalidOtpException;
 use App\Exceptions\OtpRateLimitedException;
 use App\Exceptions\TooManyOtpVerificationAttemptsException;
@@ -85,7 +86,7 @@ class PhoneLogin extends Component
 
         try {
             VerifyOtp::run($this->phone, $this->code);
-        } catch (InvalidOtpException|TooManyOtpVerificationAttemptsException $e) {
+        } catch (InvalidOtpException|TooManyOtpVerificationAttemptsException|AccountDisabledException $e) {
             $this->addError('code', $e->getMessage());
 
             return;

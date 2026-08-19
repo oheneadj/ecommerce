@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — disabled customer accounts could still log in (full-system bug hunt, 1/7)
+- `disabled_at` only ever gated the Filament admin panel (`User::canAccessPanel()`) — a disabled customer account could still authenticate via password, phone OTP, or Google with zero effect. A Super Admin disabling an account after a fraud/abuse report didn't actually block anything.
+- Password login: added a `Fortify::authenticateUsing()` override (Fortify's own documented extension point) that rejects disabled accounts with a normal validation error, alongside its existing credential check — the rest of Fortify's pipeline (throttling, 2FA challenge) is untouched.
+- Phone OTP and Google: `VerifyOtp`/`LoginWithGoogle` now check `disabled_at` on the resolved account before calling `Auth::login()`, throwing a new shared `App\Exceptions\AccountDisabledException` — caught by `PhoneLogin` (inline error) and `GoogleAuthController` (redirect with a flash message), matching this app's existing per-entry-point exception-handling convention.
+- 6 new tests covering all three login paths, both disabled and still-working-when-enabled.
+
 ### Docs — Store Keeper's product catalog access is intentional, not a bug
 - A prior audit flagged Store Keeper being able to create/edit full product records (name, description, price, category, brand) as contradicting the BRD's "inventory and catalog stock" wording. Confirmed with the project owner: this is deliberate — a small store's owner delegating day-to-day catalog data entry to a Store Keeper is a normal operating model, and a product's own fields carry no access to money movement (orders/payments/coupons stay fully out of reach regardless, unaffected by this). Updated the BRD's role table and business rule 7 to describe actual/intended behavior; product deletion remains Admin/SuperAdmin-only, unchanged. 3 new tests documenting the intended access as an asserted contract rather than an untested gap.
 

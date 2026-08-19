@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Auth;
 
+use App\Exceptions\AccountDisabledException;
 use App\Exceptions\InvalidOtpException;
 use App\Exceptions\TooManyOtpVerificationAttemptsException;
 use App\Models\User;
@@ -32,6 +33,7 @@ class VerifyOtp
     /**
      * @throws InvalidOtpException when no usable code exists, it doesn't match, or it's locked out
      * @throws TooManyOtpVerificationAttemptsException when the phone has attempted verification too many times recently
+     * @throws AccountDisabledException when the resolved account has been disabled
      */
     public function handle(string $phone, string $code): User
     {
@@ -52,6 +54,13 @@ class VerifyOtp
 
             return $user;
         });
+
+        // A freshly created account can never already be disabled — this
+        // only ever actually blocks an existing one — but checking
+        // unconditionally here is simpler than branching on new-vs-existing.
+        if ($user->disabled_at !== null) {
+            throw new AccountDisabledException;
+        }
 
         Auth::login($user, remember: true);
 

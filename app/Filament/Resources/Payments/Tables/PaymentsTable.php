@@ -58,7 +58,13 @@ class PaymentsTable
             ->recordActions([
                 ViewAction::make()
                     ->button()
-                    ->visible(fn (): bool => Auth::user()?->hasRole(UserRole::SuperAdmin->value) ?? false),
+                    // Also backstopped by ViewPayment::canAccess() on the
+                    // page this links to, but authorize() closes the same
+                    // "visible() alone doesn't block a direct mounted-
+                    // action call" gap as PaymentsRelationManager's own
+                    // ViewAction, for defense-in-depth/consistency.
+                    ->visible(fn (): bool => Auth::user()?->hasRole(UserRole::SuperAdmin->value) ?? false)
+                    ->authorize(fn (): bool => Auth::user()?->hasRole(UserRole::SuperAdmin->value) ?? false),
                 self::refundAction(),
             ])
             ->toolbarActions([

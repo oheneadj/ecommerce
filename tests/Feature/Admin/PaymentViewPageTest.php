@@ -68,6 +68,15 @@ class PaymentViewPageTest extends TestCase
             ->assertTableActionVisible('view', $payment);
     }
 
+    /**
+     * This action has no explicit ->schema() override (see
+     * PaymentsRelationManager's own equivalent action for the case where
+     * one exists) — Filament resolves it to a link pointing at the
+     * dedicated view page, so ViewPayment::canAccess() (proven above) is
+     * the real backstop here regardless of ->visible()/->authorize() on
+     * the table action itself. Both are still declared for defense-in-
+     * depth/consistency with the relation manager's version.
+     */
     public function test_the_view_page_shows_the_payment_details_and_metadata(): void
     {
         $this->actingAs($this->staff(UserRole::SuperAdmin));

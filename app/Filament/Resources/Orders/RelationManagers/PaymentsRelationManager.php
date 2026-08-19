@@ -54,7 +54,18 @@ class PaymentsRelationManager extends RelationManager
                 ViewAction::make()
                     ->button()
                     ->schema(fn (Schema $schema): Schema => PaymentInfolist::configure($schema))
-                    ->visible(fn (): bool => Auth::user()?->hasRole(UserRole::SuperAdmin->value) ?? false),
+                    // Unlike the standalone Payments resource's own
+                    // ViewAction (which links to a dedicated page gated by
+                    // ViewPayment::canAccess()), this relation manager
+                    // renders the infolist inline via an explicit
+                    // ->schema() — there's no page-route backstop here, so
+                    // visible() alone (UI-hide only, not server-enforced
+                    // against a direct mounted-action call) wasn't
+                    // actually sufficient on its own. authorize() is —
+                    // Filament checks it before the action is allowed to
+                    // run, not just before rendering the button.
+                    ->visible(fn (): bool => Auth::user()?->hasRole(UserRole::SuperAdmin->value) ?? false)
+                    ->authorize(fn (): bool => Auth::user()?->hasRole(UserRole::SuperAdmin->value) ?? false),
             ])
             ->toolbarActions([
                 //

@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace App\Livewire\Storefront;
 
 use App\Livewire\Storefront\Concerns\LinksToRelatedOrder;
+use App\Notifications\Support\CustomerFacingNotifications;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Notifications\DatabaseNotification;
@@ -43,7 +44,9 @@ class NotificationIndicator extends Component
     #[Computed]
     public function unreadCount(): int
     {
-        return Auth::user()?->unreadNotifications()->count() ?? 0;
+        return Auth::user()?->unreadNotifications()
+            ->whereIn('type', CustomerFacingNotifications::types())
+            ->count() ?? 0;
     }
 
     /**
@@ -55,7 +58,11 @@ class NotificationIndicator extends Component
     #[Computed]
     public function recent(): Collection
     {
-        return Auth::user()?->unreadNotifications()->latest()->limit(5)->get() ?? new Collection;
+        return Auth::user()?->unreadNotifications()
+            ->whereIn('type', CustomerFacingNotifications::types())
+            ->latest()
+            ->limit(5)
+            ->get() ?? new Collection;
     }
 
     /**

@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace App\Livewire\Storefront;
 
 use App\Livewire\Storefront\Concerns\LinksToRelatedOrder;
+use App\Notifications\Support\CustomerFacingNotifications;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Notifications\DatabaseNotification;
@@ -46,7 +47,10 @@ class NotificationsPage extends Component
     #[Computed]
     public function notifications(): LengthAwarePaginator
     {
-        return Auth::user()->notifications()->latest()->paginate(20);
+        return Auth::user()->notifications()
+            ->whereIn('type', CustomerFacingNotifications::types())
+            ->latest()
+            ->paginate(20);
     }
 
     public function render(): View

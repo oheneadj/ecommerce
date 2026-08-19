@@ -11,6 +11,7 @@ namespace Tests\Feature\Storefront;
 use App\Livewire\Storefront\NotificationsPage;
 use App\Models\Order;
 use App\Models\User;
+use App\Notifications\BackupFailed;
 use App\Notifications\CustomerBroadcastNotification;
 use App\Notifications\OrderPlaced;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -88,6 +89,23 @@ class NotificationsPageTest extends TestCase
             ->assertSee('Everything is 20% off.');
 
         $this->assertNotNull($customer->notifications()->first()->read_at);
+    }
+
+    /**
+     * A Super Admin account is still a plain `User` row, so it can log
+     * into the customer-facing storefront too. Staff-only alerts (a
+     * failed backup, a critical health check) must never surface in this
+     * customer-facing view — they belong in the Filament admin bell only.
+     */
+    public function test_staff_only_notifications_never_appear_on_the_customer_facing_page(): void
+    {
+        $superAdmin = User::factory()->create();
+        $this->actingAs($superAdmin);
+        $superAdmin->notify(new BackupFailed('Some\\Exception\\Class'));
+
+        Livewire::test(NotificationsPage::class)
+            ->call('$refresh')
+            ->assertDontSee('Backup failed');
     }
 
     public function test_clicking_an_order_notification_marks_it_read_and_navigates_to_the_order(): void

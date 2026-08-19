@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — staff-only notifications (e.g. a failed backup) leaked into the customer-facing notification bell/page
+- A Super Admin account is still a plain `User` row, so logging into the customer-facing storefront with that same account surfaced internal ops alerts (`BackupFailed`, `CriticalHealthAlert`, `LowStockAlert`, etc.) in `NotificationsPage`/`NotificationIndicator` — both queried "every notification for this user" with no filtering, since the `notifications` table is shared between staff and customer accounts. The Filament admin bell (`->databaseNotifications()`) reads the same table by design and needed no equivalent filter; the storefront side did.
+- Added `App\Notifications\Support\CustomerFacingNotifications`, an explicit allow-list of customer-facing notification classes (`OrderPlaced`, `OrderShipped`, `PaymentSucceeded`, `PaymentFailed`, `CustomerBroadcastNotification`). Both storefront components now filter their queries against it.
+- 2 new tests.
+
 ### Added — technical & local SEO, Google Analytics
 - Full-app SEO audit (see `docs/technical-design-ecommerce.md` §6a) found no sitemap, a bare `robots.txt`, no canonical tags, no `noindex` on cart/checkout/account, no structured data anywhere, and no way to represent the store's physical address in a form search engines can actually use for local/Maps results.
 - Added `/sitemap.xml` (homepage, product listing, every active product, every published static page) and a dynamic `/robots.txt` (references the sitemap by absolute URL, disallows cart/checkout/account/wishlist/login) — both served by routes rather than static files, since this app is deployed per-business behind different domains.

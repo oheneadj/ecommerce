@@ -12,6 +12,7 @@ namespace Tests\Feature\Storefront;
 use App\Livewire\Storefront\NotificationIndicator;
 use App\Models\Order;
 use App\Models\User;
+use App\Notifications\BackupFailed;
 use App\Notifications\CustomerBroadcastNotification;
 use App\Notifications\OrderPlaced;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -69,6 +70,25 @@ class NotificationIndicatorTest extends TestCase
         $customer->notifications()->first()->markAsRead();
 
         Livewire::test(NotificationIndicator::class)->assertDontSee('Sale!');
+    }
+
+    /**
+     * A Super Admin account is still a plain `User` row and can log into
+     * the storefront too — a staff-only alert (backup failure, health
+     * check) must never inflate the customer-facing bell's unread count
+     * or appear in its preview, since those belong in the Filament admin
+     * bell only.
+     */
+    public function test_staff_only_notifications_are_excluded_from_the_unread_count_and_preview(): void
+    {
+        $superAdmin = User::factory()->create();
+        $this->actingAs($superAdmin);
+        $superAdmin->notify(new BackupFailed('Some\\Exception\\Class'));
+
+        Livewire::test(NotificationIndicator::class)
+            ->assertSet('unreadCount', 0)
+            ->call('toggle')
+            ->assertDontSee('Backup failed');
     }
 
     public function test_clicking_an_order_notification_in_the_preview_marks_it_read_and_navigates_to_the_order(): void

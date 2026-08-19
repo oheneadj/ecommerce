@@ -11,6 +11,7 @@ namespace App\Filament\Resources\Customers;
 
 use App\Actions\Customer\SendEmailToCustomer;
 use App\Actions\Customer\SendSmsToCustomer;
+use App\Actions\Customer\SetCustomerDisabledState;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Forms\Components\RichEditor;
@@ -82,6 +83,40 @@ class CustomerRecordActions
                 SendSmsToCustomer::run($record, $data['message']);
 
                 Notification::make()->title('SMS sent')->success()->send();
+            });
+    }
+
+    public static function disable(): Action
+    {
+        return Action::make('disable')
+            ->label('Disable')
+            ->icon(Heroicon::OutlinedNoSymbol)
+            ->color('danger')
+            ->visible(fn (User $record): bool => $record->disabled_at === null)
+            ->authorize(fn (User $record): bool => Auth::user()?->can('setDisabledState', $record) ?? false)
+            ->requiresConfirmation()
+            ->modalDescription('This immediately signs the customer out everywhere and blocks any further login attempts until re-enabled.')
+            ->action(function (User $record): void {
+                SetCustomerDisabledState::run($record, true);
+
+                Notification::make()->title('Customer disabled')->success()->send();
+            });
+    }
+
+    public static function enable(): Action
+    {
+        return Action::make('enable')
+            ->label('Enable')
+            ->icon(Heroicon::OutlinedCheckCircle)
+            ->color('success')
+            ->visible(fn (User $record): bool => $record->disabled_at !== null)
+            ->authorize(fn (User $record): bool => Auth::user()?->can('setDisabledState', $record) ?? false)
+            ->requiresConfirmation()
+            ->modalDescription('The customer will be able to log in again immediately.')
+            ->action(function (User $record): void {
+                SetCustomerDisabledState::run($record, false);
+
+                Notification::make()->title('Customer enabled')->success()->send();
             });
     }
 }

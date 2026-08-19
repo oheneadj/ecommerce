@@ -18,9 +18,12 @@ use App\Models\User;
  * separate Eloquent model.
  *
  * Customers are Admin/Super Admin only — Store Keeper's role is scoped to
- * inventory, never orders, payments, or customers (BRD role table).
- * Read-only: customer accounts are never created, edited, or deleted from
- * the admin panel — they self-register via phone/OTP or Google.
+ * inventory, never orders, payments, or customers (BRD role table). A
+ * customer's own data (name/email/phone) is never created, edited, or
+ * deleted from the admin panel — they self-register via phone/OTP or
+ * Google. Account-state actions that don't touch that data — sending a
+ * message, disabling/enabling — are a different category, same as
+ * `sendCommunication` below.
  */
 class UserPolicy
 {
@@ -41,6 +44,18 @@ class UserPolicy
      * on this resource.
      */
     public function sendCommunication(User $user, User $customer): bool
+    {
+        return $this->viewAny($user);
+    }
+
+    /**
+     * Disabling/re-enabling a customer account — same scope as everything
+     * else here. No self-disable risk to guard against: the Customers
+     * resource is already scoped to non-staff accounts only
+     * (`CustomerResource::getEloquentQuery()`), so an acting Admin/Super
+     * Admin can never appear as a `$customer` here in the first place.
+     */
+    public function setDisabledState(User $user, User $customer): bool
     {
         return $this->viewAny($user);
     }

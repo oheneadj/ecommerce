@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — disable/enable a customer account from the admin panel
+- The bug-hunt fix that made `disabled_at` actually block login (phone OTP, Google, password) surfaced a gap: nothing in the admin panel could actually *set* `disabled_at` on a customer account — staff had disable/enable already (`StaffTable`), customers didn't. The Customers resource's own policy docblock explicitly called it "read-only".
+- Added "Disable"/"Enable" row actions and matching bulk actions to the Customers table, a status column, and a new `setDisabledState` policy ability (Admin/Super Admin only, matching every other capability on this resource). New `App\Actions\Customer\SetCustomerDisabledState` — disabling kills any active session immediately (the `sessions` table, same mechanism `SetStaffDisabledState` already uses), re-enabling is a plain flag flip with no password reset (unlike staff, a customer has no invite flow to resend, and many have no password at all).
+- 11 new tests.
+
 ### Fixed — a crashing health check could abort the deploy-gate command (full-system bug hunt, 7/7)
 - `system:check --critical` (the post-deploy gate) called each registered check's `run()` with no exception handling — a check throwing (a bug in the check itself, an unseeded dependency, a DB connectivity blip) aborted the whole command with an uncaught exception and a raw stack trace instead of the intended clean per-check report, silently skipping every remaining check in both loops. `ListCriticalHealthFailures` (the admin bar's own health summary) already guards against exactly this for the same reason; this command didn't.
 - Now catches `Throwable` around each check's `run()` and reports it as `crashed` with the exception message, same as any other failing check, and continues to the rest — a single bad check can no longer take down deploy gating.

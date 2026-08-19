@@ -6,6 +6,7 @@ namespace App\Filament\Resources\Customers\Tables;
 
 use App\Actions\Customer\SendEmailToCustomer;
 use App\Actions\Customer\SendSmsToCustomer;
+use App\Actions\Customer\SetCustomerDisabledState;
 use App\Filament\Resources\Customers\CustomerRecordActions;
 use App\Models\User;
 use App\Support\SanitizesExportFormulas;
@@ -51,6 +52,10 @@ class CustomersTable
                 TextColumn::make('orders_count')
                     ->label('Orders')
                     ->counts('orders'),
+                TextColumn::make('status')
+                    ->badge()
+                    ->getStateUsing(fn (User $record): string => $record->disabled_at === null ? 'Active' : 'Disabled')
+                    ->color(fn (string $state): string => $state === 'Disabled' ? 'danger' : 'success'),
                 TextColumn::make('created_at')
                     ->label('Joined')
                     ->dateTime()
@@ -66,6 +71,8 @@ class CustomersTable
                     ViewAction::make(),
                     CustomerRecordActions::sendEmail(),
                     CustomerRecordActions::sendSms(),
+                    CustomerRecordActions::disable(),
+                    CustomerRecordActions::enable(),
                 ])
                     ->label('Actions')
                     ->icon('heroicon-m-ellipsis-vertical')
@@ -77,6 +84,8 @@ class CustomersTable
                 BulkActionGroup::make([
                     self::bulkSendEmailAction(),
                     self::bulkSendSmsAction(),
+                    self::bulkDisableAction(),
+                    self::bulkEnableAction(),
                     ExportBulkAction::make()
                         ->exports([
                             ExcelExport::make()
@@ -168,6 +177,46 @@ class CustomersTable
                 }
 
                 self::notifyBulkResult('SMS', $sent, $skipped, 'no phone on file');
+            });
+    }
+
+    private static function bulkDisableAction(): BulkAction
+    {
+        return BulkAction::make('bulkDisable')
+            ->label('Disable selected')
+            ->icon(Heroicon::OutlinedNoSymbol)
+            ->color('danger')
+            ->authorize(fn (): bool => Auth::user()?->can('viewAny', User::class) ?? false)
+            ->requiresConfirmation()
+            ->modalDescription('This immediately signs the selected customers out everywhere and blocks any further login attempts until re-enabled.')
+            ->action(function (Collection $records): void {
+                foreach ($records as $record) {
+                    if ($record instanceof User) {
+                        SetCustomerDisabledState::run($record, true);
+                    }
+                }
+
+                Notification::make()->title("{$records->count()} customer(s) disabled")->success()->send();
+            });
+    }
+
+    private static function bulkEnableAction(): BulkAction
+    {
+        return BulkAction::make('bulkEnable')
+            ->label('Enable selected')
+            ->icon(Heroicon::OutlinedCheckCircle)
+            ->color('success')
+            ->authorize(fn (): bool => Auth::user()?->can('viewAny', User::class) ?? false)
+            ->requiresConfirmation()
+            ->modalDescription('The selected customers will be able to log in again immediately.')
+            ->action(function (Collection $records): void {
+                foreach ($records as $record) {
+                    if ($record instanceof User) {
+                        SetCustomerDisabledState::run($record, false);
+                    }
+                }
+
+                Notification::make()->title("{$records->count()} customer(s) enabled")->success()->send();
             });
     }
 

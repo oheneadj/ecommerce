@@ -72,4 +72,26 @@ class Category extends Model
     {
         return $this->hasMany(Product::class);
     }
+
+    /**
+     * IDs of every category nested under this one at any depth — used to
+     * stop the admin form from letting a category become its own
+     * ancestor (a cycle), which nothing else in the schema/DB prevents.
+     * A plain recursive walk rather than a raw recursive CTE: category
+     * trees in a single-store catalog are shallow, and this only ever
+     * runs once per admin form render, not on any customer-facing path.
+     *
+     * @return array<int, int>
+     */
+    public function descendantIds(): array
+    {
+        $ids = [];
+
+        foreach ($this->children as $child) {
+            $ids[] = $child->id;
+            $ids = [...$ids, ...$child->descendantIds()];
+        }
+
+        return $ids;
+    }
 }

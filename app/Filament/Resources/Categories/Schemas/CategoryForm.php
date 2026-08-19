@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Categories\Schemas;
 
 use App\Models\Category;
+use Closure;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
@@ -37,8 +38,38 @@ class CategoryForm
 
                                 Select::make('parent_id')
                                     ->label('Parent category')
-                                    ->options(fn () => Category::query()->pluck('name', 'id'))
-                                    ->searchable(),
+                                    // Excludes the record itself and every
+                                    // one of its own descendants — either
+                                    // would create a cycle (A -> B -> A),
+                                    // which nothing else here (schema, DB
+                                    // constraint) prevents. No exclusion
+                                    // needed on create; there's no record
+                                    // yet to form a cycle with.
+                                    ->options(function (?Category $record) {
+                                        $query = Category::query();
+
+                                        if ($record !== null) {
+                                            $query->whereKeyNot($record->id)
+                                                ->whereNotIn('id', $record->descendantIds());
+                                        }
+
+                                        return $query->pluck('name', 'id');
+                                    })
+                                    ->searchable()
+                                    // The excluded options above only hide
+                                    // the choice client-side — a submitted
+                                    // value is never restricted to what was
+                                    // rendered, so the same self/descendant
+                                    // check has to be re-enforced here too.
+                                    ->rule(fn (?Category $record): Closure => function (string $attribute, mixed $value, Closure $fail) use ($record): void {
+                                        if ($record === null || $value === null) {
+                                            return;
+                                        }
+
+                                        if ((int) $value === $record->id || in_array((int) $value, $record->descendantIds(), true)) {
+                                            $fail('A category cannot be its own parent or descendant.');
+                                        }
+                                    }),
                             ]),
                     ]),
             ]);

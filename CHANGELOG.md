@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — categories could be set as their own parent, creating a cycle (full-system bug hunt, 4/7)
+- The "Parent category" select offered every category including the one being edited, with no check anywhere (model, form, or DB constraint) preventing an A → B → A cycle. A future breadcrumb or category-tree feature would infinite-loop the first time it hit one.
+- The select's options now exclude the record being edited and every one of its own descendants (new `Category::descendantIds()`), and a matching server-side validation rule enforces the same thing — hiding an option client-side was proven insufficient by a separate bug-hunt finding (staff role tampering), so the check is re-enforced on the submitted value too.
+- 4 new tests.
+
 ### Fixed — sharing a product link showed the store logo instead of the product photo
 - No Open Graph or Twitter Card meta tags existed anywhere in the app — with no `og:image`, a link-preview crawler (WhatsApp, Facebook, iMessage, etc.) fell back to whatever image it could find on the page, which in practice meant the header logo (the first `<img>` in the DOM on every page) instead of the thing actually being shared. `partials/head.blade.php` now renders `og:title`/`og:description`/`og:image`/`og:type` and matching Twitter Card tags on every page, with sane store-level defaults (logo, tagline) and per-page overrides.
 - Separately, the product page's `<title>` was hardcoded to the generic string "Product" — the outer page wrapper never had access to the resolved product, only the Livewire component nested inside it did. Now resolves the product once (cheaply, read-only) in the outer wrapper so the real name/description/primary image are present in the initial server-rendered HTML, which is what link-preview crawlers actually see (they don't wait for Livewire to hydrate).

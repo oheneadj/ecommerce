@@ -1,4 +1,4 @@
-<x-layouts::storefront :title="$page->meta_title ?: $page->title">
+<x-layouts::storefront :title="$page->meta_title ?: $page->title" :og-description="$page->meta_description">
     <div class="mx-auto max-w-3xl space-y-6">
         <h1 class="text-2xl font-semibold">{{ $page->title }}</h1>
 

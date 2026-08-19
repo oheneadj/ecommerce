@@ -34,6 +34,23 @@ class StaticPagePublicTest extends TestCase
             ->assertSee('We sell things.', false);
     }
 
+    /**
+     * meta_description was captured on the admin form but never actually
+     * rendered anywhere — a dead field until now.
+     */
+    public function test_the_pages_meta_description_is_rendered_as_an_og_description(): void
+    {
+        $page = StaticPage::factory()->create([
+            'slug' => 'about-us',
+            'is_published' => true,
+            'meta_description' => 'Learn more about our story.',
+        ]);
+
+        $this->get("/pages/{$page->slug}")
+            ->assertOk()
+            ->assertSee('og:description" content="Learn more about our story.', false);
+    }
+
     public function test_an_unpublished_static_page_is_a_404(): void
     {
         $page = StaticPage::factory()->create(['slug' => 'draft-page', 'is_published' => false]);

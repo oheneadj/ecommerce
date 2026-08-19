@@ -92,6 +92,8 @@ class RestoreFromBackup
             $zip->setPassword($password);
         }
 
+        $this->rejectSymlinkEntries($zip);
+
         if (! $zip->extractTo($extractDir)) {
             $zip->close();
 
@@ -99,6 +101,38 @@ class RestoreFromBackup
         }
 
         $zip->close();
+    }
+
+    /**
+     * `ZipArchive::extractTo()` has rejected `..`-based path-traversal
+     * entries at the extension level since PHP 7.1.8, but it still
+     * extracts symlink entries verbatim without validating their target
+     * (CVE-2014-9767) — a two-entry archive (one a symlink pointing
+     * outside `$extractDir`, a second writing through that same relative
+     * path) can write attacker-chosen content outside the intended
+     * extraction directory once the symlink is later dereferenced. Backups
+     * are normally self-generated, so this only matters if an attacker
+     * already has write access to the Google Drive backup folder — but a
+     * restore is destructive enough that failing closed here is worth it
+     * regardless of how narrow that precondition is.
+     */
+    private function rejectSymlinkEntries(ZipArchive $zip): void
+    {
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $zip->getExternalAttributesIndex($i, $opsys, $attributes);
+
+            if ($opsys !== ZipArchive::OPSYS_UNIX) {
+                continue;
+            }
+
+            $unixMode = $attributes >> 16;
+
+            if (($unixMode & 0170000) === 0120000) {
+                $zip->close();
+
+                throw new RuntimeException('Backup archive contains a symlink entry — refusing to extract.');
+            }
+        }
     }
 
     /**

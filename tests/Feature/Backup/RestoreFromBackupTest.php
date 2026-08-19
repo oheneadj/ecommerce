@@ -79,6 +79,51 @@ class RestoreFromBackupTest extends TestCase
     }
 
     /**
+     * ZipArchive::extractTo() has rejected `..`-based path traversal at
+     * the extension level since PHP 7.1.8, but it still extracts symlink
+     * entries verbatim without validating their target (CVE-2014-9767) —
+     * only matters if an attacker already has write access to the Drive
+     * backup folder, but a restore is destructive enough to fail closed
+     * regardless.
+     */
+    public function test_it_refuses_to_extract_an_archive_containing_a_symlink_entry(): void
+    {
+        Storage::fake('gdrive');
+        Process::fake();
+
+        $zipPath = $this->buildFixtureZipWithSymlink();
+        Storage::disk('gdrive')->put('backups/malicious.zip', file_get_contents($zipPath));
+        File::delete($zipPath);
+
+        $run = BackupRun::factory()->create([
+            'status' => BackupStatus::Success,
+            'disk' => 'gdrive',
+            'remote_path' => 'backups/malicious.zip',
+        ]);
+
+        $this->expectExceptionMessage('symlink');
+
+        RestoreFromBackup::run($run);
+    }
+
+    private function buildFixtureZipWithSymlink(): string
+    {
+        $zipPath = storage_path('app/backup-temp/fixture-symlink-'.uniqid().'.zip');
+        File::ensureDirectoryExists(dirname($zipPath));
+
+        $zip = new ZipArchive;
+        $zip->open($zipPath, ZipArchive::CREATE);
+        $zip->addFromString('app/public/evil-link', '/etc/cron.d');
+        // S_IFLNK (0120000) | 0777 permissions, shifted into the high 16
+        // bits Unix external attributes occupy — the same encoding a real
+        // symlink zip entry (e.g. created by `zip --symlinks`) carries.
+        $zip->setExternalAttributesIndex($zip->locateName('app/public/evil-link'), ZipArchive::OPSYS_UNIX, (0120777 << 16));
+        $zip->close();
+
+        return $zipPath;
+    }
+
+    /**
      * A minimal but structurally real backup zip: a db-dumps/*.sql file
      * and the portable app/public + app/private layout
      * config/backup.php's relative_path produces.

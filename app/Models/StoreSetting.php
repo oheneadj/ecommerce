@@ -16,6 +16,7 @@ use App\Enums\SmsProvider;
 use App\Http\Controllers\Storefront\ThemeCssController;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -50,6 +51,7 @@ use Illuminate\Support\Facades\Storage;
  * @property BackupFrequency|null $backup_frequency
  * @property int $backup_retention_days
  * @property int $tax_rate
+ * @property string $timezone
  * @property int $stock_reservation_minutes
  * @property int $low_stock_threshold
  * @property Carbon|null $health_alerts_snoozed_until
@@ -76,6 +78,7 @@ use Illuminate\Support\Facades\Storage;
     'backup_frequency',
     'backup_retention_days',
     'tax_rate',
+    'timezone',
     'stock_reservation_minutes',
     'low_stock_threshold',
     'health_alerts_snoozed_until',
@@ -148,10 +151,26 @@ class StoreSetting extends Model
      * in-memory instance when it inserts a new row (Eloquent doesn't
      * re-read the row after insert), so a freshly created row is re-fetched
      * to guarantee every attribute reflects what's actually in the database.
+     *
+     * `firstOrCreate` is a SELECT then an INSERT — not atomic — so two
+     * concurrent first-touch requests against an empty table (e.g. two
+     * admin tabs loading Store Settings right after a fresh deploy) could
+     * both see no row and both try to insert one. `singleton_key`'s
+     * unique constraint is what actually prevents a second row from ever
+     * existing; the loser of that race catches the resulting constraint
+     * violation here and re-fetches the winner's row instead.
      */
     public static function current(): self
     {
-        $settings = self::query()->firstOrCreate([]);
+        try {
+            $settings = self::query()->firstOrCreate(['singleton_key' => 'singleton']);
+        } catch (QueryException $e) {
+            if (! str_contains($e->getMessage(), 'singleton_key')) {
+                throw $e;
+            }
+
+            return self::query()->where('singleton_key', 'singleton')->firstOrFail();
+        }
 
         return $settings->wasRecentlyCreated ? ($settings->fresh() ?? $settings) : $settings;
     }

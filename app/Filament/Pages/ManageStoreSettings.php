@@ -136,8 +136,14 @@ class ManageStoreSettings extends Page implements HasForms
                                 TextInput::make('contact_phone')
                                     ->tel()
                                     ->maxLength(255)
+                                    // Normalizes on blur too, but that's
+                                    // client-side and skippable —
+                                    // dehydrateStateUsing() is the real
+                                    // guarantee, running server-side on every
+                                    // save regardless.
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(fn (?string $state, callable $set) => $set('contact_phone', PhoneNumber::normalize((string) $state) ?? $state))
+                                    ->dehydrateStateUsing(fn (?string $state): ?string => $state === null ? null : (PhoneNumber::normalize($state) ?? $state))
                                     ->rule(new PhoneNumber)
                                     ->placeholder('e.g. +233201234567 or 0201234567'),
 

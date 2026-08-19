@@ -89,6 +89,23 @@ class ManageStoreSettingsTest extends TestCase
         Storage::disk('public')->assertExists($settings->logo_path);
     }
 
+    /**
+     * The phone field only normalized on a client-side blur event —
+     * skippable — so a local-format number could previously be saved
+     * verbatim instead of the canonical E.164 form.
+     */
+    public function test_a_locally_formatted_contact_phone_is_normalized_to_e164_even_without_a_blur_event(): void
+    {
+        $this->actingAs($this->superAdmin());
+
+        Livewire::test(ManageStoreSettings::class)
+            ->fillForm(['contact_phone' => '0200000000'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('+233200000000', StoreSetting::current()->contact_phone);
+    }
+
     public function test_super_admin_can_update_social_links(): void
     {
         $this->actingAs($this->superAdmin());

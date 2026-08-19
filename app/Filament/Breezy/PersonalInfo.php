@@ -37,10 +37,13 @@ class PersonalInfo extends BasePersonalInfo
         return TextInput::make('phone')
             ->tel()
             ->maxLength(255)
-            // Normalizes on blur, before the unique/format rules below run
-            // — see the identical comment on StaffForm's phone field.
+            // Normalizes on blur too, but that's client-side and skippable
+            // (Enter key, autofill) — dehydrateStateUsing() is the real
+            // guarantee, running server-side on every save. See the
+            // identical comment on StaffForm's phone field.
             ->live(onBlur: true)
             ->afterStateUpdated(fn (?string $state, callable $set) => $set('phone', PhoneNumber::normalize((string) $state) ?? $state))
+            ->dehydrateStateUsing(fn (?string $state): ?string => $state === null ? null : (PhoneNumber::normalize($state) ?? $state))
             ->unique($this->userClass, ignorable: $this->user)
             ->rule(new PhoneNumber)
             ->placeholder('e.g. +233201234567 or 0201234567')

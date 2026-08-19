@@ -120,6 +120,33 @@ class StaffResourceTest extends TestCase
         Notification::assertSentTo($staff, StaffInvited::class);
     }
 
+    /**
+     * The phone field only normalized on a client-side blur event —
+     * skippable (Enter key, autofill, or as here, a form fill/submit with
+     * no blur ever firing at all) — so a local-format number could
+     * previously be saved verbatim instead of the canonical E.164 form
+     * every other phone input path stores, silently breaking SMS delivery.
+     */
+    public function test_a_locally_formatted_phone_is_normalized_to_e164_even_without_a_blur_event(): void
+    {
+        Notification::fake();
+        $this->actingAs($this->superAdmin());
+
+        Livewire::test(CreateStaff::class)
+            ->fillForm([
+                'name' => 'Jane Doe',
+                'email' => 'jane@example.com',
+                'phone' => '0551234567',
+                'role' => UserRole::Admin->value,
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $staff = User::query()->where('email', 'jane@example.com')->firstOrFail();
+
+        $this->assertSame('+233551234567', $staff->phone);
+    }
+
     public function test_editing_changes_the_staff_members_role(): void
     {
         $this->actingAs($this->superAdmin());

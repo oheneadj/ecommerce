@@ -63,14 +63,22 @@ class StaffForm
                                     ->required()
                                     ->tel()
                                     ->maxLength(255)
-                                    // Normalizes on blur, before the unique/format
-                                    // rules below run, so both compare against the
-                                    // same canonical E.164 shape a stored number is
-                                    // already in — not whichever of the formats
-                                    // (local, bare country code, full E.164) staff
-                                    // happened to type.
+                                    // Normalizes on blur too, so the visible
+                                    // field value matches what will actually be
+                                    // saved before the admin submits — but the
+                                    // blur event is client-side and skippable
+                                    // (Enter key, autofill, a fast form fill), so
+                                    // dehydrateStateUsing() is the real guarantee:
+                                    // it runs server-side on every save
+                                    // regardless of whether blur ever fired,
+                                    // closing the gap where an unnormalized local-
+                                    // format number could otherwise be persisted
+                                    // and silently break SMS delivery/uniqueness
+                                    // matching against the canonical E.164 form
+                                    // every other phone input path stores.
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(fn (?string $state, callable $set) => $set('phone', PhoneNumber::normalize((string) $state) ?? $state))
+                                    ->dehydrateStateUsing(fn (?string $state): ?string => $state === null ? null : (PhoneNumber::normalize($state) ?? $state))
                                     ->unique(ignoreRecord: true)
                                     ->rule(new PhoneNumber)
                                     ->placeholder('e.g. +233201234567 or 0201234567')

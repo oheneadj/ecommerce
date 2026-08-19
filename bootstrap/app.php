@@ -22,6 +22,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'webhooks/*',
         ]);
+
+        // Registration and password-reset-request have no throttle option
+        // in Fortify's own route file — see the `guest-auth-forms` limiter
+        // in App\Providers\FortifyServiceProvider for why this is applied
+        // globally (route-name-branching, Limit::none() for everything
+        // else) rather than attached to those two routes directly.
+        $middleware->appendToGroup('web', 'throttle:guest-auth-forms');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -40,6 +40,42 @@ class PasswordResetTest extends TestCase
         Notification::assertSentTo($user, ResetPassword::class);
     }
 
+    /**
+     * Fortify's own route file only conditionally throttles login/2FA/
+     * verification/passkeys — the "request a reset link" route carried no
+     * throttle at all, letting an attacker flood a victim's inbox with
+     * reset links, or probe which emails exist in the system, unthrottled.
+     */
+    public function test_requesting_a_reset_link_is_rate_limited(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create();
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->post(route('password.request'), ['email' => $user->email]);
+        }
+
+        $response = $this->post(route('password.request'), ['email' => $user->email]);
+
+        $response->assertStatus(429);
+    }
+
+    public function test_the_reset_link_rate_limit_is_scoped_per_email(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->post(route('password.request'), ['email' => $user->email]);
+        }
+
+        $response = $this->post(route('password.request'), ['email' => $otherUser->email]);
+
+        $response->assertStatus(302);
+        $response->assertSessionHasNoErrors();
+    }
+
     public function test_reset_password_screen_can_be_rendered(): void
     {
         Notification::fake();

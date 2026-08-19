@@ -64,4 +64,34 @@ class RegistrationTest extends TestCase
 
         Notification::assertSentTo($user, VerifyEmail::class);
     }
+
+    /**
+     * Fortify's own route file only conditionally throttles login/2FA/
+     * verification/passkeys — registration carried no throttle at all,
+     * letting a script mass-create accounts at unbounded rate.
+     */
+    public function test_registration_is_rate_limited(): void
+    {
+        // Deliberately invalid (mismatched confirmation) so the request
+        // never actually authenticates — a successful registration would
+        // trip the `guest` middleware on every later attempt, masking
+        // whether the throttle itself is working.
+        for ($i = 0; $i < 5; $i++) {
+            $this->post(route('register.store'), [
+                'name' => 'John Doe',
+                'email' => "test{$i}@example.com",
+                'password' => 'password',
+                'password_confirmation' => 'not-matching',
+            ]);
+        }
+
+        $response = $this->post(route('register.store'), [
+            'name' => 'John Doe',
+            'email' => 'test-over-limit@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'not-matching',
+        ]);
+
+        $response->assertStatus(429);
+    }
 }

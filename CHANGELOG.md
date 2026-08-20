@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Docs — documented the Action/Service naming convention as a deliberate CLAUDE.md override
+- Every Action class in `app/Actions/` (and the one Service) omits the generic `VerbNoun`+`Action`/`Service` suffix CLAUDE.md §4 calls for — a 100%-consistent, intentional house convention (the `AsAction` trait/directory already signal intent) that was never explicitly flagged as an override anywhere. Added a one-line cross-reference in `docs/technical-design-ecommerce.md` §4b, where the `{Verb}{Noun}` convention was already documented.
+
 ### Fixed — CLAUDE.md compliance audit findings
 - Two migrations (`create_activity_log_table`, `create_health_tables`) had no `down()`, violating the "all migrations must be reversible" rule — added `dropIfExists()` to both.
 - The checkout page's payment-provider radio loop had no `wire:key` — added one keyed by provider value, matching every other looped element on the page.

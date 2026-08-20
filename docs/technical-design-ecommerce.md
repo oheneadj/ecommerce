@@ -512,7 +512,7 @@ Idempotency is enforced at three points, without a full payment ledger:
 
 Business logic is implemented as **single-purpose Action classes** (via `lorisleiva/laravel-actions`), not broad Service classes. This is a deliberate choice for a codebase that will be reused across many client deployments and potentially navigated by AI coding agents:
 
-- **One Action = one operation**, named `{Verb}{Noun}` (e.g. `ReserveStockForOrder`, `HandlePaymentWebhook`, `ProcessRefund`), living under `app/Actions/{Domain}/`
+- **One Action = one operation**, named `{Verb}{Noun}` (e.g. `ReserveStockForOrder`, `HandlePaymentWebhook`, `ProcessRefund`), living under `app/Actions/{Domain}/` — a deliberate, project-level override of `CLAUDE.md` §4's generic `VerbNoun` + `Action`/`Service` suffix rule: the `AsAction` trait and the `app/Actions/` directory already signal intent, so every class in this codebase intentionally omits the suffix rather than reading `ApplyCouponToOrderAction::run(...)`.
 - Controllers, Livewire components, Filament resources, and API routes are all thin — they validate input and call exactly one Action; **no business logic lives outside `app/Actions/`**
 - Each Action has explicitly typed parameters (no raw arrays) and a one-line PHPDoc stating the business rule it enforces, not a restatement of the code
 - Read-only logic (listings, totals, filters) lives separately in `app/Queries/` — not modeled as Actions, since Actions are reserved for state-changing operations

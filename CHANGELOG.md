@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Refactor — extracted business logic out of the admin bar's Blade partial
+- `partials/admin-bar.blade.php` ran real business logic in an inline `@php` block (role checks, an Order query, a pending-count query, a `DetermineCriticalHealthFailure` call, policy-filtered collection building) — a genuine violation of CLAUDE.md §11's "no business logic in Blade" rule.
+- Added `App\View\Composers\AdminBarComposer`, registered via `View::composer('partials.admin-bar', ...)` in `AppServiceProvider::boot()`. The Blade file is now pure markup; all 6 existing `AdminBarTest` cases pass unchanged, confirming identical behavior.
+
 ### Added — Telescope (local/staging) and Pulse (all environments) monitoring
 - CLAUDE.md §17 mandates both; neither package was installed. Added `laravel/telescope` (query/request/job debugging, gated off automatically once `APP_ENV=production` via `config('telescope.enabled')`, overridable with `TELESCOPE_ENABLED`) and `laravel/pulse` (live performance dashboard, on by default everywhere). Both dashboards restricted to Super Admin via `viewTelescope`/`viewPulse` gates, matching the System Health page's existing access pattern.
 - Also fixed a real bug this surfaced: `config('telescope.enabled')`'s first draft called `app()->isProduction()`, which crashes (`Target class [env] does not exist`) because config files load before the container can resolve environment state — reads `env('APP_ENV')` directly instead.

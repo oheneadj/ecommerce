@@ -15,6 +15,7 @@ use App\Policies\ActivityPolicy;
 use App\Sms\Contracts\SmsGateway;
 use App\Sms\SmsManager;
 use App\Support\PasswordPolicy;
+use App\View\Composers\AdminBarComposer;
 use Carbon\CarbonImmutable;
 use Google\Client as GoogleClient;
 use Google\Service\Drive as GoogleDriveService;
@@ -31,6 +32,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use League\Flysystem\Filesystem;
@@ -65,6 +67,10 @@ class AppServiceProvider extends ServiceProvider
         $this->configureGoogleDriveDisk();
 
         Notification::extend('sms', fn ($app) => new SmsChannel($app->make(SmsGateway::class), $app->make(SmsManager::class)));
+
+        // Keeps the admin bar partial itself pure markup — every query/
+        // policy check it needs lives in the composer, not a @php block.
+        View::composer('partials.admin-bar', AdminBarComposer::class);
 
         // Laravel's policy auto-discovery can't guess a policy for a
         // third-party model outside App\Models — registered explicitly.

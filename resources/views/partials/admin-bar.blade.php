@@ -10,40 +10,10 @@
     CSS-only `:hover` dropdowns so it needs no JS/Livewire dependency in
     either context.
 --}}
-@php
-    $adminBarUser = auth()->user();
-    // The bar itself is Admin/Super Admin only — Store Keeper and
-    // customers never see it. Individual items below are additionally
-    // gated by their model's real Policy (not just this role check), so
-    // the bar automatically follows any future policy change instead of
-    // duplicating authorization logic.
-    $isSuperAdminOrAdmin = $adminBarUser?->hasAnyRole([\App\Enums\UserRole::SuperAdmin->value, \App\Enums\UserRole::Admin->value]) ?? false;
-
-    if ($isSuperAdminOrAdmin) {
-        $isSuperAdmin = $adminBarUser->hasRole(\App\Enums\UserRole::SuperAdmin->value);
-        $criticalHealthFailing = \App\Actions\Health\DetermineCriticalHealthFailure::run();
-        $canViewOrders = $adminBarUser->can('viewAny', \App\Models\Order::class);
-        $canManageCache = $adminBarUser->hasAnyRole([\App\Enums\UserRole::SuperAdmin->value, \App\Enums\UserRole::Admin->value]);
-
-        $newItems = collect([
-            ['label' => 'Product', 'route' => 'filament.admin.resources.products.create', 'model' => \App\Models\Product::class],
-            ['label' => 'Category', 'route' => 'filament.admin.resources.categories.create', 'model' => \App\Models\Category::class],
-            ['label' => 'Brand', 'route' => 'filament.admin.resources.brands.create', 'model' => \App\Models\Brand::class],
-            ['label' => 'Coupon', 'route' => 'filament.admin.resources.coupons.create', 'model' => \App\Models\Coupon::class],
-            ['label' => 'Shipping method', 'route' => 'filament.admin.resources.shipping-methods.create', 'model' => \App\Models\ShippingMethod::class],
-            ['label' => 'Static page', 'route' => 'filament.admin.resources.static-pages.create', 'model' => \App\Models\StaticPage::class],
-        ])->filter(fn (array $item) => $adminBarUser->can('create', $item['model']));
-
-        if ($canViewOrders) {
-            $pendingOrders = \App\Models\Order::query()
-                ->where('status', \App\Enums\OrderStatus::Pending)
-                ->latest()
-                ->limit(5)
-                ->get(['id', 'ulid', 'order_number', 'guest_email', 'user_id', 'grand_total']);
-            $pendingOrdersCount = \App\Models\Order::query()->where('status', \App\Enums\OrderStatus::Pending)->count();
-        }
-    }
-@endphp
+{{--
+    All authorization checks, queries, and the "New" item list live in
+    App\View\Composers\AdminBarComposer — this file is markup only.
+--}}
 @if ($isSuperAdminOrAdmin)
     <div class="wp-admin-bar">
         <style>
@@ -219,7 +189,7 @@
                 <span class="wp-admin-bar-sep"></span>
 
                 @if ($isSuperAdmin)
-                    <a href="{{ \App\Filament\Pages\SystemHealth::getUrl() }}" style="display: inline-flex; align-items: center; gap: 6px; color: #ff6b6b;">
+                    <a href="{{ $systemHealthUrl }}" style="display: inline-flex; align-items: center; gap: 6px; color: #ff6b6b;">
                         <x-app-icon name="x-circle" style="width: 14px; height: 14px; flex-shrink: 0;" />
                         Critical issue — view system health
                     </a>

@@ -68,7 +68,7 @@ class PreviewCouponDiscount
 
         return [
             'coupon' => $coupon,
-            'discount' => ValidateCoupon::discount($coupon, $subtotal),
+            'discount' => ValidateCoupon::discount($coupon, $subtotal, $items),
         ];
     }
 }

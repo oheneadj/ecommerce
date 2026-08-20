@@ -52,7 +52,7 @@ class ApplyCouponToOrder
 
             ValidateCoupon::check($coupon, $order->subtotal, $items, $order->user_id, $order->guest_email);
 
-            $discount = ValidateCoupon::discount($coupon, $order->subtotal);
+            $discount = ValidateCoupon::discount($coupon, $order->subtotal, $items);
             $shippingTotal = $coupon->type === CouponType::FreeShipping ? 0 : $order->shipping_total;
 
             $order->update([

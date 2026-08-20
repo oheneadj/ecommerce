@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — scoped coupons discounted the entire order instead of only the matching items
+- A coupon scoped to specific products/categories only checked that *at least one* cart/order item matched the scope, but the discount amount was then calculated against the full order subtotal — a coupon meant for one category (e.g. "20% off Shoes") discounted the whole cart the moment any one eligible item was present.
+- `ValidateCoupon::discount()` now calculates against a scoped subtotal (the sum of just the matching items) whenever the coupon is scoped, falling back to the full subtotal for unscoped coupons — used consistently by both `PreviewCouponDiscount` (cart) and `ApplyCouponToOrder` (order).
+- 1 new regression test.
+
 ### Fixed — staff-facing notifications rendered with a blank title in the admin bell
 - Follow-up to the fix below: once staff-only notifications were excluded from the customer-facing side, checking the admin bell for them showed the row existed but rendered blank — `BackupFailed`, `BackupSucceeded`, `CriticalHealthAlert`, `LowStockAlert`, and `ReservationsAtRiskAlert` all stored a `message` key in `toDatabase()`, but never Filament's own expected `title` key. The admin bell (`->databaseNotifications()`) reconstructs a `Filament\Notifications\Notification` from that raw payload via `Notification::fromArray()`, which reads `title` — missing it meant the bell entry existed but showed no headline text.
 - All five now include `title` (and a `status` for color: `danger`/`warning`/`success`) alongside the existing keys.

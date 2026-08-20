@@ -19,6 +19,7 @@ use App\Exceptions\InvalidCouponException;
 use App\Models\Cart;
 use App\Models\Coupon;
 use App\Models\CouponUsage;
+use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -57,6 +58,32 @@ class PreviewCouponDiscountTest extends TestCase
         $result = PreviewCouponDiscount::run($cart, $coupon->code, null, 'guest@example.com');
 
         $this->assertSame(1000, $result['discount']);
+    }
+
+    /**
+     * A coupon scoped to one product must only discount that product's
+     * subtotal, never the rest of the cart — regression test for a bug
+     * where any one matching item made the whole cart eligible for the
+     * discount amount/percentage.
+     */
+    public function test_a_scoped_coupon_only_discounts_the_matching_items_subtotal(): void
+    {
+        $coupon = Coupon::factory()->create(['type' => CouponType::Percentage, 'value' => 50]);
+        $scopedProduct = Product::factory()->create();
+        $scopedVariant = ProductVariant::factory()->create(['product_id' => $scopedProduct->id, 'price' => 10000, 'stock' => 5]);
+        $coupon->products()->attach($scopedProduct);
+
+        $otherVariant = ProductVariant::factory()->create(['price' => 20000, 'stock' => 5]);
+
+        $cart = Cart::factory()->create();
+        AddItemToCart::run($cart, $scopedVariant, 1);
+        AddItemToCart::run($cart, $otherVariant, 1);
+
+        $result = PreviewCouponDiscount::run($cart, $coupon->code, null, 'guest@example.com');
+
+        // 50% of the scoped item's 10000 subtotal only — not 50% of the
+        // full 30000 cart subtotal (which the bug would have produced).
+        $this->assertSame(5000, $result['discount']);
     }
 
     public function test_an_unknown_code_is_rejected(): void

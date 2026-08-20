@@ -61,19 +61,27 @@ class ValidateCoupon
     }
 
     /**
-     * Fixed and Percentage are both clamped to [0, subtotal] — a coupon's
-     * discount must never exceed what the order is worth, or go negative
-     * and increase the total instead.
+     * Fixed and Percentage are both clamped to [0, discount base] — a
+     * coupon's discount must never exceed what the discounted items are
+     * worth, or go negative and increase the total instead. For a scoped
+     * coupon (specific products/categories), the base is only the
+     * matching items' subtotal — a coupon that discounts one category
+     * must never discount the rest of an unrelated cart just because one
+     * eligible item happens to be present.
+     *
+     * @param  Collection<int, mixed>  $items
      */
-    public static function discount(Coupon $coupon, int $subtotal): int
+    public static function discount(Coupon $coupon, int $subtotal, Collection $items): int
     {
+        $base = $coupon->isScoped() ? self::scopedSubtotal($coupon, $items) : $subtotal;
+
         $discount = match ($coupon->type) {
             CouponType::Fixed => $coupon->value ?? 0,
-            CouponType::Percentage => (int) round($subtotal * ($coupon->value ?? 0) / 100),
+            CouponType::Percentage => (int) round($base * ($coupon->value ?? 0) / 100),
             CouponType::FreeShipping => 0,
         };
 
-        return max(0, min($discount, $subtotal));
+        return max(0, min($discount, $base));
     }
 
     /**
@@ -85,14 +93,47 @@ class ValidateCoupon
             return true;
         }
 
+        return self::scopedItems($coupon, $items)->isNotEmpty();
+    }
+
+    /**
+     * Sum of just the items a scoped coupon actually applies to — the
+     * value `discount()` calculates a percentage/fixed amount against,
+     * instead of the whole cart/order subtotal.
+     *
+     * @param  Collection<int, mixed>  $items
+     */
+    private static function scopedSubtotal(Coupon $coupon, Collection $items): int
+    {
+        return self::scopedItems($coupon, $items)->sum(fn ($item) => self::lineTotal($item));
+    }
+
+    /**
+     * @param  Collection<int, mixed>  $items
+     * @return Collection<int, mixed>
+     */
+    private static function scopedItems(Coupon $coupon, Collection $items): Collection
+    {
         $productIds = $coupon->products()->pluck('products.id');
         $categoryIds = $coupon->categories()->pluck('categories.id');
 
-        return $items->some(function ($item) use ($productIds, $categoryIds): bool {
+        return $items->filter(function ($item) use ($productIds, $categoryIds): bool {
             $product = $item->productVariant->product;
 
             return $productIds->contains($product->id) || $categoryIds->contains($product->category_id);
         });
+    }
+
+    /**
+     * `OrderItem` snapshots its price into `unit_price` at checkout, while
+     * `CartItem` always reads the variant's live price — this reads
+     * whichever one the given item actually has.
+     */
+    private static function lineTotal(mixed $item): int
+    {
+        $unitPrice = $item->unit_price ?? $item->productVariant->price;
+
+        return $unitPrice * $item->quantity;
     }
 
     private static function userUsageCount(Coupon $coupon, ?int $userId, ?string $guestEmail): int

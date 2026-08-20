@@ -29,7 +29,19 @@ class MigrationLintingTest extends TestCase
 
         $migrationsPath = dirname(__DIR__, 3).'/database/migrations/*.php';
 
-        foreach (glob($migrationsPath) as $path) {
+        // Package-published migrations (Telescope/Pulse) aren't this app's
+        // schema and carry no money columns — Pulse's own aggregates table
+        // uses `decimal` for a generic metric value (CPU%, response time,
+        // memory), never a currency amount. In scope for this rule.
+        $vendorMigrations = ['create_telescope_entries_table.php', 'create_pulse_tables.php'];
+
+        foreach (glob($migrationsPath) ?: [] as $path) {
+            $filename = basename($path);
+
+            if (array_any($vendorMigrations, fn (string $suffix): bool => str_ends_with($filename, $suffix))) {
+                continue;
+            }
+
             $contents = file_get_contents($path);
 
             if ($contents !== false && preg_match('/->decimal\(/', $contents)) {

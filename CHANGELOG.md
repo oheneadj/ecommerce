@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Telescope (local/staging) and Pulse (all environments) monitoring
+- CLAUDE.md §17 mandates both; neither package was installed. Added `laravel/telescope` (query/request/job debugging, gated off automatically once `APP_ENV=production` via `config('telescope.enabled')`, overridable with `TELESCOPE_ENABLED`) and `laravel/pulse` (live performance dashboard, on by default everywhere). Both dashboards restricted to Super Admin via `viewTelescope`/`viewPulse` gates, matching the System Health page's existing access pattern.
+- Also fixed a real bug this surfaced: `config('telescope.enabled')`'s first draft called `app()->isProduction()`, which crashes (`Target class [env] does not exist`) because config files load before the container can resolve environment state — reads `env('APP_ENV')` directly instead.
+- `MigrationLintingTest`'s decimal-column check now excludes package-published migrations (Telescope/Pulse) — Pulse's own `pulse_aggregates.value` is a generic metric column (CPU%, response time), never money, and was never in the rule's intended scope.
+
 ### Docs — documented the Action/Service naming convention as a deliberate CLAUDE.md override
 - Every Action class in `app/Actions/` (and the one Service) omits the generic `VerbNoun`+`Action`/`Service` suffix CLAUDE.md §4 calls for — a 100%-consistent, intentional house convention (the `AsAction` trait/directory already signal intent) that was never explicitly flagged as an override anywhere. Added a one-line cross-reference in `docs/technical-design-ecommerce.md` §4b, where the `{Verb}{Noun}` convention was already documented.
 

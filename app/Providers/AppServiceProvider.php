@@ -2,11 +2,13 @@
 
 namespace App\Providers;
 
+use App\Enums\UserRole;
 use App\Listeners\MergeGuestCartOnLogin;
 use App\Listeners\RecordFailedBackup;
 use App\Listeners\RecordSuccessfulBackup;
 use App\Listeners\SendEmailVerificationOnRegistration;
 use App\Models\StoreSetting;
+use App\Models\User;
 use App\Notifications\Channels\SmsChannel;
 use App\Payments\PaymentManager;
 use App\Policies\ActivityPolicy;
@@ -67,6 +69,11 @@ class AppServiceProvider extends ServiceProvider
         // Laravel's policy auto-discovery can't guess a policy for a
         // third-party model outside App\Models — registered explicitly.
         Gate::policy(Activity::class, ActivityPolicy::class);
+
+        // Pulse's live performance dashboard runs in every environment
+        // (CLAUDE.md §17), including production — restricted to the same
+        // Super-Admin-only audience as Telescope and the System Health page.
+        Gate::define('viewPulse', fn (User $user): bool => $user->hasRole(UserRole::SuperAdmin->value));
 
         // Covers every login path (phone OTP, Google, email+password, 2FA,
         // passkeys) — SessionGuard::login() always fires Login.

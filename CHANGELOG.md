@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — robots.txt left the admin panel crawlable
+- `/robots.txt` disallowed cart/checkout/account/wishlist/login but not `/admin`, leaving the Filament panel indexable.
+- Added `Disallow: /admin`. 2 new tests (no test file existed for this route before).
+
 ### Fixed — product listing price filter matched on two different variants instead of one
 - `minPrice`/`maxPrice` were applied as two separate `whereHas('variants', ...)` subqueries, so a product with one cheap variant and one expensive variant could satisfy both bounds independently even though no single variant was actually within the selected range.
 - Combined into one `whereHas('variants', ...)` closure requiring the same variant to satisfy both bounds — same pattern the listing page's `applyAttributeFilters()` already used correctly for attribute-term filters.

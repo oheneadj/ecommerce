@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — plain Admin could permanently force-delete reviews (Super-Admin-only action)
+- Same systemic gap as the earlier bulk-delete authorization fix, on a resource that fix didn't touch: `ReviewsTable`'s `ForceDeleteBulkAction` checked a single batch-wide `forceDeleteAny` ability (absent from `ReviewPolicy`, so Filament defaulted to allow) instead of each record's own `forceDelete` ability, which `ReviewPolicy` restricts to Super Admin only. A plain Admin (who has `viewAny` on this resource) could permanently force-delete reviews.
+- Added `->authorizeIndividualRecords('forceDelete')`.
+- 1 new test.
+
 ### Fixed — guest checkout accepted a malformed email address
 - `guestEmail` on the checkout page only went through a blank-string check, never a format check — unlike `guestPhone`, which is normalized/validated. A guest could complete and pay for an order with a garbage email, silently breaking their order confirmation/notification emails with no account to go back and fix it on.
 - Added a `FILTER_VALIDATE_EMAIL` check alongside the existing presence check.

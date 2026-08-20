@@ -62,7 +62,8 @@ class ReviewsTable
                     self::moderateBulkAction('approve', ReviewStatus::Approved),
                     self::moderateBulkAction('reject', ReviewStatus::Rejected),
                     DeleteBulkAction::make(),
-                    ForceDeleteBulkAction::make(),
+                    ForceDeleteBulkAction::make()
+                        ->authorizeIndividualRecords('forceDelete'),
                     RestoreBulkAction::make(),
                 ]),
             ])

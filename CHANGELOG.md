@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — CLAUDE.md compliance audit findings
+- Two migrations (`create_activity_log_table`, `create_health_tables`) had no `down()`, violating the "all migrations must be reversible" rule — added `dropIfExists()` to both.
+- The checkout page's payment-provider radio loop had no `wire:key` — added one keyed by provider value, matching every other looped element on the page.
+- (Full audit against every section of `docs/CLAUDE (1).md` found the rest of the codebase either compliant or already carrying a documented, deliberate exception — see session notes for the complete breakdown.)
+
 ### Fixed — plain Admin could permanently force-delete reviews (Super-Admin-only action)
 - Same systemic gap as the earlier bulk-delete authorization fix, on a resource that fix didn't touch: `ReviewsTable`'s `ForceDeleteBulkAction` checked a single batch-wide `forceDeleteAny` ability (absent from `ReviewPolicy`, so Filament defaulted to allow) instead of each record's own `forceDelete` ability, which `ReviewPolicy` restricts to Super Admin only. A plain Admin (who has `viewAny` on this resource) could permanently force-delete reviews.
 - Added `->authorizeIndividualRecords('forceDelete')`.

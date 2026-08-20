@@ -100,7 +100,7 @@
                 @else
                     <div class="mt-4 space-y-2">
                         @foreach ($this->enabledPaymentProviders as $setting)
-                            <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 p-3 text-sm">
+                            <label wire:key="payment-provider-{{ $setting->provider->value }}" class="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 p-3 text-sm">
                                 <input type="radio" wire:model="paymentProvider" value="{{ $setting->provider->value }}">
                                 @if ($setting->logo_url)
                                     <img src="{{ $setting->logo_url }}" alt="{{ $setting->provider->label() }}" class="h-10 w-auto shrink-0">

@@ -33,4 +33,11 @@ return new class extends Migration
             $table->index('batch');
         });
     }
+
+    public function down(): void
+    {
+        $historyItem = new HealthCheckResultHistoryItem;
+
+        Schema::connection($historyItem->getConnectionName())->dropIfExists($historyItem->getTable());
+    }
 };

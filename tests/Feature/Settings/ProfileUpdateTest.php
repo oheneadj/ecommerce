@@ -5,9 +5,9 @@ namespace Tests\Feature\Settings;
 use App\Livewire\Settings\Profile;
 use App\Models\OtpCode;
 use App\Models\User;
+use App\Notifications\QueuedVerifyEmail;
 use App\Sms\Contracts\SmsGateway;
 use App\Sms\SmsSendResult;
-use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -80,7 +80,7 @@ class ProfileUpdateTest extends TestCase
             ->call('updateProfileInformation')
             ->assertHasNoErrors();
 
-        Notification::assertSentTo($user->fresh(), VerifyEmail::class);
+        Notification::assertSentTo($user->fresh(), QueuedVerifyEmail::class);
     }
 
     public function test_changing_an_already_verified_email_sends_a_fresh_verification_email(): void
@@ -96,7 +96,7 @@ class ProfileUpdateTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertNull($user->fresh()->email_verified_at);
-        Notification::assertSentTo($user->fresh(), VerifyEmail::class);
+        Notification::assertSentTo($user->fresh(), QueuedVerifyEmail::class);
     }
 
     public function test_email_verification_status_is_unchanged_when_email_address_is_unchanged(): void

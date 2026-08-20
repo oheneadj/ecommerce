@@ -8,7 +8,7 @@ use App\Actions\Auth\LoginWithGoogle;
 use App\Enums\UserRole;
 use App\Exceptions\GoogleEmailConflictException;
 use App\Models\User;
-use Illuminate\Auth\Notifications\VerifyEmail;
+use App\Notifications\QueuedVerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Socialite\Facades\Socialite;
@@ -163,7 +163,7 @@ class GoogleLoginTest extends TestCase
             // Expected.
         }
 
-        Notification::assertSentTo($existing, VerifyEmail::class);
+        Notification::assertSentTo($existing, QueuedVerifyEmail::class);
     }
 
     public function test_the_conflict_verification_email_is_rate_limited(): void
@@ -179,7 +179,7 @@ class GoogleLoginTest extends TestCase
             }
         }
 
-        Notification::assertSentToTimes($existing, VerifyEmail::class, 1);
+        Notification::assertSentToTimes($existing, QueuedVerifyEmail::class, 1);
     }
 
     /**

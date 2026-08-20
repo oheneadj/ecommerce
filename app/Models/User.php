@@ -17,6 +17,7 @@ namespace App\Models;
 // general access gate.
 use App\Concerns\LogsAdminActivity;
 use App\Enums\UserRole;
+use App\Notifications\QueuedVerifyEmail;
 use App\Observers\UserObserver;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
@@ -178,6 +179,18 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
     public function hasUnverifiedEmailAddress(): bool
     {
         return $this->email !== null && $this->email_verified_at === null;
+    }
+
+    /**
+     * Overrides `MustVerifyEmail`'s default, which sends the framework's
+     * own `VerifyEmail` notification — that class doesn't implement
+     * `ShouldQueue`, so it blocked registration (and the resend button) on
+     * the mail transport's full round trip, unlike every other external
+     * call in this app. `QueuedVerifyEmail` is otherwise identical.
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new QueuedVerifyEmail);
     }
 
     /**

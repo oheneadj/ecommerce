@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — email verification notification sent synchronously
+- Laravel's stock `VerifyEmail` notification (used by `MustVerifyEmail`'s default `sendEmailVerificationNotification()`) doesn't implement `ShouldQueue`, so registration and the "resend" button both blocked on a full mail-transport round trip — inconsistent with this app's rule that external calls must never block the request cycle (every other notification/mail here is explicitly queued).
+- Added `App\Notifications\QueuedVerifyEmail` (same notification, `ShouldQueue` + `$tries`/`$timeout`/`$backoff`/`failed()`, routed to the `emails` queue) and overrode `User::sendEmailVerificationNotification()` to send it.
+- Existing tests updated to assert on the new class; no new tests needed (behavior is otherwise identical).
+
 ### Fixed — Store Keeper could bulk-delete records they can't individually delete
 - Filament's `DeleteBulkAction` checks a single batch-wide `deleteAny` ability by default; none of this app's policies define `deleteAny`, so Filament fell back to allowing it. Several resources grant Store Keeper `viewAny` (list access) while restricting `delete` to Admin/Super Admin (Attributes, Products, Categories, Brands, product images) — the single-record delete path correctly denied Store Keeper, but the bulk-delete toolbar action didn't check per-record at all, letting them destroy records (and, for Attributes, cascade-strip them from every product/variant using them) they had no delete permission on.
 - Added `->authorizeIndividualRecords('delete')` to the affected `DeleteBulkAction`s (Attributes, Products, Categories, Brands, product images) and, for consistency/defense-in-depth, to three more where `viewAny` already matched `delete`'s scope so there was no live gap (Coupons, ShippingMethods, StaticPages).

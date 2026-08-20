@@ -10,7 +10,7 @@ namespace Tests\Feature\Account;
 
 use App\Livewire\Account\VerifyEmailBanner;
 use App\Models\User;
-use Illuminate\Auth\Notifications\VerifyEmail;
+use App\Notifications\QueuedVerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
@@ -52,7 +52,7 @@ class VerifyEmailBannerTest extends TestCase
 
         Livewire::test(VerifyEmailBanner::class)->call('resend');
 
-        Notification::assertSentTo($user, VerifyEmail::class);
+        Notification::assertSentTo($user, QueuedVerifyEmail::class);
     }
 
     public function test_resend_is_rate_limited(): void
@@ -63,7 +63,7 @@ class VerifyEmailBannerTest extends TestCase
 
         Livewire::test(VerifyEmailBanner::class)->call('resend')->call('resend');
 
-        Notification::assertSentToTimes($user, VerifyEmail::class, 1);
+        Notification::assertSentToTimes($user, QueuedVerifyEmail::class, 1);
     }
 
     public function test_the_banner_appears_on_account_pages(): void

@@ -32,6 +32,7 @@ use App\Payments\PaymentManager;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Lazy;
 use Livewire\Attributes\Title;
@@ -374,11 +375,12 @@ class CheckoutPage extends Component
         }
 
         // Unlike a registered account's email (validated by Fortify's
-        // registration/profile rules before it's ever stored), a guest's
-        // email only ever passed through the blank-check above — a
-        // malformed value here silently breaks the order confirmation/
-        // notification emails a guest has no account to go back and fix.
-        if ($valid && trim($this->guestEmail) !== '' && ! filter_var($this->guestEmail, FILTER_VALIDATE_EMAIL)) {
+        // registration/profile rules before it's ever stored, via the
+        // same 'email' rule used here), a guest's email only ever passed
+        // through the blank-check above — a malformed value here silently
+        // breaks the order confirmation/notification emails a guest has
+        // no account to go back and fix.
+        if ($valid && trim($this->guestEmail) !== '' && Validator::make(['email' => $this->guestEmail], ['email' => 'email'])->fails()) {
             $this->addError('guestEmail', 'Please enter a valid email address.');
             $valid = false;
         }

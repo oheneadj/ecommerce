@@ -127,8 +127,20 @@ class ProductListingPage extends Component
             ->when($this->search !== '', fn ($query) => $query->whereIn('id', $this->matchingProductIds))
             ->when($this->category, fn ($query) => $query->whereHas('category', fn ($query) => $query->where('slug', $this->category)))
             ->when($this->brand, fn ($query) => $query->whereHas('brand', fn ($query) => $query->where('slug', $this->brand)))
-            ->when($this->minPrice !== null, fn ($query) => $query->whereHas('variants', fn ($query) => $query->where('price', '>=', (int) round($this->minPrice * 100))))
-            ->when($this->maxPrice !== null, fn ($query) => $query->whereHas('variants', fn ($query) => $query->where('price', '<=', (int) round($this->maxPrice * 100))));
+            ->when(
+                $this->minPrice !== null || $this->maxPrice !== null,
+                // Both bounds must be satisfied by the *same* variant — two
+                // separate whereHas calls would each independently match any
+                // variant on the product, letting e.g. a $5 variant and a
+                // $500 variant on the same product satisfy a $100-$200
+                // filter together even though neither variant is actually
+                // in range.
+                fn ($query) => $query->whereHas('variants', function ($query): void {
+                    $query
+                        ->when($this->minPrice !== null, fn ($query) => $query->where('price', '>=', (int) round($this->minPrice * 100)))
+                        ->when($this->maxPrice !== null, fn ($query) => $query->where('price', '<=', (int) round($this->maxPrice * 100)));
+                })
+            );
     }
 
     /**

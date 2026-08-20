@@ -166,6 +166,25 @@ class ProductListingPageTest extends TestCase
             ->assertSee('Expensive Item');
     }
 
+    /**
+     * Regression test: minPrice/maxPrice used to be applied as two
+     * independent `whereHas('variants', ...)` calls, so a product with one
+     * variant below the range and another above it satisfied both
+     * conditions separately even though no single variant was actually
+     * within the range.
+     */
+    public function test_a_product_is_not_matched_by_two_different_variants_each_satisfying_only_one_price_bound(): void
+    {
+        $product = Product::factory()->create(['status' => ProductStatus::Active, 'name' => 'Split Variant Product']);
+        ProductVariant::factory()->create(['product_id' => $product->id, 'status' => VariantStatus::Active, 'stock' => 5, 'price' => 1000]);
+        ProductVariant::factory()->create(['product_id' => $product->id, 'status' => VariantStatus::Active, 'stock' => 5, 'price' => 50000]);
+
+        Livewire::test(ProductListingPage::class)
+            ->set('minPrice', 100)
+            ->set('maxPrice', 200)
+            ->assertDontSee('Split Variant Product');
+    }
+
     public function test_the_price_slider_ceiling_matches_the_most_expensive_active_in_stock_variant(): void
     {
         $this->purchasableProduct(['name' => 'Cheap Item'], ['price' => 1000]);

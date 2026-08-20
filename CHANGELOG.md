@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — product listing price filter matched on two different variants instead of one
+- `minPrice`/`maxPrice` were applied as two separate `whereHas('variants', ...)` subqueries, so a product with one cheap variant and one expensive variant could satisfy both bounds independently even though no single variant was actually within the selected range.
+- Combined into one `whereHas('variants', ...)` closure requiring the same variant to satisfy both bounds — same pattern the listing page's `applyAttributeFilters()` already used correctly for attribute-term filters.
+- 1 new regression test.
+
 ### Fixed — review rating accepted any integer, not just 1-5
 - `SubmitReview`/`EditReview` wrote `rating` straight to the database with no bounds check — a crafted call (or a future storefront bug) could store `0`, negative, or double-digit ratings, corrupting average-rating displays.
 - Added `Review::MIN_RATING`/`MAX_RATING` constants and a new `InvalidReviewRatingException`, thrown by both Actions when the rating falls outside 1-5.

@@ -14,12 +14,13 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 /**
- * Backend-only for now (Epic E12.8) — content can be authored ahead of the
- * storefront existing, but nothing publicly renders it yet. Uses `slug`
- * (not a `ulid`) as its external identifier, same as Category/Brand, since
- * a content page's slug is itself the intended public URL segment.
+ * Admin-authored content page, publicly rendered at its `slug` route once
+ * published. Uses `slug` (not a `ulid`) as its external identifier, same
+ * as Category/Brand, since a content page's slug is itself the intended
+ * public URL segment.
  *
  * @property int $id
  * @property string $title
@@ -53,5 +54,15 @@ class StaticPage extends Model
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    /**
+     * `content` is raw HTML from the admin's rich text editor — sanitized
+     * here so every render site gets safe-by-default output instead of
+     * each caller needing to remember to strip scripts/handlers itself.
+     */
+    public function getSanitizedContentAttribute(): string
+    {
+        return Str::sanitizeHtml((string) $this->content);
     }
 }

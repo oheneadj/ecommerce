@@ -4,7 +4,7 @@
 
         <x-card>
             <div class="space-y-4 text-sm leading-relaxed text-zinc-700">
-                {!! $page->content !!}
+                {!! $page->sanitized_content !!}
             </div>
         </x-card>
     </div>

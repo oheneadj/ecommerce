@@ -35,6 +35,25 @@ class StaticPagePublicTest extends TestCase
     }
 
     /**
+     * The rich editor stores raw HTML — an admin account (or a compromised
+     * editor session) authoring a page with a script tag must never have
+     * it execute for storefront visitors.
+     */
+    public function test_a_scripted_page_content_is_sanitized_before_rendering(): void
+    {
+        $page = StaticPage::factory()->create([
+            'slug' => 'about-us',
+            'content' => '<p>Hello</p><script>alert(1)</script>',
+            'is_published' => true,
+        ]);
+
+        $response = $this->get("/pages/{$page->slug}")->assertOk();
+
+        $response->assertSee('Hello');
+        $response->assertDontSee('<script>alert(1)</script>', false);
+    }
+
+    /**
      * meta_description was captured on the admin form but never actually
      * rendered anywhere — a dead field until now.
      */

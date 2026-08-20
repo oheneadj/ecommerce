@@ -12,6 +12,7 @@ use App\Enums\OrderStatus;
 use App\Enums\ReviewStatus;
 use App\Enums\UserRole;
 use App\Exceptions\DuplicateReviewException;
+use App\Exceptions\InvalidReviewRatingException;
 use App\Exceptions\ReviewOwnershipException;
 use App\Exceptions\ReviewRequiresVerifiedPurchaseException;
 use App\Models\Order;
@@ -73,6 +74,37 @@ class ReviewTest extends TestCase
 
         $this->assertSame(ReviewStatus::Pending, $review->status);
         $this->assertSame($item->id, $review->order_item_id);
+    }
+
+    public function test_a_rating_below_one_is_rejected(): void
+    {
+        $user = User::factory()->create();
+        $item = $this->purchasedItem($user);
+
+        $this->expectException(InvalidReviewRatingException::class);
+
+        SubmitReview::run($user, $item, 0, 'Zero stars');
+    }
+
+    public function test_a_rating_above_five_is_rejected(): void
+    {
+        $user = User::factory()->create();
+        $item = $this->purchasedItem($user);
+
+        $this->expectException(InvalidReviewRatingException::class);
+
+        SubmitReview::run($user, $item, 6, 'Six stars');
+    }
+
+    public function test_editing_a_review_with_an_out_of_range_rating_is_rejected(): void
+    {
+        $user = User::factory()->create();
+        $item = $this->purchasedItem($user);
+        $review = SubmitReview::run($user, $item, 4, 'Original body');
+
+        $this->expectException(InvalidReviewRatingException::class);
+
+        EditReview::run($user, $review, -1, 'Changed my mind');
     }
 
     public function test_a_second_review_for_the_same_order_item_is_rejected(): void

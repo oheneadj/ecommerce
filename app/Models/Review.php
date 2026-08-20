@@ -54,6 +54,14 @@ class Review extends Model
     use HasFactory, HasUlid, LogsAdminActivity, SoftDeletes;
 
     /**
+     * The allowed star-rating bounds — enforced by SubmitReview/EditReview
+     * before a rating ever reaches this model.
+     */
+    public const MIN_RATING = 1;
+
+    public const MAX_RATING = 5;
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array

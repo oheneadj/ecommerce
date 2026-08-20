@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — review rating accepted any integer, not just 1-5
+- `SubmitReview`/`EditReview` wrote `rating` straight to the database with no bounds check — a crafted call (or a future storefront bug) could store `0`, negative, or double-digit ratings, corrupting average-rating displays.
+- Added `Review::MIN_RATING`/`MAX_RATING` constants and a new `InvalidReviewRatingException`, thrown by both Actions when the rating falls outside 1-5.
+- 3 new tests.
+
 ### Fixed — stored XSS on public static pages
 - `pages/static-page-show.blade.php` rendered `$page->content` (raw HTML from the admin rich text editor) with `{!! !!}` and no sanitization — any script tag in a static page's content executed for every storefront visitor.
 - Added `StaticPage::getSanitizedContentAttribute()` (uses Filament's `Str::sanitizeHtml()` macro, the same mechanism the package's own `RichContentRenderer::toHtml()` uses) and switched the view to render `$page->sanitized_content` instead.

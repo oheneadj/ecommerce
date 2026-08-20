@@ -11,6 +11,7 @@ namespace App\Actions\Review;
 use App\Enums\OrderStatus;
 use App\Enums\ReviewStatus;
 use App\Exceptions\DuplicateReviewException;
+use App\Exceptions\InvalidReviewRatingException;
 use App\Exceptions\ReviewRequiresVerifiedPurchaseException;
 use App\Models\OrderItem;
 use App\Models\Review;
@@ -29,6 +30,7 @@ use Lorisleiva\Actions\Concerns\AsAction;
  *
  * @throws ReviewRequiresVerifiedPurchaseException
  * @throws DuplicateReviewException
+ * @throws InvalidReviewRatingException
  */
 class SubmitReview
 {
@@ -47,6 +49,10 @@ class SubmitReview
 
         if ($orderItem->order->user_id !== $user->id || ! in_array($orderItem->order->status, self::VERIFIED_STATUSES, true)) {
             throw new ReviewRequiresVerifiedPurchaseException;
+        }
+
+        if ($rating < Review::MIN_RATING || $rating > Review::MAX_RATING) {
+            throw new InvalidReviewRatingException;
         }
 
         if (Review::query()->where('order_item_id', $orderItem->id)->exists()) {

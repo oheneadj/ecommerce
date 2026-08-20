@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace App\Actions\Review;
 
 use App\Enums\ReviewStatus;
+use App\Exceptions\InvalidReviewRatingException;
 use App\Exceptions\ReviewOwnershipException;
 use App\Models\Review;
 use App\Models\User;
@@ -21,6 +22,7 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * clear moderation again.
  *
  * @throws ReviewOwnershipException when the acting user didn't write this review
+ * @throws InvalidReviewRatingException
  */
 class EditReview
 {
@@ -30,6 +32,10 @@ class EditReview
     {
         if ($review->user_id !== $user->id) {
             throw new ReviewOwnershipException;
+        }
+
+        if ($rating < Review::MIN_RATING || $rating > Review::MAX_RATING) {
+            throw new InvalidReviewRatingException;
         }
 
         $review->update([

@@ -309,6 +309,7 @@ class ImagesRelationManager extends RelationManager
             ])
             ->toolbarActions([
                 DeleteBulkAction::make()
+                    ->authorizeIndividualRecords('delete')
                     ->before(function (Collection $records): void {
                         Storage::disk('public')->delete($records->pluck('path')->all());
                     }),

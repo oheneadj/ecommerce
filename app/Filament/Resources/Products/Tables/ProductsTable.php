@@ -79,6 +79,7 @@ class ProductsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
+                        ->authorizeIndividualRecords('delete')
                         ->using(function (Collection $records): void {
                             foreach ($records as $record) {
                                 if ($record instanceof Product) {

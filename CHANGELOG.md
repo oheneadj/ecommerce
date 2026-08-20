@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — Store Keeper could bulk-delete records they can't individually delete
+- Filament's `DeleteBulkAction` checks a single batch-wide `deleteAny` ability by default; none of this app's policies define `deleteAny`, so Filament fell back to allowing it. Several resources grant Store Keeper `viewAny` (list access) while restricting `delete` to Admin/Super Admin (Attributes, Products, Categories, Brands, product images) — the single-record delete path correctly denied Store Keeper, but the bulk-delete toolbar action didn't check per-record at all, letting them destroy records (and, for Attributes, cascade-strip them from every product/variant using them) they had no delete permission on.
+- Added `->authorizeIndividualRecords('delete')` to the affected `DeleteBulkAction`s (Attributes, Products, Categories, Brands, product images) and, for consistency/defense-in-depth, to three more where `viewAny` already matched `delete`'s scope so there was no live gap (Coupons, ShippingMethods, StaticPages).
+- 5 new tests.
+
 ### Fixed — open redirect in the "connect Google" flow
 - `GoogleAuthController::redirect()` stashed the `redirect_to` query parameter into the session verbatim, then redirected to it after a successful Google account link — an attacker could send a logged-in customer a crafted `/login/google?redirect_to=https://evil.example/...` link and land them on an external page immediately after a trusted "Google account connected" message.
 - Now only accepts a same-app relative path (`/...`, not `//...`); anything else is ignored and the default (`account.show`) is used.

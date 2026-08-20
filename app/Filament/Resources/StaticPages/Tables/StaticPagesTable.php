@@ -51,7 +51,7 @@ class StaticPagesTable
                 BulkActionGroup::make([
                     self::togglePublishedBulkAction('publish', true),
                     self::togglePublishedBulkAction('unpublish', false),
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()->authorizeIndividualRecords('delete'),
                 ]),
             ])
             ->emptyStateHeading('No pages yet')

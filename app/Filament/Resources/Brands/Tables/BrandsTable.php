@@ -48,6 +48,7 @@ class BrandsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
+                        ->authorizeIndividualRecords('delete')
                         ->before(function (Collection $records): void {
                             foreach ($records as $record) {
                                 if ($record instanceof Brand && $record->logo_path) {

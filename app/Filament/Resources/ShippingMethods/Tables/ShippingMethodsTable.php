@@ -44,7 +44,7 @@ class ShippingMethodsTable
                 BulkActionGroup::make([
                     self::toggleActiveBulkAction('activate', true),
                     self::toggleActiveBulkAction('deactivate', false),
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()->authorizeIndividualRecords('delete'),
                 ]),
             ])
             ->emptyStateHeading('No shipping methods yet')

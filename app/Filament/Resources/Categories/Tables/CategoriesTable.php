@@ -47,6 +47,7 @@ class CategoriesTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
+                        ->authorizeIndividualRecords('delete')
                         ->before(function (Collection $records): void {
                             // Same restrictOnDelete() constraint as the
                             // single-record delete (EditCategory) — checked

@@ -94,6 +94,26 @@ class AttributeResourceTest extends TestCase
         $this->assertFalse($this->storeKeeper()->can('create', Attribute::class));
     }
 
+    /**
+     * Regression: `DeleteBulkAction` checked a single batch-wide `deleteAny`
+     * ability (absent from `AttributePolicy`, so Filament defaulted to
+     * allow) instead of each record's own `delete` ability — a Store
+     * Keeper (who legitimately has `viewAny` on this list, but not
+     * `delete`, which is Admin/Super Admin only) could bulk-delete
+     * attributes straight from the list page.
+     */
+    public function test_store_keeper_cannot_bulk_delete_attributes(): void
+    {
+        $this->actingAs($this->storeKeeper());
+
+        $attribute = Attribute::factory()->create();
+
+        Livewire::test(ListAttributes::class)
+            ->callTableBulkAction('delete', [$attribute]);
+
+        $this->assertModelExists($attribute);
+    }
+
     public function test_admin_can_add_a_text_term_to_an_attribute(): void
     {
         $this->actingAs($this->admin());

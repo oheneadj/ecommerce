@@ -49,6 +49,7 @@ class AttributesTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
+                        ->authorizeIndividualRecords('delete')
                         ->requiresConfirmation()
                         ->modalDescription(function (Collection $records): string {
                             /** @var Collection<int, Attribute> $records */

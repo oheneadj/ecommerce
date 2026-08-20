@@ -112,13 +112,15 @@ class ProductsTable
                                 ->withColumns([
                                     // Plain string column names here previously fataled at
                                     // export time — withColumns() only accepts Column
-                                    // instances. `name` is sanitized against CSV/Excel
-                                    // formula injection since a lower-privileged Store
-                                    // Keeper could otherwise plant a payload for an
+                                    // instances. Every free-text column is sanitized
+                                    // against CSV/Excel formula injection since a
+                                    // lower-privileged Store Keeper could otherwise plant
+                                    // a payload (in a product name, or a category/brand
+                                    // name they can also create/edit) for an
                                     // Admin/SuperAdmin to later export and open.
                                     Column::make('name')->formatStateUsing(fn (?string $state) => SanitizesExportFormulas::sanitize($state)),
-                                    Column::make('category.name'),
-                                    Column::make('brand.name'),
+                                    Column::make('category.name')->formatStateUsing(fn (?string $state) => SanitizesExportFormulas::sanitize($state)),
+                                    Column::make('brand.name')->formatStateUsing(fn (?string $state) => SanitizesExportFormulas::sanitize($state)),
                                     Column::make('status'),
                                     Column::make('created_at'),
                                 ]),

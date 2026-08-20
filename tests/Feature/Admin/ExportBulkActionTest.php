@@ -114,4 +114,31 @@ class ExportBulkActionTest extends TestCase
         $this->assertStringContainsString('SanitizesExportFormulas::sanitize', $productsSource);
         $this->assertStringContainsString('SanitizesExportFormulas::sanitize', $stockMovementsSource);
     }
+
+    /**
+     * Regression: `name` was sanitized on both exports, but `category.name`/
+     * `brand.name` (Products) and `email` (Customers) — also free text a
+     * lower-privileged Store Keeper/self-registering customer controls —
+     * were left unsanitized. Checks per-column, not just "somewhere in the
+     * file", so a future column addition that forgets sanitization fails
+     * this test instead of silently reintroducing the gap.
+     */
+    public function test_every_free_text_export_column_is_individually_sanitized(): void
+    {
+        $productsSource = (string) file_get_contents(app_path('Filament/Resources/Products/Tables/ProductsTable.php'));
+        $customersSource = (string) file_get_contents(app_path('Filament/Resources/Customers/Tables/CustomersTable.php'));
+
+        $this->assertMatchesRegularExpression(
+            "/Column::make\('category\.name'\)->formatStateUsing\(fn \(\?string \\\$state\) => SanitizesExportFormulas::sanitize\(\\\$state\)\)/",
+            $productsSource,
+        );
+        $this->assertMatchesRegularExpression(
+            "/Column::make\('brand\.name'\)->formatStateUsing\(fn \(\?string \\\$state\) => SanitizesExportFormulas::sanitize\(\\\$state\)\)/",
+            $productsSource,
+        );
+        $this->assertMatchesRegularExpression(
+            "/Column::make\('email'\)->formatStateUsing\(fn \(\?string \\\$state\) => SanitizesExportFormulas::sanitize\(\\\$state\)\)/",
+            $customersSource,
+        );
+    }
 }

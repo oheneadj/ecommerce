@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — incomplete CSV/Excel formula-injection sanitization on exports
+- The Products export sanitized `name` against formula injection but not `category.name`/`brand.name` — both free-text fields a lower-privileged Store Keeper can also create/edit, so a planted payload could still execute when an Admin/SuperAdmin later opened the export. Same gap on the Customers export: `name` was sanitized, `email` wasn't (a self-registering customer's own free-text field).
+- Added the same `SanitizesExportFormulas::sanitize()` call to all three columns.
+- Also added `->authorizeIndividualRecords('delete')` to Announcements' and Reviews' plain `DeleteBulkAction`s for consistency with the rest of this session's bulk-authorization fixes — not independently exploitable (their `delete`/`viewAny` scopes already match), but brings every `DeleteBulkAction` in the app in line with the same pattern.
+- 1 new test (strengthened an existing one to check per-column, not just "sanitization exists somewhere in the file").
+
 ### Fixed — Telescope recorded plaintext passwords and OTP codes
 - `TelescopeServiceProvider::hideSensitiveRequestDetails()` only hid `_token`, dropping Laravel's own stock default of hiding `password`/`password_confirmation` too. Worse: almost every auth flow here is a Livewire component, so the actual request body is a JSON-encoded `components[].snapshot` string — Telescope's redaction can only reach literal top-level keys, so naming individual field names (`password`, `code`) wouldn't have redacted anything inside that encoded blob anyway. The entire `components` payload is now hidden instead, which is the only redaction that actually reaches it.
 - A Super Admin (the only role with `viewTelescope`) could otherwise read customers' plaintext login OTP codes and account passwords straight out of the Telescope dashboard.

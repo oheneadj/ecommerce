@@ -107,7 +107,7 @@ class CustomersTable
                                     // otherwise execute when an admin opens the export).
                                     Column::make('name')->formatStateUsing(fn (?string $state) => SanitizesExportFormulas::sanitize($state)),
                                     Column::make('phone'),
-                                    Column::make('email'),
+                                    Column::make('email')->formatStateUsing(fn (?string $state) => SanitizesExportFormulas::sanitize($state)),
                                     Column::make('orders_count'),
                                     Column::make('created_at'),
                                 ]),

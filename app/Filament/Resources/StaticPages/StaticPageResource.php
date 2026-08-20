@@ -17,6 +17,10 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
+/**
+ * Manages CMS-style static pages (About, Contact, Terms, etc.) shown in the
+ * "Settings" nav group as standalone admin-editable content.
+ */
 class StaticPageResource extends Resource
 {
     protected static ?string $model = StaticPage::class;
@@ -25,16 +29,19 @@ class StaticPageResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Settings';
 
+    /** Configures the static page create/edit form. */
     public static function form(Schema $schema): Schema
     {
         return StaticPageForm::configure($schema);
     }
 
+    /** Configures the static pages list table. */
     public static function table(Table $table): Table
     {
         return StaticPagesTable::configure($table);
     }
 
+    /** Maps route names to their page classes. */
     public static function getPages(): array
     {
         return [

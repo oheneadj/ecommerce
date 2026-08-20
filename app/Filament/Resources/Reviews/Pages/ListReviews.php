@@ -12,10 +12,16 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Reviews index page, with per-status tabs for the moderation queue.
+ */
 class ListReviews extends ListRecords
 {
     protected static string $resource = ReviewResource::class;
 
+    /**
+     * Header actions for the list page.
+     */
     protected function getHeaderActions(): array
     {
         return [

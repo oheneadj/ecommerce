@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Resources\Products\Pages;
 
 use App\Actions\Catalog\DeleteProduct;
@@ -18,10 +20,17 @@ use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Product edit page — view-live link, delete/force-delete/restore header
+ * actions, and update handling routed through UpdateProduct.
+ */
 class EditProduct extends EditRecord
 {
     protected static string $resource = ProductResource::class;
 
+    /**
+     * Registers the header actions for the edit page.
+     */
     protected function getHeaderActions(): array
     {
         return [

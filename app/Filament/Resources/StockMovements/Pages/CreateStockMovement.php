@@ -13,10 +13,18 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Handles creation of a manual stock movement, routing it through
+ * AdjustStockWithReservationCheck so at-risk reservations get flagged.
+ */
 class CreateStockMovement extends CreateRecord
 {
     protected static string $resource = StockMovementResource::class;
 
+    /**
+     * Applies the requested stock adjustment and warns if it left any
+     * active reservations uncovered by stock.
+     */
     protected function handleRecordCreation(array $data): StockMovement
     {
         $variant = ProductVariant::query()->findOrFail($data['product_variant_id']);

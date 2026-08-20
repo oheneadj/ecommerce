@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
@@ -14,6 +16,11 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Fortify;
 
+/**
+ * Wires Fortify's action classes, storefront views, and rate limiters —
+ * including the extra disabled-account check and the extra throttling
+ * Fortify's own routes don't cover for registration/password-reset requests.
+ */
 class FortifyServiceProvider extends ServiceProvider
 {
     /**

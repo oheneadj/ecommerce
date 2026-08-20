@@ -1,15 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Resources\Coupons\Pages;
 
 use App\Filament\Resources\Coupons\CouponResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
+/**
+ * Coupon edit page.
+ */
 class EditCoupon extends EditRecord
 {
     protected static string $resource = CouponResource::class;
 
+    /**
+     * Header actions for the edit page.
+     */
     protected function getHeaderActions(): array
     {
         return [

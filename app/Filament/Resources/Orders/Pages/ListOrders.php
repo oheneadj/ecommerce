@@ -13,10 +13,16 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Order list page — status tabs plus the overview widget.
+ */
 class ListOrders extends ListRecords
 {
     protected static string $resource = OrderResource::class;
 
+    /**
+     * Registers the "create order" header action.
+     */
     protected function getHeaderActions(): array
     {
         return [
@@ -24,6 +30,9 @@ class ListOrders extends ListRecords
         ];
     }
 
+    /**
+     * Registers the orders overview widget shown above the table.
+     */
     protected function getHeaderWidgets(): array
     {
         return [

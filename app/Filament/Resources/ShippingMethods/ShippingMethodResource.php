@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Resources\ShippingMethods;
 
 use App\Filament\Resources\ShippingMethods\Pages\CreateShippingMethod;
@@ -15,6 +17,9 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
+/**
+ * Filament resource for managing shipping methods offered at checkout.
+ */
 class ShippingMethodResource extends Resource
 {
     protected static ?string $model = ShippingMethod::class;
@@ -23,16 +28,25 @@ class ShippingMethodResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Sales';
 
+    /**
+     * Builds the create/edit form for shipping methods.
+     */
     public static function form(Schema $schema): Schema
     {
         return ShippingMethodForm::configure($schema);
     }
 
+    /**
+     * Configures the shipping methods list table.
+     */
     public static function table(Table $table): Table
     {
         return ShippingMethodsTable::configure($table);
     }
 
+    /**
+     * No relations defined for this resource.
+     */
     public static function getRelations(): array
     {
         return [
@@ -40,6 +54,9 @@ class ShippingMethodResource extends Resource
         ];
     }
 
+    /**
+     * Registers the resource's index/create/edit pages.
+     */
     public static function getPages(): array
     {
         return [

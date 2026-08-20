@@ -11,8 +11,10 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
+/** Builds the static page create/edit form: content fields and SEO metadata. */
 class StaticPageForm
 {
+    /** Configures the static page form schema. */
     public static function configure(Schema $schema): Schema
     {
         return $schema

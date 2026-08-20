@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * App-wide bindings, event listeners, and runtime defaults not owned by any other provider.
+ */
+
+declare(strict_types=1);
+
 namespace App\Providers;
 
 use App\Enums\UserRole;
@@ -42,6 +48,12 @@ use Spatie\Backup\Events\BackupHasFailed;
 use Spatie\Backup\Events\BackupWasSuccessful;
 use Symfony\Component\Mime\Address;
 
+/**
+ * Registers app-wide singletons/bindings and boots cross-cutting concerns
+ * (event listeners, the admin bar's view composer, lazy-loading
+ * prevention, local dev conveniences) that don't belong to a
+ * domain-specific provider.
+ */
 class AppServiceProvider extends ServiceProvider
 {
     /**

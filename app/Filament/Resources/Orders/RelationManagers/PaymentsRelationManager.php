@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Shows an order's payments in a read-only table, with a Super-Admin-only
+ * view action for provider callback detail.
+ */
+
 declare(strict_types=1);
 
 namespace App\Filament\Resources\Orders\RelationManagers;
@@ -26,6 +31,9 @@ class PaymentsRelationManager extends RelationManager
 {
     protected static string $relationship = 'payments';
 
+    /**
+     * Builds the read-only payments table.
+     */
     public function table(Table $table): Table
     {
         return $table

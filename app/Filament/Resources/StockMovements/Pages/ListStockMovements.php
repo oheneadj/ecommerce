@@ -12,10 +12,16 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Stock movements index page, with tabs per movement type.
+ */
 class ListStockMovements extends ListRecords
 {
     protected static string $resource = StockMovementResource::class;
 
+    /**
+     * Header actions for the list page.
+     */
     protected function getHeaderActions(): array
     {
         return [

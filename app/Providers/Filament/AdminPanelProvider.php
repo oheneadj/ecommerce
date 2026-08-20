@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Providers\Filament;
 
 use App\Filament\Breezy\PersonalInfo;
@@ -22,8 +24,15 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Jeffgreco13\FilamentBreezy\BreezyCore;
 
+/**
+ * Configures the Filament admin panel — plugins, theme, discovered
+ * resources/pages/widgets, and the panel's middleware stack.
+ */
 class AdminPanelProvider extends PanelProvider
 {
+    /**
+     * Build the admin panel configuration.
+     */
     public function panel(Panel $panel): Panel
     {
         return $panel

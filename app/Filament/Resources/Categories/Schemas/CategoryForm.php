@@ -12,8 +12,10 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
+/** Builds the category create/edit form: name, slug, and parent selection guarded against hierarchy cycles. */
 class CategoryForm
 {
+    /** Configures the category form schema. */
     public static function configure(Schema $schema): Schema
     {
         return $schema

@@ -12,10 +12,18 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Exceptions\Halt;
 
+/**
+ * Product create page — strips the variants payload off the form data and
+ * delegates creation (product + variants) to the CreateProduct action.
+ */
 class CreateProduct extends CreateRecord
 {
     protected static string $resource = ProductResource::class;
 
+    /**
+     * Creates the product and its variants, surfacing a friendly error if
+     * variant requirements aren't met.
+     */
     protected function handleRecordCreation(array $data): Product
     {
         $variants = $data['variants'] ?? [];

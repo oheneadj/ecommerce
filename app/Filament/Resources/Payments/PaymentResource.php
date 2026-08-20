@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Resources\Payments;
 
 use App\Filament\Resources\Payments\Pages\ListPayments;
@@ -31,21 +33,33 @@ class PaymentResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Sales';
 
+    /**
+     * Configures the payments list table.
+     */
     public static function table(Table $table): Table
     {
         return PaymentsTable::configure($table);
     }
 
+    /**
+     * Eager loads the order relation for the list table.
+     */
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with(['order']);
     }
 
+    /**
+     * Configures the payment detail infolist.
+     */
     public static function infolist(Schema $schema): Schema
     {
         return PaymentInfolist::configure($schema);
     }
 
+    /**
+     * Registers the refunds and API logs relation managers.
+     */
     public static function getRelations(): array
     {
         return [
@@ -54,6 +68,9 @@ class PaymentResource extends Resource
         ];
     }
 
+    /**
+     * Registers the pages available on this resource.
+     */
     public static function getPages(): array
     {
         return [
@@ -62,6 +79,9 @@ class PaymentResource extends Resource
         ];
     }
 
+    /**
+     * Payments are never created via the admin panel.
+     */
     public static function canCreate(): bool
     {
         return false;

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Settings;
 
 use App\Actions\Auth\LogOutOtherSessions;
@@ -21,6 +23,10 @@ use Livewire\Attributes\Title;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
 
+/**
+ * Storefront settings page for password changes, two-factor
+ * authentication setup, and passkey management.
+ */
 #[Title('Security settings')]
 #[Layout('layouts.storefront')]
 class Security extends Component

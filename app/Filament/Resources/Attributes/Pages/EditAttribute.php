@@ -10,10 +10,12 @@ use App\Models\ProductVariant;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
+/** Edits a single attribute, warning about product/variant impact before delete. */
 class EditAttribute extends EditRecord
 {
     protected static string $resource = AttributeResource::class;
 
+    /** Header actions shown on the attribute edit form. */
     protected function getHeaderActions(): array
     {
         return [

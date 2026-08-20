@@ -33,11 +33,17 @@ class BackupRunResource extends Resource
 
     protected static ?string $navigationLabel = 'Backups';
 
+    /**
+     * Configures the backup runs list table.
+     */
     public static function table(Table $table): Table
     {
         return BackupRunsTable::configure($table);
     }
 
+    /**
+     * Registers the resource's index page (read-only, no create/edit pages).
+     */
     public static function getPages(): array
     {
         return [
@@ -45,21 +51,33 @@ class BackupRunResource extends Resource
         ];
     }
 
+    /**
+     * Backup runs are only ever created by the backup job, never through this panel.
+     */
     public static function canCreate(): bool
     {
         return false;
     }
 
+    /**
+     * Backup runs are read-only history, never editable through this panel.
+     */
     public static function canEdit(Model $record): bool
     {
         return false;
     }
 
+    /**
+     * Restricts this resource to Super Admins only.
+     */
     public static function canAccess(): bool
     {
         return Auth::user()?->hasRole(UserRole::SuperAdmin->value) ?? false;
     }
 
+    /**
+     * Hides the navigation item from anyone who can't access the resource.
+     */
     public static function shouldRegisterNavigation(): bool
     {
         return static::canAccess();

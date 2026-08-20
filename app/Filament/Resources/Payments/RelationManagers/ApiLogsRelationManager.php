@@ -24,6 +24,9 @@ class ApiLogsRelationManager extends RelationManager
 
     protected static ?string $title = 'API Logs';
 
+    /**
+     * Configures the API logs table.
+     */
     public function table(Table $table): Table
     {
         return $table
@@ -59,6 +62,9 @@ class ApiLogsRelationManager extends RelationManager
             ->emptyStateIcon(Heroicon::OutlinedCodeBracket);
     }
 
+    /**
+     * Builds the row action that shows a log's request/response payloads.
+     */
     private static function viewPayloadAction(): Action
     {
         return Action::make('viewPayload')

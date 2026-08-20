@@ -21,8 +21,14 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 
+/**
+ * Builds the admin table for browsing and managing coupons.
+ */
 class CouponsTable
 {
+    /**
+     * Configures the coupons table's columns, filters, and actions.
+     */
     public static function configure(Table $table): Table
     {
         return $table

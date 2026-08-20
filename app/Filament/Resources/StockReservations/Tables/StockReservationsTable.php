@@ -10,8 +10,15 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
+/**
+ * Builds the read-only stock reservations list table — columns, status
+ * filter, and empty state.
+ */
 class StockReservationsTable
 {
+    /**
+     * Configures the stock reservations list table.
+     */
     public static function configure(Table $table): Table
     {
         return $table

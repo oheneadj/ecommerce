@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Resources\Reviews;
 
 use App\Filament\Resources\Reviews\Pages\ListReviews;
@@ -27,16 +29,25 @@ class ReviewResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Reviews';
 
+    /**
+     * Configures the reviews list table.
+     */
     public static function table(Table $table): Table
     {
         return ReviewsTable::configure($table);
     }
 
+    /**
+     * Eager loads the product and user relations for the list table.
+     */
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with(['product', 'user']);
     }
 
+    /**
+     * No relation managers on this resource.
+     */
     public static function getRelations(): array
     {
         return [
@@ -44,6 +55,9 @@ class ReviewResource extends Resource
         ];
     }
 
+    /**
+     * Registers the pages available on this resource.
+     */
     public static function getPages(): array
     {
         return [
@@ -51,6 +65,10 @@ class ReviewResource extends Resource
         ];
     }
 
+    /**
+     * Includes soft-deleted reviews when resolving route model bindings, so
+     * moderation actions can still target a deleted record.
+     */
     public static function getRecordRouteBindingEloquentQuery(): Builder
     {
         return parent::getRecordRouteBindingEloquentQuery()
@@ -59,6 +77,9 @@ class ReviewResource extends Resource
             ]);
     }
 
+    /**
+     * Reviews are never created via the admin panel.
+     */
     public static function canCreate(): bool
     {
         return false;

@@ -29,8 +29,15 @@ use pxlrbt\FilamentExcel\Actions\ExportBulkAction;
 use pxlrbt\FilamentExcel\Columns\Column;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
+/**
+ * Builds the customers list table — columns, row actions (email/SMS/
+ * disable/enable), and bulk equivalents plus export.
+ */
 class CustomersTable
 {
+    /**
+     * Configures the customer list table.
+     */
     public static function configure(Table $table): Table
     {
         return $table
@@ -112,6 +119,10 @@ class CustomersTable
             ->emptyStateIcon(Heroicon::OutlinedUsers);
     }
 
+    /**
+     * Sends a bulk email to selected customers, skipping any without an
+     * email on file.
+     */
     private static function bulkSendEmailAction(): BulkAction
     {
         return BulkAction::make('bulkSendEmail')
@@ -148,6 +159,10 @@ class CustomersTable
             });
     }
 
+    /**
+     * Sends a bulk SMS to selected customers, skipping any without a
+     * phone number on file.
+     */
     private static function bulkSendSmsAction(): BulkAction
     {
         return BulkAction::make('bulkSendSms')
@@ -180,6 +195,10 @@ class CustomersTable
             });
     }
 
+    /**
+     * Disables the selected customer accounts, signing them out and
+     * blocking further login.
+     */
     private static function bulkDisableAction(): BulkAction
     {
         return BulkAction::make('bulkDisable')
@@ -200,6 +219,9 @@ class CustomersTable
             });
     }
 
+    /**
+     * Re-enables the selected customer accounts, allowing login again.
+     */
     private static function bulkEnableAction(): BulkAction
     {
         return BulkAction::make('bulkEnable')
@@ -220,6 +242,9 @@ class CustomersTable
             });
     }
 
+    /**
+     * Shared success notification for the bulk email/SMS actions.
+     */
     private static function notifyBulkResult(string $channel, int $sent, int $skipped, string $skipReason): void
     {
         Notification::make()

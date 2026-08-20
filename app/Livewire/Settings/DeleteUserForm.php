@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Settings;
 
 use App\Actions\Auth\DeleteAccount;
@@ -8,6 +10,9 @@ use App\Livewire\Actions\Logout;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
+/**
+ * Storefront settings form for a customer to delete their own account.
+ */
 class DeleteUserForm extends Component
 {
     use PasswordValidationRules;

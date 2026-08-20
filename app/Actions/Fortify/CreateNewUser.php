@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Fortify's configured "create a new user" action for email+password registration.
+ */
+
+declare(strict_types=1);
+
 namespace App\Actions\Fortify;
 
 use App\Concerns\PasswordValidationRules;

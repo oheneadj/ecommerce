@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Resources\Brands;
 
 use App\Filament\Resources\Brands\Pages\CreateBrand;
@@ -15,6 +17,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
+/** Manages the catalog's product brands, including logo upload. */
 class BrandResource extends Resource
 {
     protected static ?string $model = Brand::class;
@@ -23,16 +26,19 @@ class BrandResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Catalog';
 
+    /** Configures the brand create/edit form. */
     public static function form(Schema $schema): Schema
     {
         return BrandForm::configure($schema);
     }
 
+    /** Configures the brands list table. */
     public static function table(Table $table): Table
     {
         return BrandsTable::configure($table);
     }
 
+    /** No relation managers registered. */
     public static function getRelations(): array
     {
         return [
@@ -40,6 +46,7 @@ class BrandResource extends Resource
         ];
     }
 
+    /** Maps route names to their page classes. */
     public static function getPages(): array
     {
         return [

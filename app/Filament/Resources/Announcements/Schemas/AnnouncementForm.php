@@ -15,8 +15,14 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
+/**
+ * Builds the create/edit form schema for announcements.
+ */
 class AnnouncementForm
 {
+    /**
+     * Defines the announcement details and schedule form fields.
+     */
     public static function configure(Schema $schema): Schema
     {
         return $schema

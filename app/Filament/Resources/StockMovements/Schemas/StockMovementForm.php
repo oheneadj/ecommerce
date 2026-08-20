@@ -12,8 +12,14 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
+/**
+ * Builds the manual stock movement create form.
+ */
 class StockMovementForm
 {
+    /**
+     * Configures the stock movement form's fields.
+     */
     public static function configure(Schema $schema): Schema
     {
         return $schema

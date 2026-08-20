@@ -7,10 +7,17 @@ namespace App\Filament\Resources\Customers\Pages;
 use App\Filament\Resources\Customers\CustomerResource;
 use Filament\Resources\Pages\ListRecords;
 
+/**
+ * Customer list page — no header actions; customers are never created
+ * manually, only via signup.
+ */
 class ListCustomers extends ListRecords
 {
     protected static string $resource = CustomerResource::class;
 
+    /**
+     * No header actions for this page.
+     */
     protected function getHeaderActions(): array
     {
         return [];

@@ -15,10 +15,16 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Product list page — status/low-stock tabs plus the overview widget.
+ */
 class ListProducts extends ListRecords
 {
     protected static string $resource = ProductResource::class;
 
+    /**
+     * Registers the "create product" header action.
+     */
     protected function getHeaderActions(): array
     {
         return [
@@ -26,6 +32,9 @@ class ListProducts extends ListRecords
         ];
     }
 
+    /**
+     * Registers the products overview widget shown above the table.
+     */
     protected function getHeaderWidgets(): array
     {
         return [

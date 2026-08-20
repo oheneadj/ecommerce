@@ -12,8 +12,10 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
+/** Builds the brand create/edit form: name, slug, logo upload, and description. */
 class BrandForm
 {
+    /** Configures the brand form schema. */
     public static function configure(Schema $schema): Schema
     {
         return $schema

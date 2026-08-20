@@ -25,8 +25,14 @@ use pxlrbt\FilamentExcel\Actions\ExportBulkAction;
 use pxlrbt\FilamentExcel\Columns\Column;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
+/**
+ * Builds the admin table for browsing payments and issuing refunds.
+ */
 class PaymentsTable
 {
+    /**
+     * Configures the payments table's columns, filters, actions, and export.
+     */
     public static function configure(Table $table): Table
     {
         return $table
@@ -90,6 +96,10 @@ class PaymentsTable
             ->emptyStateIcon(Heroicon::OutlinedBanknotes);
     }
 
+    /**
+     * Builds the "issue refund" row action, queuing the refund via
+     * ProcessRefund and surfacing any validation failure as a notification.
+     */
     private static function refundAction(): Action
     {
         return Action::make('refund')

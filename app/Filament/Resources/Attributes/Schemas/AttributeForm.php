@@ -11,8 +11,10 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
+/** Builds the attribute create/edit form: name, slug, and type fields. */
 class AttributeForm
 {
+    /** Configures the attribute form schema. */
     public static function configure(Schema $schema): Schema
     {
         return $schema

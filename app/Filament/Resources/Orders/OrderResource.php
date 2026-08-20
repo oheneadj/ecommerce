@@ -1,5 +1,12 @@
 <?php
 
+/**
+ * Filament resource for managing orders — table, infolist, and status/
+ * payment relation managers.
+ */
+
+declare(strict_types=1);
+
 namespace App\Filament\Resources\Orders;
 
 use App\Enums\OrderStatus;
@@ -31,21 +38,33 @@ class OrderResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Sales';
 
+    /**
+     * Builds the orders list table.
+     */
     public static function table(Table $table): Table
     {
         return OrdersTable::configure($table);
     }
 
+    /**
+     * Eager loads user and shipment to avoid N+1s on the list table.
+     */
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with(['user', 'shipment']);
     }
 
+    /**
+     * Builds the order detail infolist.
+     */
     public static function infolist(Schema $schema): Schema
     {
         return OrderInfolist::configure($schema);
     }
 
+    /**
+     * Registers the Items and Payments relation managers.
+     */
     public static function getRelations(): array
     {
         return [
@@ -54,6 +73,9 @@ class OrderResource extends Resource
         ];
     }
 
+    /**
+     * Registers the resource's index/view pages.
+     */
     public static function getPages(): array
     {
         return [
@@ -62,6 +84,9 @@ class OrderResource extends Resource
         ];
     }
 
+    /**
+     * Disables manual order creation — orders are only created via checkout.
+     */
     public static function canCreate(): bool
     {
         return false;
@@ -78,6 +103,9 @@ class OrderResource extends Resource
         return $count > 0 ? (string) $count : null;
     }
 
+    /**
+     * Colors the pending-orders navigation badge as informational.
+     */
     public static function getNavigationBadgeColor(): ?string
     {
         return 'info';

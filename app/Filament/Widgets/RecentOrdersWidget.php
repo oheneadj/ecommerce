@@ -14,6 +14,10 @@ use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Dashboard widget listing the 10 most recent orders, scoped to the
+ * dashboard's optional date-range filter.
+ */
 class RecentOrdersWidget extends TableWidget
 {
     use InteractsWithPageFilters;
@@ -24,11 +28,17 @@ class RecentOrdersWidget extends TableWidget
 
     protected int|string|array $columnSpan = 'full';
 
+    /**
+     * Visible to Admins/Super Admins only.
+     */
     public static function canView(): bool
     {
         return Auth::user()?->hasAnyRole([UserRole::SuperAdmin->value, UserRole::Admin->value]) ?? false;
     }
 
+    /**
+     * Build the recent-orders table, filtered by the dashboard's date range if set.
+     */
     public function table(Table $table): Table
     {
         $startDate = $this->filters['startDate'] ?? null;

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Resources\Products\Tables;
 
 use App\Actions\Catalog\DeleteProduct;
@@ -27,8 +29,15 @@ use pxlrbt\FilamentExcel\Actions\ExportBulkAction;
 use pxlrbt\FilamentExcel\Columns\Column;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
+/**
+ * Builds the products list table — columns, filters, row actions, bulk
+ * actions (delete, force-delete, restore, export), and empty state.
+ */
 class ProductsTable
 {
+    /**
+     * Configures the product list table.
+     */
     public static function configure(Table $table): Table
     {
         return $table

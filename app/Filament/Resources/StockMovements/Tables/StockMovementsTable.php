@@ -16,8 +16,14 @@ use pxlrbt\FilamentExcel\Actions\ExportBulkAction;
 use pxlrbt\FilamentExcel\Columns\Column;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
+/**
+ * Builds the admin table for browsing stock movements, with export.
+ */
 class StockMovementsTable
 {
+    /**
+     * Configures the stock movements table's columns, filters, and export.
+     */
     public static function configure(Table $table): Table
     {
         return $table

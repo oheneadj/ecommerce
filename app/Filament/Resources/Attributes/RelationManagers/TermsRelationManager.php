@@ -45,6 +45,7 @@ class TermsRelationManager extends RelationManager
         return $attribute;
     }
 
+    /** Configures the term create/edit form, with a swatch field matching the owning attribute's type. */
     public function form(Schema $schema): Schema
     {
         $attribute = $this->ownerAttribute();
@@ -96,6 +97,7 @@ class TermsRelationManager extends RelationManager
             ]));
     }
 
+    /** Configures the attribute values table, showing a swatch column matching the owning attribute's type. */
     public function table(Table $table): Table
     {
         return $table

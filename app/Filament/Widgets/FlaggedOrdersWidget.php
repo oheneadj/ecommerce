@@ -30,11 +30,17 @@ class FlaggedOrdersWidget extends TableWidget
 
     protected int|string|array $columnSpan = 'full';
 
+    /**
+     * Visible to Admins/Super Admins only.
+     */
     public static function canView(): bool
     {
         return Auth::user()?->hasAnyRole([UserRole::SuperAdmin->value, UserRole::Admin->value]) ?? false;
     }
 
+    /**
+     * Build the flagged-orders table, filtered by the dashboard's date range if set.
+     */
     public function table(Table $table): Table
     {
         $startDate = $this->filters['startDate'] ?? null;

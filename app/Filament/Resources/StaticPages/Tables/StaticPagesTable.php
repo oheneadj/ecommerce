@@ -18,8 +18,13 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 
+/**
+ * Builds the static pages list table: columns, actions, and bulk
+ * publish/unpublish toggles.
+ */
 class StaticPagesTable
 {
+    /** Configures the static pages list table. */
     public static function configure(Table $table): Table
     {
         return $table

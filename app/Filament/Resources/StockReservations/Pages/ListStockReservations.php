@@ -12,10 +12,16 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Lists stock reservations with per-status tabs (Active, Released, Expired, etc.).
+ */
 class ListStockReservations extends ListRecords
 {
     protected static string $resource = StockReservationResource::class;
 
+    /**
+     * @return array<int, CreateAction>
+     */
     protected function getHeaderActions(): array
     {
         return [

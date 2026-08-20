@@ -22,8 +22,15 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Builds the admin table for moderating reviews — approve/reject actions
+ * plus bulk equivalents, backed by ModerateReview.
+ */
 class ReviewsTable
 {
+    /**
+     * Configures the reviews table's columns, filters, and actions.
+     */
     public static function configure(Table $table): Table
     {
         return $table
@@ -72,6 +79,9 @@ class ReviewsTable
             ->emptyStateIcon(Heroicon::OutlinedStar);
     }
 
+    /**
+     * Builds a single-record approve/reject row action for the given status.
+     */
     private static function moderateAction(string $name, ReviewStatus $status): Action
     {
         return Action::make($name)

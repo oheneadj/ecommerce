@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Policies;
 
 use App\Enums\UserRole;
@@ -13,11 +15,17 @@ use App\Models\User;
  */
 class RefundPolicy
 {
+    /**
+     * Admins/Super Admins only.
+     */
     public function viewAny(User $user): bool
     {
         return $user->hasAnyRole([UserRole::SuperAdmin->value, UserRole::Admin->value]);
     }
 
+    /**
+     * Same rule as viewAny.
+     */
     public function view(User $user, Refund $refund): bool
     {
         return $this->viewAny($user);

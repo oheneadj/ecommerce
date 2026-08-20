@@ -15,8 +15,10 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 
+/** Builds the attributes list table: columns, actions, and bulk delete with impact warnings. */
 class AttributesTable
 {
+    /** Configures the attributes list table. */
     public static function configure(Table $table): Table
     {
         return $table

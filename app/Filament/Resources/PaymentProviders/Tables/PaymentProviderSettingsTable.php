@@ -18,8 +18,15 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
 
+/**
+ * Builds the admin table for configuring payment providers — logo,
+ * description, checkout mode, and enabled toggle.
+ */
 class PaymentProviderSettingsTable
 {
+    /**
+     * Configures the payment provider settings table.
+     */
     public static function configure(Table $table): Table
     {
         return $table

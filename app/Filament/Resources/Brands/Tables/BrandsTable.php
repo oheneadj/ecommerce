@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Resources\Brands\Tables;
 
 use App\Models\Brand;
@@ -14,8 +16,10 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Storage;
 
+/** Builds the brands list table: columns, actions, and bulk delete with logo cleanup. */
 class BrandsTable
 {
+    /** Configures the brands list table. */
     public static function configure(Table $table): Table
     {
         return $table

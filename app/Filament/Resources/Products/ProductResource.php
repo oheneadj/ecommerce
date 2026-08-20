@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Resources\Products;
 
 use App\Enums\VariantStatus;
@@ -21,6 +23,10 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use UnitEnum;
 
+/**
+ * Filament resource for managing the product catalog — form, table,
+ * variants/images relation managers, and CRUD pages.
+ */
 class ProductResource extends Resource
 {
     protected static ?string $model = Product::class;
@@ -29,21 +35,33 @@ class ProductResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Catalog';
 
+    /**
+     * Builds the product create/edit form.
+     */
     public static function form(Schema $schema): Schema
     {
         return ProductForm::configure($schema);
     }
 
+    /**
+     * Builds the product list table.
+     */
     public static function table(Table $table): Table
     {
         return ProductsTable::configure($table);
     }
 
+    /**
+     * Eager loads category and brand to avoid N+1s on the list table.
+     */
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with(['category', 'brand']);
     }
 
+    /**
+     * Registers the Variants and Images relation managers.
+     */
     public static function getRelations(): array
     {
         return [
@@ -52,6 +70,9 @@ class ProductResource extends Resource
         ];
     }
 
+    /**
+     * Registers the resource's index/create/edit pages.
+     */
     public static function getPages(): array
     {
         return [
@@ -61,6 +82,10 @@ class ProductResource extends Resource
         ];
     }
 
+    /**
+     * Allows route model binding to resolve soft-deleted products (needed
+     * for restore/force-delete actions on the edit page).
+     */
     public static function getRecordRouteBindingEloquentQuery(): Builder
     {
         return parent::getRecordRouteBindingEloquentQuery()
@@ -83,6 +108,9 @@ class ProductResource extends Resource
         return $count > 0 ? (string) $count : null;
     }
 
+    /**
+     * Colors the low-stock navigation badge as a warning.
+     */
     public static function getNavigationBadgeColor(): ?string
     {
         return 'warning';

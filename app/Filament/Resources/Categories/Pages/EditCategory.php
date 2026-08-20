@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Resources\Categories\Pages;
 
 use App\Filament\Resources\Categories\CategoryResource;
@@ -9,10 +11,12 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Exceptions\Halt;
 
+/** Edits a single category, blocking delete while products are still assigned to it. */
 class EditCategory extends EditRecord
 {
     protected static string $resource = CategoryResource::class;
 
+    /** Header actions shown on the category edit form. */
     protected function getHeaderActions(): array
     {
         return [

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Settings;
 
 use App\Actions\Auth\LinkPhoneToAccount;
@@ -18,6 +20,10 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
+/**
+ * Storefront settings page for editing name/email and adding or
+ * changing a verified phone number via OTP.
+ */
 #[Title('Profile settings')]
 #[Layout('layouts.storefront')]
 class Profile extends Component

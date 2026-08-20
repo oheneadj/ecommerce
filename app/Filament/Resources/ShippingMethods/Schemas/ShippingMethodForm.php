@@ -11,8 +11,14 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
+/**
+ * Builds the create/edit form schema for shipping methods.
+ */
 class ShippingMethodForm
 {
+    /**
+     * Defines the shipping method details form fields (name, cost, active).
+     */
     public static function configure(Schema $schema): Schema
     {
         return $schema

@@ -19,8 +19,15 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Throwable;
 
+/**
+ * Builds the read-only admin table listing backup runs, plus the run-now
+ * and restore actions.
+ */
 class BackupRunsTable
 {
+    /**
+     * Configures columns and actions for the backup runs table.
+     */
     public static function configure(Table $table): Table
     {
         return $table
@@ -56,6 +63,9 @@ class BackupRunsTable
             ->emptyStateIcon(Heroicon::OutlinedCircleStack);
     }
 
+    /**
+     * Builds the header action that dispatches an on-demand backup job.
+     */
     private static function runNowAction(): Action
     {
         return Action::make('runNow')

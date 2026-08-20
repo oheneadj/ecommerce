@@ -14,8 +14,14 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Validation\Rule;
 
+/**
+ * Builds the invite/edit form schema for staff accounts.
+ */
 class StaffForm
 {
+    /**
+     * Defines the staff details form fields (name, role, email, phone).
+     */
     public static function configure(Schema $schema): Schema
     {
         return $schema

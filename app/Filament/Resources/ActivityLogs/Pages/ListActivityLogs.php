@@ -10,10 +10,16 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
 use Spatie\Activitylog\Models\Activity;
 
+/**
+ * Activity log index page, with tabs per event type.
+ */
 class ListActivityLogs extends ListRecords
 {
     protected static string $resource = ActivityLogResource::class;
 
+    /**
+     * No header actions — activity log entries are never created via the panel.
+     */
     protected function getHeaderActions(): array
     {
         return [];

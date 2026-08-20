@@ -17,6 +17,10 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
+/**
+ * Filament resource for managing storefront announcements (banners/popups)
+ * shown to customers based on type, audience segment, and schedule.
+ */
 class AnnouncementResource extends Resource
 {
     protected static ?string $model = Announcement::class;
@@ -25,16 +29,25 @@ class AnnouncementResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Settings';
 
+    /**
+     * Builds the create/edit form for announcements.
+     */
     public static function form(Schema $schema): Schema
     {
         return AnnouncementForm::configure($schema);
     }
 
+    /**
+     * Configures the announcements list table.
+     */
     public static function table(Table $table): Table
     {
         return AnnouncementsTable::configure($table);
     }
 
+    /**
+     * Registers the resource's index/create/edit pages.
+     */
     public static function getPages(): array
     {
         return [

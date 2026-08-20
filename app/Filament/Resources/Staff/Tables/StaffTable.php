@@ -18,8 +18,14 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 
+/**
+ * Builds the admin table for browsing and managing staff accounts.
+ */
 class StaffTable
 {
+    /**
+     * Configures columns, actions, and bulk actions for the staff table.
+     */
     public static function configure(Table $table): Table
     {
         return $table
@@ -65,6 +71,9 @@ class StaffTable
             ->emptyStateIcon(Heroicon::OutlinedUserPlus);
     }
 
+    /**
+     * Derives the display status ("Invited", "Disabled", "Active") for a staff record.
+     */
     private static function statusFor(User $record): string
     {
         if ($record->disabled_at !== null) {
@@ -74,6 +83,9 @@ class StaffTable
         return $record->email_verified_at === null ? 'Invited' : 'Active';
     }
 
+    /**
+     * Builds the row action that re-sends the set-password invite to a still-invited staff member.
+     */
     private static function resendInviteAction(): Action
     {
         return Action::make('resendInvite')
@@ -87,6 +99,9 @@ class StaffTable
             });
     }
 
+    /**
+     * Builds the row action that disables a single staff member's account.
+     */
     private static function disableAction(): Action
     {
         return Action::make('disable')
@@ -103,6 +118,9 @@ class StaffTable
             });
     }
 
+    /**
+     * Builds the row action that re-enables a single disabled staff member's account.
+     */
     private static function enableAction(): Action
     {
         return Action::make('enable')
@@ -119,6 +137,9 @@ class StaffTable
             });
     }
 
+    /**
+     * Builds the bulk action that disables all selected staff accounts.
+     */
     private static function bulkDisableAction(): BulkAction
     {
         return BulkAction::make('bulkDisable')
@@ -138,6 +159,9 @@ class StaffTable
             });
     }
 
+    /**
+     * Builds the bulk action that re-enables all selected staff accounts.
+     */
     private static function bulkEnableAction(): BulkAction
     {
         return BulkAction::make('bulkEnable')

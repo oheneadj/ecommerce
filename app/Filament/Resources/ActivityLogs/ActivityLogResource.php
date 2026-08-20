@@ -33,16 +33,25 @@ class ActivityLogResource extends Resource
 
     protected static ?string $navigationLabel = 'Activity Log';
 
+    /**
+     * Configures the activity log list table.
+     */
     public static function table(Table $table): Table
     {
         return ActivityLogsTable::configure($table);
     }
 
+    /**
+     * Eager loads the causer relation for the list table.
+     */
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with(['causer']);
     }
 
+    /**
+     * Registers the pages available on this resource.
+     */
     public static function getPages(): array
     {
         return [
@@ -50,16 +59,25 @@ class ActivityLogResource extends Resource
         ];
     }
 
+    /**
+     * Activity log entries are never created via the admin panel.
+     */
     public static function canCreate(): bool
     {
         return false;
     }
 
+    /**
+     * Restricts this resource to Super Admins only.
+     */
     public static function canAccess(): bool
     {
         return Auth::user()?->hasRole(UserRole::SuperAdmin->value) ?? false;
     }
 
+    /**
+     * Hides the nav item for anyone who can't access the resource.
+     */
     public static function shouldRegisterNavigation(): bool
     {
         return static::canAccess();

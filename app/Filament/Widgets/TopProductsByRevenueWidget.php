@@ -10,6 +10,10 @@ use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Dashboard bar chart of top products by revenue, scoped to the
+ * dashboard's optional date-range filter.
+ */
 class TopProductsByRevenueWidget extends ChartWidget
 {
     use InteractsWithPageFilters;
@@ -18,16 +22,25 @@ class TopProductsByRevenueWidget extends ChartWidget
 
     protected static ?int $sort = 8;
 
+    /**
+     * Visible to Admins/Super Admins only.
+     */
     public static function canView(): bool
     {
         return Auth::user()?->hasAnyRole([UserRole::SuperAdmin->value, UserRole::Admin->value]) ?? false;
     }
 
+    /**
+     * Renders as a horizontal bar chart.
+     */
     protected function getType(): string
     {
         return 'bar';
     }
 
+    /**
+     * Chart.js options: horizontal bars, no legend.
+     */
     protected function getOptions(): array
     {
         return [
@@ -40,6 +53,9 @@ class TopProductsByRevenueWidget extends ChartWidget
         ];
     }
 
+    /**
+     * Top products by revenue, in whole-currency units, for the chart dataset.
+     */
     protected function getData(): array
     {
         $startDate = $this->filters['startDate'] ?? null;

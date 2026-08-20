@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Resources\Categories\Tables;
 
 use App\Models\Category;
@@ -14,8 +16,10 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 
+/** Builds the categories list table: columns, actions, and bulk delete guarded against in-use categories. */
 class CategoriesTable
 {
+    /** Configures the categories list table. */
     public static function configure(Table $table): Table
     {
         return $table

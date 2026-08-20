@@ -12,10 +12,16 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Payments index page, with tabs per payment status.
+ */
 class ListPayments extends ListRecords
 {
     protected static string $resource = PaymentResource::class;
 
+    /**
+     * Header actions for the list page.
+     */
     protected function getHeaderActions(): array
     {
         return [

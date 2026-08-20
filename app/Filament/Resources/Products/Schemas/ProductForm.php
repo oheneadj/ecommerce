@@ -19,8 +19,15 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
+/**
+ * Builds the product create/edit form — basic info, attributes, variants
+ * repeater, and SEO fields.
+ */
 class ProductForm
 {
+    /**
+     * Configures the product form schema.
+     */
     public static function configure(Schema $schema): Schema
     {
         return $schema

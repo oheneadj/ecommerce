@@ -39,6 +39,10 @@ class DashboardStatsOverview extends StatsOverviewWidget
 
     protected int|array|null $columns = 3;
 
+    /**
+     * Build the stat cards for the current user's role and the dashboard's
+     * optional date-range filter.
+     */
     protected function getStats(): array
     {
         $metrics = app(DashboardMetricsQuery::class);

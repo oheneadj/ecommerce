@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Settings\TwoFactor;
 
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -7,6 +9,10 @@ use Laravel\Fortify\Actions\GenerateNewRecoveryCodes;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
+/**
+ * Storefront settings component displaying and regenerating the user's
+ * two-factor recovery codes.
+ */
 class RecoveryCodes extends Component
 {
     /** @var list<string> */

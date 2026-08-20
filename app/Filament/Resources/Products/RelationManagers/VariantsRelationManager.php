@@ -48,10 +48,17 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Manages a product's variants — create/edit form, list table, stock/price
+ * adjustment actions, image attachment, and bulk variant generation.
+ */
 class VariantsRelationManager extends RelationManager
 {
     protected static string $relationship = 'variants';
 
+    /**
+     * Builds the variant create/edit form.
+     */
     public function form(Schema $schema): Schema
     {
         return $schema
@@ -151,6 +158,9 @@ class VariantsRelationManager extends RelationManager
             ]);
     }
 
+    /**
+     * Builds the variants list table.
+     */
     public function table(Table $table): Table
     {
         return $table
@@ -414,6 +424,10 @@ class VariantsRelationManager extends RelationManager
             });
     }
 
+    /**
+     * Bulk-deletes variants via DeleteProductVariant, surfacing a single
+     * notification if any deletion downgraded the product to Draft.
+     */
     private static function deleteBulkAction(): BulkAction
     {
         return DeleteBulkAction::make()
@@ -520,6 +534,10 @@ class VariantsRelationManager extends RelationManager
             });
     }
 
+    /**
+     * The bulk counterpart to adjustStockAction() — applies the same
+     * delta to every selected variant via AdjustStockWithReservationCheck.
+     */
     private static function bulkAdjustStockAction(): BulkAction
     {
         return BulkAction::make('bulkAdjustStock')
@@ -544,6 +562,11 @@ class VariantsRelationManager extends RelationManager
             });
     }
 
+    /**
+     * Applies a percentage price change to every selected variant, wrapped
+     * in a single transaction so a partial batch failure doesn't leave
+     * prices half-updated.
+     */
     private static function bulkAdjustPriceAction(): BulkAction
     {
         return BulkAction::make('bulkAdjustPrice')

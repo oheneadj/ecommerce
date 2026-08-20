@@ -13,8 +13,14 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Spatie\Activitylog\Models\Activity;
 
+/**
+ * Builds the read-only admin table for browsing the activity log.
+ */
 class ActivityLogsTable
 {
+    /**
+     * Configures the activity log table's columns, filters, and actions.
+     */
     public static function configure(Table $table): Table
     {
         return $table
@@ -62,6 +68,9 @@ class ActivityLogsTable
             ->emptyStateIcon(Heroicon::OutlinedClipboardDocumentList);
     }
 
+    /**
+     * Builds the row action that shows a log entry's before/after diff.
+     */
     private static function viewChangesAction(): Action
     {
         return Action::make('viewChanges')

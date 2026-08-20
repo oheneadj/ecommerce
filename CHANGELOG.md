@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Docs — added missing `declare(strict_types=1)` and docblocks across the Filament resource subtree
+- CLAUDE.md compliance audit found ~36 files missing `declare(strict_types=1)` and ~99 files missing file/class-level docblocks, almost entirely generator-scaffolded Filament `Resource`/`Table`/`Schema`/`Page`/`RelationManager`/`Widget` classes and a handful of core Providers/Policies/Livewire settings components that were never annotated after being generated.
+- Added the missing annotations across every affected file — pure annotation, no logic/behavior changes. Also fixed one real type inaccuracy this surfaced: `ProfileValidationRules::emailRules()`'s docblock didn't account for `Illuminate\Validation\Rules\Unique` (only visible once `strict_types` was added to a class using the trait and PHPStan actually analyzed that context).
+- Verified with Pint, a full-codebase PHPStan run (0 errors), and targeted test runs across every touched resource — all green, no regressions.
+
 ### Refactor — extracted business logic out of the admin bar's Blade partial
 - `partials/admin-bar.blade.php` ran real business logic in an inline `@php` block (role checks, an Order query, a pending-count query, a `DetermineCriticalHealthFailure` call, policy-filtered collection building) — a genuine violation of CLAUDE.md §11's "no business logic in Blade" rule.
 - Added `App\View\Composers\AdminBarComposer`, registered via `View::composer('partials.admin-bar', ...)` in `AppServiceProvider::boot()`. The Blade file is now pure markup; all 6 existing `AdminBarTest` cases pass unchanged, confirming identical behavior.

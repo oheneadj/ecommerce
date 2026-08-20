@@ -14,8 +14,14 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
+/**
+ * Builds the coupon create/edit form — details, usage limits, and scope.
+ */
 class CouponForm
 {
+    /**
+     * Configures the coupon form's fields and sections.
+     */
     public static function configure(Schema $schema): Schema
     {
         return $schema

@@ -31,16 +31,19 @@ class AttributeResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Catalog';
 
+    /** Configures the attribute create/edit form. */
     public static function form(Schema $schema): Schema
     {
         return AttributeForm::configure($schema);
     }
 
+    /** Configures the attributes list table. */
     public static function table(Table $table): Table
     {
         return AttributesTable::configure($table);
     }
 
+    /** Registers the attribute values relation manager. */
     public static function getRelations(): array
     {
         return [
@@ -48,6 +51,7 @@ class AttributeResource extends Resource
         ];
     }
 
+    /** Maps route names to their page classes. */
     public static function getPages(): array
     {
         return [

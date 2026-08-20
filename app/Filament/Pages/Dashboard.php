@@ -80,6 +80,9 @@ class Dashboard extends BaseDashboard
         ];
     }
 
+    /**
+     * The date-range filter action modal plus its "all time" and "reset" shortcuts.
+     */
     protected function getHeaderActions(): array
     {
         return [
@@ -151,6 +154,9 @@ class Dashboard extends BaseDashboard
         return "Overview from {$startLabel} to {$endLabel}";
     }
 
+    /**
+     * Creation date of the store's first order, used to floor the "all time" range.
+     */
     private function earliestOrderDate(): string
     {
         return Order::query()->oldest()->value('created_at')?->toDateString() ?? now()->toDateString();

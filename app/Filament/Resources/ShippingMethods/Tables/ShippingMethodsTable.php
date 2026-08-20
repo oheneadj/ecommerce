@@ -18,8 +18,14 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
+/**
+ * Builds the admin table for browsing and managing shipping methods.
+ */
 class ShippingMethodsTable
 {
+    /**
+     * Configures columns, actions, and bulk actions for the shipping methods table.
+     */
     public static function configure(Table $table): Table
     {
         return $table

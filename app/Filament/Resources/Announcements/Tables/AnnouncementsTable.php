@@ -20,8 +20,14 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 
+/**
+ * Builds the admin table for browsing and managing announcements.
+ */
 class AnnouncementsTable
 {
+    /**
+     * Configures columns, filters, and actions for the announcements table.
+     */
     public static function configure(Table $table): Table
     {
         return $table
@@ -76,6 +82,9 @@ class AnnouncementsTable
             ]);
     }
 
+    /**
+     * Builds a bulk action that flips `active` to the given value for selected records.
+     */
     private static function toggleActiveBulkAction(string $name, bool $active): BulkAction
     {
         return BulkAction::make($name)

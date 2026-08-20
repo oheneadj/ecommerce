@@ -11,10 +11,16 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Coupons index page, with tabs for active/inactive/expired coupons.
+ */
 class ListCoupons extends ListRecords
 {
     protected static string $resource = CouponResource::class;
 
+    /**
+     * Header actions for the list page.
+     */
     protected function getHeaderActions(): array
     {
         return [

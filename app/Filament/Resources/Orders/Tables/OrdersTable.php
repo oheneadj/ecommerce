@@ -25,8 +25,15 @@ use pxlrbt\FilamentExcel\Actions\ExportBulkAction;
 use pxlrbt\FilamentExcel\Columns\Column;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
+/**
+ * Builds the orders list table — columns, filters, row actions, and bulk
+ * status update/export.
+ */
 class OrdersTable
 {
+    /**
+     * Configures the order list table.
+     */
     public static function configure(Table $table): Table
     {
         return $table
@@ -99,6 +106,10 @@ class OrdersTable
             ->emptyStateIcon(Heroicon::OutlinedShoppingBag);
     }
 
+    /**
+     * Bulk-applies a status change via UpdateOrderStatus, skipping (and
+     * reporting) any order the target status isn't a valid transition for.
+     */
     private static function bulkUpdateStatusAction(): BulkAction
     {
         return BulkAction::make('bulkUpdateStatus')

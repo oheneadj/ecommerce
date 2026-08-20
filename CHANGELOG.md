@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — Telescope recorded plaintext passwords and OTP codes
+- `TelescopeServiceProvider::hideSensitiveRequestDetails()` only hid `_token`, dropping Laravel's own stock default of hiding `password`/`password_confirmation` too. Worse: almost every auth flow here is a Livewire component, so the actual request body is a JSON-encoded `components[].snapshot` string — Telescope's redaction can only reach literal top-level keys, so naming individual field names (`password`, `code`) wouldn't have redacted anything inside that encoded blob anyway. The entire `components` payload is now hidden instead, which is the only redaction that actually reaches it.
+- A Super Admin (the only role with `viewTelescope`) could otherwise read customers' plaintext login OTP codes and account passwords straight out of the Telescope dashboard.
+- 2 new tests.
+
 ### Docs — added missing `declare(strict_types=1)` and docblocks across the Filament resource subtree
 - CLAUDE.md compliance audit found ~36 files missing `declare(strict_types=1)` and ~99 files missing file/class-level docblocks, almost entirely generator-scaffolded Filament `Resource`/`Table`/`Schema`/`Page`/`RelationManager`/`Widget` classes and a handful of core Providers/Policies/Livewire settings components that were never annotated after being generated.
 - Added the missing annotations across every affected file — pure annotation, no logic/behavior changes. Also fixed one real type inaccuracy this surfaced: `ProfileValidationRules::emailRules()`'s docblock didn't account for `Illuminate\Validation\Rules\Unique` (only visible once `strict_types` was added to a class using the trait and PHPStan actually analyzed that context).

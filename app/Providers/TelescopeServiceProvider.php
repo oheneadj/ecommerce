@@ -49,7 +49,20 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
             return;
         }
 
-        Telescope::hideRequestParameters(['_token']);
+        // Most auth flows here are Livewire components, not classic form
+        // posts — a Livewire AJAX request's body carries the component's
+        // full public property state (App\Livewire\Auth\PhoneLogin's
+        // $code, Settings\Security's $password, etc.) nested inside a
+        // JSON-encoded `components[].snapshot` string. Telescope's own
+        // redaction (Arr::get/Arr::set) can only reach literal top-level
+        // request keys, never into that encoded string, so naming
+        // `password`/`code` here would silently redact nothing for any
+        // Livewire request — the entire `components` payload is hidden
+        // instead. Laravel's stock Telescope stub hides
+        // password/password_confirmation by default for classic form
+        // posts; this app's override had dropped even that, so both are
+        // named too for the (few) non-Livewire auth routes.
+        Telescope::hideRequestParameters(['_token', 'password', 'password_confirmation', 'current_password', 'components']);
 
         Telescope::hideRequestHeaders([
             'cookie',

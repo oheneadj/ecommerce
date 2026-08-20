@@ -676,6 +676,36 @@ class CheckoutPageTest extends TestCase
     }
 
     /**
+     * Regression: guestEmail only went through a blank-check, never a
+     * format check — a malformed value (unlike guestPhone, which is
+     * normalized/validated) would silently break order confirmation/
+     * notification emails for a guest with no account to fix it on.
+     */
+    public function test_a_malformed_guest_email_is_rejected(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+        $shippingMethod = ShippingMethod::factory()->create(['active' => true]);
+
+        AddItemToCart::run(
+            ResolveCurrentCart::run(null, ResolveCurrentCart::guestSessionId()),
+            $variant,
+            1,
+        );
+
+        Livewire::test(CheckoutPage::class, ['lazy' => false])
+            ->set('selectedShippingMethodId', $shippingMethod->id)
+            ->set('guestName', 'Ama Boateng')
+            ->set('guestEmail', 'not-an-email')
+            ->set('guestPhone', '+233244000000')
+            ->set('guestLine1', '12 Ring Road')
+            ->set('guestCity', 'Accra')
+            ->call('placeOrder')
+            ->assertHasErrors(['guestEmail']);
+
+        $this->assertSame(0, Order::query()->count());
+    }
+
+    /**
      * Regression test for a bug where every <x-input> on the page showed
      * the *first* validation error in the whole bag (MessageBag::has(null)
      * / first(null) match any/all errors) instead of its own field's

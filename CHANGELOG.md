@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — guest checkout accepted a malformed email address
+- `guestEmail` on the checkout page only went through a blank-string check, never a format check — unlike `guestPhone`, which is normalized/validated. A guest could complete and pay for an order with a garbage email, silently breaking their order confirmation/notification emails with no account to go back and fix it on.
+- Added a `FILTER_VALIDATE_EMAIL` check alongside the existing presence check.
+- 1 new test.
+
 ### Fixed — email verification notification sent synchronously
 - Laravel's stock `VerifyEmail` notification (used by `MustVerifyEmail`'s default `sendEmailVerificationNotification()`) doesn't implement `ShouldQueue`, so registration and the "resend" button both blocked on a full mail-transport round trip — inconsistent with this app's rule that external calls must never block the request cycle (every other notification/mail here is explicitly queued).
 - Added `App\Notifications\QueuedVerifyEmail` (same notification, `ShouldQueue` + `$tries`/`$timeout`/`$backoff`/`failed()`, routed to the `emails` queue) and overrode `User::sendEmailVerificationNotification()` to send it.

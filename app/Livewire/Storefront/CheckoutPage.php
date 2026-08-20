@@ -373,6 +373,16 @@ class CheckoutPage extends Component
             }
         }
 
+        // Unlike a registered account's email (validated by Fortify's
+        // registration/profile rules before it's ever stored), a guest's
+        // email only ever passed through the blank-check above — a
+        // malformed value here silently breaks the order confirmation/
+        // notification emails a guest has no account to go back and fix.
+        if ($valid && trim($this->guestEmail) !== '' && ! filter_var($this->guestEmail, FILTER_VALIDATE_EMAIL)) {
+            $this->addError('guestEmail', 'Please enter a valid email address.');
+            $valid = false;
+        }
+
         // Normalized (not just format-checked) separately from the
         // presence loop above — this matters more here than anywhere else
         // phone numbers are collected: a guest's order confirmation/

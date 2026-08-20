@@ -232,6 +232,49 @@ class GoogleLoginTest extends TestCase
         $this->assertNull($currentUser->fresh()->google_id);
     }
 
+    /**
+     * Regression: `redirect_to` used to be stashed into the session
+     * verbatim with no validation — an absolute/external URL here would
+     * let an attacker send a logged-in customer through a real Google
+     * consent screen and land them on a phishing page immediately after a
+     * trusted "connected" message.
+     */
+    public function test_an_external_redirect_to_url_is_not_stashed(): void
+    {
+        Role::findOrCreate(UserRole::Admin->value, 'web');
+        $currentUser = User::factory()->create(['email' => 'current-user@example.com', 'google_id' => null]);
+
+        Socialite::shouldReceive('driver->redirect')->andReturn(redirect('https://accounts.google.com/fake'));
+
+        $this->actingAs($currentUser)->get('/login/google?redirect_to=https://evil.example/phish');
+
+        $this->assertNull(session('google_link_redirect_to'));
+    }
+
+    public function test_a_protocol_relative_redirect_to_url_is_not_stashed(): void
+    {
+        Role::findOrCreate(UserRole::Admin->value, 'web');
+        $currentUser = User::factory()->create(['email' => 'current-user@example.com', 'google_id' => null]);
+
+        Socialite::shouldReceive('driver->redirect')->andReturn(redirect('https://accounts.google.com/fake'));
+
+        $this->actingAs($currentUser)->get('/login/google?redirect_to=//evil.example/phish');
+
+        $this->assertNull(session('google_link_redirect_to'));
+    }
+
+    public function test_a_relative_redirect_to_url_is_stashed(): void
+    {
+        Role::findOrCreate(UserRole::Admin->value, 'web');
+        $currentUser = User::factory()->create(['email' => 'current-user@example.com', 'google_id' => null]);
+
+        Socialite::shouldReceive('driver->redirect')->andReturn(redirect('https://accounts.google.com/fake'));
+
+        $this->actingAs($currentUser)->get('/login/google?redirect_to='.urlencode(route('security.edit', absolute: false)));
+
+        $this->assertSame(route('security.edit', absolute: false), session('google_link_redirect_to'));
+    }
+
     public function test_connecting_google_redirects_back_to_the_page_it_was_started_from(): void
     {
         Role::findOrCreate(UserRole::Admin->value, 'web');

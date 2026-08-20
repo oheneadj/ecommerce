@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Features;
 use Spatie\Permission\Models\Role;
@@ -134,6 +135,41 @@ class PasswordResetTest extends TestCase
             ]);
 
             $this->assertNotNull($user->fresh()->email_verified_at);
+
+            return true;
+        });
+    }
+
+    /**
+     * Regression: resetting a forgotten password is the primary real-world
+     * "recover my account from an attacker holding a stolen password"
+     * scenario — the attacker's still-live session must not survive it.
+     */
+    public function test_resetting_a_password_revokes_every_existing_session(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create();
+        DB::table('sessions')->insert([
+            'id' => 'attacker-session',
+            'user_id' => $user->id,
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'test',
+            'payload' => base64_encode('irrelevant'),
+            'last_activity' => now()->timestamp,
+        ]);
+
+        $this->post(route('password.request'), ['email' => $user->email]);
+
+        Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
+            $this->post(route('password.update'), [
+                'token' => $notification->token,
+                'email' => $user->email,
+                'password' => 'password',
+                'password_confirmation' => 'password',
+            ]);
+
+            $this->assertDatabaseMissing('sessions', ['id' => 'attacker-session', 'user_id' => $user->id]);
 
             return true;
         });

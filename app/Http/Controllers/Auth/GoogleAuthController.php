@@ -35,8 +35,15 @@ class GoogleAuthController extends Controller
      */
     public function redirect(): SymfonyRedirectResponse
     {
-        if (Auth::check() && request()->filled('redirect_to')) {
-            session(['google_link_redirect_to' => request()->string('redirect_to')->toString()]);
+        $redirectTo = request()->string('redirect_to')->toString();
+
+        // Only a same-app relative path is ever accepted — an absolute or
+        // protocol-relative URL here would let an attacker send a logged-in
+        // customer through a real Google consent screen and land them on an
+        // external phishing page immediately after a trusted "connected"
+        // message.
+        if (Auth::check() && $redirectTo !== '' && str_starts_with($redirectTo, '/') && ! str_starts_with($redirectTo, '//')) {
+            session(['google_link_redirect_to' => $redirectTo]);
         }
 
         return Socialite::driver('google')->redirect();

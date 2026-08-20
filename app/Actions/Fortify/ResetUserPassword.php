@@ -13,6 +13,7 @@ use App\Concerns\PasswordValidationRules;
 use App\Enums\UserRole;
 use App\Models\User;
 use App\Support\PasswordPolicy;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\ResetsUserPasswords;
 
@@ -51,5 +52,14 @@ class ResetUserPassword implements ResetsUserPasswords
             'password' => $input['password'],
             'email_verified_at' => $user->email_verified_at ?? now(),
         ])->save();
+
+        // A "forgot password" reset is, in the most important real-world
+        // case, someone recovering an account from an attacker who's
+        // holding a stolen password and a still-live session — unlike
+        // `LogOutOtherSessions` (used by an already-authenticated user
+        // changing their own password), the person resetting here isn't
+        // authenticated yet, so there's no "current session" of theirs to
+        // preserve. Every existing session is purged.
+        DB::table('sessions')->where('user_id', $user->id)->delete();
     }
 }

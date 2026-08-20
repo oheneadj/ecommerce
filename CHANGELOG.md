@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — open redirect in the "connect Google" flow
+- `GoogleAuthController::redirect()` stashed the `redirect_to` query parameter into the session verbatim, then redirected to it after a successful Google account link — an attacker could send a logged-in customer a crafted `/login/google?redirect_to=https://evil.example/...` link and land them on an external page immediately after a trusted "Google account connected" message.
+- Now only accepts a same-app relative path (`/...`, not `//...`); anything else is ignored and the default (`account.show`) is used.
+- 3 new tests.
+
+### Fixed — resetting a forgotten password left an attacker's session alive
+- Every other credential-changing action (password change while logged in, 2FA changes, passkey removal) revokes other active sessions via `LogOutOtherSessions`, but the actual "forgot password" recovery flow (`ResetUserPassword`, wired to Fortify's `/forgot-password`) never did — the most common real-world reason to reset a password is regaining control from someone who has it, and that person's session survived the reset.
+- `ResetUserPassword::reset()` now purges every `sessions` row for the user after a successful reset (there's no "current session" to preserve here, unlike `LogOutOtherSessions` — the person resetting isn't authenticated yet).
+- 1 new test.
+
 ### Fixed — robots.txt left the admin panel crawlable
 - `/robots.txt` disallowed cart/checkout/account/wishlist/login but not `/admin`, leaving the Filament panel indexable.
 - Added `Disallow: /admin`. 2 new tests (no test file existed for this route before).

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — concurrent order status updates could double-restock a cancelled order
+- `UpdateOrderStatus` evaluated the no-op/transition-legality checks against the in-memory `$order` passed in, before the transaction opened, with no row lock — two requests racing on the same order (e.g. a doubled-up admin click, or two staff acting on the same order within milliseconds) could both read the same stale pre-cancellation status, both pass the transition check, and both restock the same cancelled order's items.
+- The order is now re-fetched and `lockForUpdate()`'d inside the transaction before any check runs, matching the locking pattern already used for stock/coupon/payment writes elsewhere in this app.
+- 1 new test.
+
 ### Fixed — incomplete CSV/Excel formula-injection sanitization on exports
 - The Products export sanitized `name` against formula injection but not `category.name`/`brand.name` — both free-text fields a lower-privileged Store Keeper can also create/edit, so a planted payload could still execute when an Admin/SuperAdmin later opened the export. Same gap on the Customers export: `name` was sanitized, `email` wasn't (a self-registering customer's own free-text field).
 - Added the same `SanitizesExportFormulas::sanitize()` call to all three columns.

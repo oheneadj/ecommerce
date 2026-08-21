@@ -120,6 +120,32 @@ class OrderStatusTest extends TestCase
         $this->assertSame(7, $variant->fresh()->stock);
     }
 
+    /**
+     * Regression: the transition/no-op checks used to run against the
+     * in-memory $order passed in, evaluated before the transaction even
+     * opened — a second call sharing the same stale (pre-cancellation)
+     * $order instance (e.g. two admin requests racing on the same order)
+     * would each still see it as Paid and both restock. The order is now
+     * re-fetched and locked inside the transaction, so a second call
+     * against the same stale instance correctly sees the already-applied
+     * Cancelled status and no-ops instead of restocking again.
+     */
+    public function test_updating_status_twice_from_the_same_stale_order_instance_does_not_double_restock(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
+        $order = Order::factory()->create(['status' => OrderStatus::Paid]);
+        OrderItem::factory()->create(['order_id' => $order->id, 'product_variant_id' => $variant->id, 'quantity' => 3]);
+
+        UpdateOrderStatus::run($order, OrderStatus::Cancelled);
+        // $order's in-memory status is still Paid here — update() doesn't
+        // mutate the caller's copy — simulating a second concurrent
+        // request that read the order before the first one committed.
+        UpdateOrderStatus::run($order, OrderStatus::Cancelled);
+
+        $this->assertSame(8, $variant->fresh()->stock);
+        $this->assertSame(1, StockMovement::query()->where('product_variant_id', $variant->id)->where('type', StockMovementType::Return)->count());
+    }
+
     public function test_cancelling_a_pending_order_that_never_had_stock_decremented_does_not_touch_stock(): void
     {
         $variant = ProductVariant::factory()->create(['stock' => 5]);

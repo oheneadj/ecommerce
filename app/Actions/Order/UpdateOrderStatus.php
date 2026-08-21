@@ -19,9 +19,9 @@ use Illuminate\Support\Facades\DB;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
- * A plain transaction — no locking. Every status change must go through
- * this Action rather than a raw `$order->update(['status' => ...])`, so
- * `order_status_histories` never misses an entry.
+ * Every status change must go through this Action rather than a raw
+ * `$order->update(['status' => ...])`, so `order_status_histories` never
+ * misses an entry.
  *
  * Requesting the order's current status is a no-op (returns unchanged,
  * writes nothing) rather than an error, since the admin "Update status"
@@ -37,28 +37,39 @@ class UpdateOrderStatus
 
     public function handle(Order $order, OrderStatus $status, ?User $changedBy = null, ?string $note = null): Order
     {
-        if ($status === $order->status) {
-            return $order;
-        }
-
-        if (! in_array($status, $order->status->allowedNextStatuses(), true)) {
-            throw new InvalidOrderStatusTransitionException($order->status, $status);
-        }
-
         return DB::transaction(function () use ($order, $status, $changedBy, $note): Order {
-            $this->restockIfCancellingAFulfilledOrder($order, $status);
+            // Locked and re-read here, not evaluated against the
+            // in-memory $order passed in — two concurrent requests to
+            // change the same order (e.g. a doubled-up admin click)
+            // would otherwise both see the same stale pre-transaction
+            // status, both pass the transition check, and both restock
+            // a cancelled order's items (the transition-to-terminal
+            // guard only protects against running twice on the SAME
+            // request's fresh state, not against a second request that
+            // read its status before the first one committed).
+            $lockedOrder = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
 
-            $order->update(['status' => $status]);
+            if ($status === $lockedOrder->status) {
+                return $lockedOrder;
+            }
 
-            $order->statusHistories()->create([
+            if (! in_array($status, $lockedOrder->status->allowedNextStatuses(), true)) {
+                throw new InvalidOrderStatusTransitionException($lockedOrder->status, $status);
+            }
+
+            $this->restockIfCancellingAFulfilledOrder($lockedOrder, $status);
+
+            $lockedOrder->update(['status' => $status]);
+
+            $lockedOrder->statusHistories()->create([
                 'status' => $status,
                 'note' => $note,
                 'changed_by' => $changedBy?->id,
             ]);
 
-            $this->syncShipmentDelivery($order, $status);
+            $this->syncShipmentDelivery($lockedOrder, $status);
 
-            return $order;
+            return $lockedOrder;
         });
     }
 

@@ -38,8 +38,9 @@ class MonthlyRevenueChart extends ChartWidget
         $metrics = app(DashboardMetricsQuery::class);
 
         if ($this->hasRange()) {
-            $start = CarbonImmutable::parse($this->filters['startDate'] ?? now()->subDays(6)->toDateString());
-            $end = CarbonImmutable::parse($this->filters['endDate'] ?? now()->toDateString());
+            $storeNow = $metrics->storeNow();
+            $start = CarbonImmutable::parse($this->filters['startDate'] ?? $storeNow->copy()->subDays(6)->toDateString());
+            $end = CarbonImmutable::parse($this->filters['endDate'] ?? $storeNow->toDateString());
             $days = $start->diffInDays($end) + 1;
 
             // Beyond ~2 months, a day-by-day breakdown means a query per
@@ -83,7 +84,8 @@ class MonthlyRevenueChart extends ChartWidget
             ];
         }
 
-        $months = collect(range(5, 0))->map(fn (int $offset) => now()->subMonths($offset));
+        $storeNow = $metrics->storeNow();
+        $months = collect(range(5, 0))->map(fn (int $offset) => $storeNow->copy()->subMonths($offset));
 
         $revenue = $months->map(fn ($month) => $metrics->revenueForMonth($month) / 100);
 

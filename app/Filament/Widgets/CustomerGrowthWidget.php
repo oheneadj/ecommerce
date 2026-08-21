@@ -42,8 +42,9 @@ class CustomerGrowthWidget extends ChartWidget
         $metrics = app(DashboardMetricsQuery::class);
 
         if ($this->hasRange()) {
-            $start = CarbonImmutable::parse($this->filters['startDate'] ?? now()->subDays(6)->toDateString());
-            $end = CarbonImmutable::parse($this->filters['endDate'] ?? now()->toDateString());
+            $storeNow = $metrics->storeNow();
+            $start = CarbonImmutable::parse($this->filters['startDate'] ?? $storeNow->copy()->subDays(6)->toDateString());
+            $end = CarbonImmutable::parse($this->filters['endDate'] ?? $storeNow->toDateString());
             $days = $start->diffInDays($end) + 1;
 
             // Beyond ~2 months, a day-by-day breakdown means a query per

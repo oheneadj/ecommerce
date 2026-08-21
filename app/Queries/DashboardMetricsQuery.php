@@ -60,11 +60,18 @@ class DashboardMetricsQuery
 
     /**
      * "Now", in the store's configured display timezone — every "today"/
-     * "this month"/"N days ago" calculation below is anchored to this,
-     * not the server's UTC clock, so an admin outside UTC sees data
-     * bucketed by their own calendar day rather than the server's.
+     * "this month"/"N days ago" calculation below (and in any widget that
+     * needs to build its own date range from "now", e.g.
+     * MonthlyRevenueChart's "last 6 months" fallback) is anchored to
+     * this, not the server's UTC clock, so an admin outside UTC sees data
+     * bucketed by their own calendar day rather than the server's. Public
+     * specifically so callers building a range/list of months to pass
+     * into revenueForMonth()/etc. don't fall back to a raw `now()` of
+     * their own — see AppServiceProvider's singleton binding of this
+     * class for why that raw `now()` calls remain wrong even though this
+     * class's own StoreSetting lookup is memoized.
      */
-    private function storeNow(): Carbon
+    public function storeNow(): Carbon
     {
         return Carbon::now($this->store()->timezone);
     }

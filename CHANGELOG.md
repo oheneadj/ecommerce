@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — revenue/growth chart widgets still anchored on UTC, missed by the dashboard timezone fix
+- `MonthlyRevenueChart`'s "last 6 months" fallback (and all three chart widgets' range-filter default boundaries) still called raw `now()` instead of the store's configured timezone — the one caller the dashboard timezone rewrite missed. Near a month/day boundary in a non-UTC store, this mislabeled/shifted the current month's bucket by one.
+- `DashboardMetricsQuery::storeNow()` made public so widgets building their own date ranges can use it instead of falling back to `now()`. Fixed in `MonthlyRevenueChart`, `CustomerGrowthWidget`, and `OrdersYearOverYearWidget`.
+- 1 new test.
+
 ### Fixed — password-less account deletion relied on the session alone, not a re-verified identity
 - Follow-up to the earlier fix that let phone/Google-only accounts delete themselves at all: skipping the confirmation step entirely was a weaker bar than a password-account's re-entered password — a hijacked or left-open session was enough. Account deletion now requires an actual re-verification step matching what that account actually has: a phone re-verifies via a fresh SMS OTP (reusing `RequestOtp`/`ConsumeOtpCode`, the same mechanism already used to link a phone number in Settings); a Google-only account with no phone but a verified email (Google's own OAuth handshake independently confirms it) now gets the code by email instead, via a new `RequestEmailOtp` Action and `AccountVerificationCode` notification mirroring the phone path. Both are scoped to their own `delete_account` purpose so a code can never be confused with (or reused as) a login or phone-linking code. Only the genuinely rare case of no password, no phone, *and* no verified email at all (e.g. an unverified Google email that collided with an existing account's, so it was never even stored) falls back to typing a literal `DELETE` confirmation phrase.
 - 15 new tests: the SMS-OTP path, the new email-OTP path, the true no-channel fallback, a wrong-code rejection, a code-issued-for-a-different-purpose rejection, and `RequestEmailOtp` itself (creation, delivery, rate limiting scoped per email).

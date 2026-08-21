@@ -21,6 +21,7 @@ use App\HealthChecks\ExpiredReservationsAreBeingReleased;
 use App\HealthChecks\ForeignKeysAreEnforced;
 use App\HealthChecks\PaymentProvidersConfigured;
 use App\HealthChecks\PendingPaymentsAreBeingVerified;
+use App\HealthChecks\SentryConfigured;
 use App\HealthChecks\SmsProviderConfigured;
 use App\HealthChecks\StaticPagesHaveContent;
 use App\HealthChecks\StorageIsWritableAndLinked;
@@ -81,6 +82,23 @@ class HealthChecksTest extends TestCase
         config(['sms.default' => 'moolre', 'sms.providers.moolre' => ['api_key' => null, 'sender_id' => null]]);
 
         $this->assertSame(Status::failed(), SmsProviderConfigured::new()->run()->status);
+    }
+
+    public function test_sentry_configured_warns_not_fails_with_no_dsn(): void
+    {
+        config(['sentry.dsn' => null]);
+
+        // Deliberately a warning, not a failure — the app functions
+        // correctly without Sentry, so this must never trip the
+        // critical-failure gate the way SMS/payment credentials do.
+        $this->assertSame(Status::warning(), SentryConfigured::new()->run()->status);
+    }
+
+    public function test_sentry_configured_passes_with_a_dsn_set(): void
+    {
+        config(['sentry.dsn' => 'https://example@o0.ingest.sentry.io/0']);
+
+        $this->assertSame(Status::ok(), SentryConfigured::new()->run()->status);
     }
 
     public function test_store_settings_populated_warns_when_fields_are_missing(): void

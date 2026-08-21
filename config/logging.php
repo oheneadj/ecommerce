@@ -65,6 +65,17 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Add "sentry" to LOG_STACK to also forward Log::error()/critical()
+        // calls (payment failures, jobs failed after final retry, etc. —
+        // CLAUDE.md §21) to Sentry, not just uncaught exceptions (already
+        // captured app-wide via Sentry\Laravel\Integration::handles() in
+        // bootstrap/app.php). No-ops when SENTRY_LARAVEL_DSN is unset, same
+        // as every other channel here. See docs/HOWTO-setup-sentry.md.
+        'sentry' => [
+            'driver' => 'sentry',
+            'level' => env('SENTRY_LOG_CHANNEL_LEVEL', 'error'),
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),

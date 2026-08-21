@@ -105,6 +105,8 @@ php artisan queue:work database --queue=external-api,emails,sms,notifications,ba
 
 **Monitoring:** add an uptime/heartbeat check for both the scheduler and the queue worker. Both fail quietly; neither produces a user-visible error until a customer complains. The System Health dashboard's `ScheduleCheck`/`QueueCheck` cover "is the scheduler/worker alive at all," and `ExpiredReservationsAreBeingReleased`/`PendingPaymentsAreBeingVerified` cover the subtler failure of the scheduler being alive while one specific job errors or is unregistered — see `docs/TASK-system-health-checks.md`.
 
+**Error tracking:** [Sentry](https://sentry.io) is installed and wired into the global exception handler, but ships with no DSN — every deployment must set one (`docs/HOWTO-setup-sentry.md`) to actually get notified of production exceptions; without it, errors are only visible by SSHing in and reading `laravel.log`. System Health's `SentryConfigured` check flags a missing DSN as a warning (not critical, since the app still functions without it).
+
 ---
 
 ## 4. Environment Configuration
@@ -184,7 +186,7 @@ Corresponds to story E13.3.
 - [ ] **Queue worker running under supervisor and verified** **[health: `QueueCheck`, heartbeat]**
 - [ ] Automated daily backups configured and one restore tested **[attestation: `backup_restore_tested`, re-confirm every 90 days]**
 - [ ] `APP_DEBUG=false` confirmed **[health: `DebugModeCheck`]**
-- [ ] Error monitoring / log destination configured
+- [ ] Sentry DSN configured (`docs/HOWTO-setup-sentry.md`) **[health: `SentryConfigured`]**
 - [ ] Uptime monitoring on the site, the scheduler, and the queue worker
 
 ---

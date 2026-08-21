@@ -24,6 +24,7 @@
         "masbug/flysystem-google-drive-ext": "^2.5",
         "phiki/phiki": "^2.2",
         "pxlrbt/filament-excel": "^3.6",
+        "sentry/sentry-laravel": "^4.27",
         "shuvroroy/filament-spatie-laravel-health": "^3.3",
         "spatie/laravel-activitylog": "^5.0",
         "spatie/laravel-backup": "^10.3",

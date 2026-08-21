@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Sentry error tracking
+- Installed `sentry/sentry-laravel` and wired it into the global exception handler (`bootstrap/app.php`) — every unhandled exception is reported automatically once a DSN is configured. Ships disabled (`SENTRY_LARAVEL_DSN` blank by default), zero cost/impact on a deployment that doesn't set one.
+- Added `SENTRY_LARAVEL_DSN`/`SENTRY_TRACES_SAMPLE_RATE` to `.env`/`.env.example`, and an optional `sentry` log channel (`config/logging.php`) for also forwarding `Log::error()`+ calls, not just uncaught exceptions — opt in via `LOG_STACK=single,sentry`.
+- Added `App\HealthChecks\SentryConfigured` (a `warning`, never a critical failure — the app works fine without it) to System Health, and a checklist line to `docs/infrastructure-deployment.md`'s new-client deployment checklist.
+- New `docs/HOWTO-setup-sentry.md`, referenced from the README and `infrastructure-deployment.md` §3.
+- 2 new tests.
+
 ### Fixed — checkout crashed instead of failing gracefully when a variant was discontinued mid-checkout
 - `CreateOrderFromCart` didn't re-guard against a variant deleted between checkout-page-load and submission, crashing with a raw 500 (subtotal read off a null `productVariant`) instead of the same graceful `EmptyCartException` path an already-empty cart uses. Now excludes items whose variant no longer exists before totalling — the order still goes through for any remaining valid items.
 

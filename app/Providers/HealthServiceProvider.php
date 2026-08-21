@@ -14,6 +14,7 @@ use App\HealthChecks\ExpiredReservationsAreBeingReleased;
 use App\HealthChecks\ForeignKeysAreEnforced;
 use App\HealthChecks\PaymentProvidersConfigured;
 use App\HealthChecks\PendingPaymentsAreBeingVerified;
+use App\HealthChecks\SentryConfigured;
 use App\HealthChecks\SmsProviderConfigured;
 use App\HealthChecks\StaticPagesHaveContent;
 use App\HealthChecks\StorageIsWritableAndLinked;
@@ -62,6 +63,7 @@ class HealthServiceProvider extends ServiceProvider
             StaticPagesHaveContent::new(),
             SuperAdminExists::new(),
             StorageIsWritableAndLinked::new(),
+            SentryConfigured::new(),
 
             ExpiredReservationsAreBeingReleased::new(),
             PendingPaymentsAreBeingVerified::new(),

@@ -20,6 +20,8 @@ A multi-store ecommerce platform template built on Laravel — a customer-facing
 - **SMS**: Moolre and GiantSMS, same swappable-driver pattern — see [`docs/HOWTO-add-sms-provider.md`](docs/HOWTO-add-sms-provider.md).
 - **Admin panel** (`/admin`): catalog management, orders, customers, coupons, shipping methods, staff/role management, activity log, storefront announcements (banners/popups), and a System Health dashboard.
 - **Backups**: scheduled + on-demand database and file backups to Google Drive, with a guarded restore action — see [`docs/HOWTO-setup-google-drive-backups.md`](docs/HOWTO-setup-google-drive-backups.md).
+- **Error tracking**: [Sentry](https://sentry.io) captures every unhandled exception app-wide, ships disabled until a DSN is set — see [`docs/HOWTO-setup-sentry.md`](docs/HOWTO-setup-sentry.md).
+- **Monitoring**: [Telescope](https://laravel.com/docs/telescope) (request/query/job debugging, Super-Admin-gated outside local) and [Pulse](https://laravel.com/docs/pulse) (live performance dashboard) — both off by default via `TELESCOPE_ENABLED`/`PULSE_ENABLED`.
 - **Branding**: business name, logo, brand colors, contact details, and social links are all admin-editable (Store Settings), driving the storefront theme and PDF invoices with no code change.
 
 ## Requirements
@@ -68,6 +70,7 @@ The storefront is at `http://localhost:8000`, the admin panel at `http://localho
 | SMS | `MOOLRE_API_KEY`/`MOOLRE_SENDER_ID`, `GIANTSMS_TOKEN`/`GIANTSMS_SENDER_ID`, `SMS_PROVIDER` | Same fallback-then-DB pattern as payments. Used for OTP login, low-stock alerts, and staff invites. |
 | Google login (optional) | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` | Optional additional customer login method, alongside phone+OTP. Not required for the app to run. |
 | Backups | `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON`, `GOOGLE_DRIVE_FOLDER_ID`, `BACKUP_ARCHIVE_PASSWORD` | See [`docs/HOWTO-setup-google-drive-backups.md`](docs/HOWTO-setup-google-drive-backups.md) for the full one-time setup. Nothing breaks if these are left blank — backups just stay unconfigured until set. |
+| Error tracking | `SENTRY_LARAVEL_DSN`, `SENTRY_TRACES_SAMPLE_RATE` | See [`docs/HOWTO-setup-sentry.md`](docs/HOWTO-setup-sentry.md). Blank by default — no events sent anywhere until a DSN is set; System Health flags this as a warning, never a critical failure. |
 | Catalog limits | `PRODUCT_MAX_IMAGES`, `PRODUCT_MAX_VARIANTS`, `MEDIA_MAX_UPLOAD_SIZE_KB` | Admin-side upload/variant limits. |
 
 Nothing in this app reads `env()` outside of `config/*.php` files — always go through `.env` → a `config()` key, never a raw `env()` call elsewhere in the codebase.
@@ -117,6 +120,7 @@ For the full architectural rationale and conventions, see [`docs/technical-desig
 | [`docs/HOWTO-add-payment-provider.md`](docs/HOWTO-add-payment-provider.md) | Step-by-step for adding a new payment gateway driver. |
 | [`docs/HOWTO-add-sms-provider.md`](docs/HOWTO-add-sms-provider.md) | Step-by-step for adding a new SMS gateway driver. |
 | [`docs/HOWTO-setup-google-drive-backups.md`](docs/HOWTO-setup-google-drive-backups.md) | One-time Google Cloud service-account setup for automated backups. |
+| [`docs/HOWTO-setup-sentry.md`](docs/HOWTO-setup-sentry.md) | One-time Sentry project setup for error tracking. |
 | [`docs/TASK-system-health-checks.md`](docs/TASK-system-health-checks.md) | Spec for the System Health dashboard in the admin panel. |
 | [`docs/AGENTS.md`](docs/AGENTS.md) | Notes for AI coding agents working in this repo. |
 | [`docs/CLAUDE (1).md`](<docs/CLAUDE (1).md>) | The coding agreement/conventions this codebase follows (KISS/DRY/YAGNI, testing, security, money handling, etc.). |

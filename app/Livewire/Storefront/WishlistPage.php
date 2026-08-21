@@ -34,6 +34,14 @@ class WishlistPage extends Component
     #[Computed]
     public function items(): Collection
     {
+        // A variant an admin discontinues (soft-deleted) is never cleaned
+        // out of another customer's wishlist that already references it —
+        // productVariant() then silently resolves to null (excluded by
+        // the default soft-delete scope), which the view dereferences
+        // unguarded, crashing this page entirely. Pruned here before
+        // every render rather than left to crash.
+        Auth::user()->wishlistItems()->whereDoesntHave('productVariant')->delete();
+
         return Auth::user()->wishlistItems()
             ->with(['productVariant.product', 'productVariant.images', 'productVariant.product.images'])
             ->latest('id')

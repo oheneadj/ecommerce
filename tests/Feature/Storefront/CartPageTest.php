@@ -111,6 +111,34 @@ class CartPageTest extends TestCase
             ->assertSee('GH₵30.00');
     }
 
+    /**
+     * Regression: an admin discontinuing a variant (soft-delete) left it
+     * sitting in an existing cart forever — `productVariant()` then
+     * resolves to null (excluded by the default soft-delete scope), which
+     * the page dereferenced unguarded and crashed with a 500, with no
+     * self-service way for the customer to clear it. The stale item is
+     * now pruned automatically instead.
+     */
+    public function test_a_soft_deleted_variant_is_pruned_from_the_cart_instead_of_crashing_the_page(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $keptVariant = ProductVariant::factory()->create(['price' => 1000, 'stock' => 10]);
+        $deletedVariant = ProductVariant::factory()->create(['price' => 500, 'stock' => 10]);
+        $cart = GetCurrentCart::run($user);
+        AddItemToCart::run($cart, $keptVariant, 1);
+        AddItemToCart::run($cart, $deletedVariant, 1);
+        $deletedVariant->delete();
+
+        Livewire::test(CartPage::class)
+            ->call('$refresh')
+            ->assertOk()
+            ->assertSee($keptVariant->sku)
+            ->assertSee('GH₵10.00');
+
+        $this->assertSame(1, $cart->fresh()->items()->count());
+    }
+
     public function test_updating_quantity_changes_the_line_and_subtotal(): void
     {
         $user = User::factory()->create();

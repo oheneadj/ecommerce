@@ -45,6 +45,30 @@ class WishlistPageTest extends TestCase
             ->assertSee($variant->sku);
     }
 
+    /**
+     * Regression: an admin discontinuing a variant (soft-delete) left it
+     * sitting in another customer's wishlist forever — productVariant()
+     * then resolves to null (excluded by the default soft-delete scope),
+     * which the page dereferenced unguarded and crashed with a 500. The
+     * stale item is now pruned automatically instead.
+     */
+    public function test_a_soft_deleted_variant_is_pruned_from_the_wishlist_instead_of_crashing_the_page(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $keptVariant = ProductVariant::factory()->create();
+        $deletedVariant = ProductVariant::factory()->create();
+        AddToWishlist::run($user, $keptVariant);
+        AddToWishlist::run($user, $deletedVariant);
+        $deletedVariant->delete();
+
+        Livewire::test(WishlistPage::class)
+            ->assertOk()
+            ->assertSee($keptVariant->sku);
+
+        $this->assertSame(1, $user->wishlistItems()->count());
+    }
+
     public function test_removing_an_item_takes_it_out_of_the_wishlist(): void
     {
         $user = User::factory()->create();

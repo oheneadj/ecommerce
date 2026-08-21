@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace App\Actions\Cart;
 
 use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\User;
 use Illuminate\Support\Facades\Request;
 use Lorisleiva\Actions\Concerns\AsAction;
@@ -31,17 +32,38 @@ class ResolveCurrentCart
 
     public function handle(?User $user, string $guestSessionId): Cart
     {
-        if ($user !== null) {
-            return GetCurrentCart::run($user);
-        }
+        $cart = $user !== null
+            ? GetCurrentCart::run($user)
+            : Cart::query()
+                ->where('session_id', $guestSessionId)
+                ->whereNull('user_id')
+                ->open()
+                ->latest('id')
+                ->first()
+                ?? Cart::query()->create(['session_id' => $guestSessionId]);
 
-        return Cart::query()
-            ->where('session_id', $guestSessionId)
-            ->whereNull('user_id')
-            ->open()
-            ->latest('id')
-            ->first()
-            ?? Cart::query()->create(['session_id' => $guestSessionId]);
+        $this->pruneItemsWithDeletedVariants($cart);
+
+        return $cart;
+    }
+
+    /**
+     * A variant an admin discontinues (soft-deleted, e.g. via
+     * `DeleteProductVariant`) is never cleaned out of a cart that already
+     * references it — `CartItem::productVariant()` then silently resolves
+     * to null (excluded by the default soft-delete scope), which every
+     * page rendering the cart dereferences unguarded
+     * (`$item->productVariant->price`), crashing Cart/Checkout entirely
+     * for that customer with no self-service recovery. Every consumer of
+     * this Action resolves the cart through here, so pruning once at the
+     * single choke point covers all of them.
+     */
+    private function pruneItemsWithDeletedVariants(Cart $cart): void
+    {
+        CartItem::query()
+            ->where('cart_id', $cart->id)
+            ->whereDoesntHave('productVariant')
+            ->delete();
     }
 
     public static function guestSessionId(): string

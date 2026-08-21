@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — a discontinued variant in a customer's cart/checkout/wishlist crashed the page with no recovery
+- Deleting a product variant (a routine admin action — soft delete, per this app's own convention) left it sitting in any cart or wishlist that already referenced it forever, with no cleanup. `CartItem`/`WishlistItem`'s `productVariant()` relation then silently resolved to `null` (excluded by the default soft-delete scope), and every consuming page (`CartPage`, `CheckoutPage`, `WishlistPage`) dereferenced it unguarded (`$item->productVariant->price`), producing a hard 500. There was no self-service recovery either — the "remove item" action itself looks the variant up the same scoped way, so it also 404'd.
+- Stale items are now pruned automatically: `ResolveCurrentCart` (the single choke point every cart consumer resolves through — CartPage, CheckoutPage, and anywhere else) deletes any cart item whose variant no longer exists before returning the cart; `WishlistPage` does the same for wishlist items on render.
+- 3 new tests (cart, checkout, wishlist).
+
 ### Fixed — revenue/growth chart widgets still anchored on UTC, missed by the dashboard timezone fix
 - `MonthlyRevenueChart`'s "last 6 months" fallback (and all three chart widgets' range-filter default boundaries) still called raw `now()` instead of the store's configured timezone — the one caller the dashboard timezone rewrite missed. Near a month/day boundary in a non-UTC store, this mislabeled/shifted the current month's bucket by one.
 - `DashboardMetricsQuery::storeNow()` made public so widgets building their own date ranges can use it instead of falling back to `now()`. Fixed in `MonthlyRevenueChart`, `CustomerGrowthWidget`, and `OrdersYearOverYearWidget`.

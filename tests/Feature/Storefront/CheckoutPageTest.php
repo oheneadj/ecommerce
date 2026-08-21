@@ -85,6 +85,31 @@ class CheckoutPageTest extends TestCase
     }
 
     /**
+     * Regression: a soft-deleted variant left in the cart used to crash
+     * checkout with a 500 (productVariant() resolving to null,
+     * dereferenced unguarded) — ResolveCurrentCart now prunes it before
+     * checkout ever loads the cart's items.
+     */
+    public function test_a_soft_deleted_variant_is_pruned_before_checkout_loads(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $keptVariant = ProductVariant::factory()->create(['price' => 1000, 'stock' => 10]);
+        $deletedVariant = ProductVariant::factory()->create(['price' => 500, 'stock' => 10]);
+        $cart = GetCurrentCart::run($user);
+        AddItemToCart::run($cart, $keptVariant, 1);
+        AddItemToCart::run($cart, $deletedVariant, 1);
+        $deletedVariant->delete();
+
+        // #[Lazy] means the real component only actually loads the cart
+        // on its own follow-up request — forced here via the built-in
+        // `$refresh` no-op action, same pattern CartPageTest uses.
+        Livewire::test(CheckoutPage::class, ['lazy' => false])->assertOk();
+
+        $this->assertSame(1, $cart->fresh()->items()->count());
+    }
+
+    /**
      * Uploading a logo on the admin Payment Providers screen previously
      * had no visible effect anywhere — enabledPaymentProviders() returned
      * bare PaymentProvider enum cases, not the settings row the logo

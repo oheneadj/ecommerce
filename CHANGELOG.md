@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — password-less account deletion relied on the session alone, not a re-verified identity
+- Follow-up to the earlier fix that let phone/Google-only accounts delete themselves at all: skipping the confirmation step entirely was a weaker bar than a password-account's re-entered password — a hijacked or left-open session was enough. Account deletion now requires an actual re-verification step matching what that account actually has: a password-less account with a phone re-verifies via a fresh OTP (reusing `RequestOtp`/`ConsumeOtpCode`, the same mechanism already used to link a phone number in Settings, scoped to its own `delete_account` purpose so it can never be confused with a login or phone-linking code); a Google-only account with no phone at all (no OTP channel available) falls back to typing a literal `DELETE` confirmation phrase.
+- 6 new tests covering the OTP path (correct code, wrong code, a code issued for a different purpose correctly rejected) and the no-phone fallback path.
+
 ### Fixed — price-range slider rendered inverted/off-track for malformed URL values
 - `minPrice`/`maxPrice` are URL-bound (`#[Url]`) and reached the slider's Alpine `x-data` with no bounds/ordering check — a manually edited or shared link with `minPrice > maxPrice` rendered the fill bar and thumbs visibly inverted, and a `maxPrice` far beyond the real catalog ceiling pushed the max thumb off the visible track.
 - Both values are now clamped to `[0, catalogMaxPrice]` and swapped into order if inverted, in a new `mount()` (initial URL load) and `updated()` (post-mount changes, including the slider's own `commit()`) hook.

@@ -23,14 +23,29 @@
                 <p class="text-sm text-zinc-500">
                     @if ($this->hasPassword)
                         {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.') }}
+                    @elseif ($this->hasPhone)
+                        {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Send a verification code to your phone to confirm.') }}
                     @else
-                        {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. This action cannot be undone.') }}
+                        {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Type DELETE below to confirm.') }}
                     @endif
                 </p>
             </div>
 
             @if ($this->hasPassword)
                 <x-input wire:model="password" :label="__('Password')" type="password" viewable />
+            @elseif ($this->hasPhone)
+                @if (! $otpSent)
+                    <x-button type="button" variant="filled" wire:click="sendDeletionCode">
+                        {{ __('Send verification code') }}
+                    </x-button>
+                @else
+                    <x-input wire:model="otpCode" :label="__('Verification code')" type="text" inputmode="numeric" placeholder="{{ __('6-digit code') }}" autofocus />
+                    <button type="button" class="text-sm text-zinc-500 underline" wire:click="sendDeletionCode">
+                        {{ __('Resend code') }}
+                    </button>
+                @endif
+            @else
+                <x-input wire:model="confirmationPhrase" :label="__('Type DELETE to confirm')" type="text" autofocus />
             @endif
 
             <div class="flex justify-end space-x-2 rtl:space-x-reverse">

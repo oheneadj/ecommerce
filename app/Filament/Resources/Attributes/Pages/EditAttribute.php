@@ -6,11 +6,12 @@ namespace App\Filament\Resources\Attributes\Pages;
 
 use App\Filament\Resources\Attributes\AttributeResource;
 use App\Models\Attribute;
-use App\Models\ProductVariant;
+use App\Support\AttributeUsageSummary;
 use Filament\Actions\DeleteAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Exceptions\Halt;
+use Illuminate\Support\Collection;
 
 /** Edits a single attribute, blocking delete while it's still in use on any product/variant. */
 class EditAttribute extends EditRecord
@@ -31,18 +32,15 @@ class EditAttribute extends EditRecord
                     // attribute (e.g. Red/Large vs Blue/Large) become
                     // indistinguishable with no way to tell why. Blocking
                     // here mirrors CategoryResource's same-shaped guard.
-                    $productCount = $record->products()->count();
-                    $variantCount = ProductVariant::query()
-                        ->whereHas('attributeTerms', fn ($query) => $query->where('attribute_id', $record->id))
-                        ->count();
+                    $message = AttributeUsageSummary::forBlockedDelete(new Collection([$record]));
 
-                    if ($productCount === 0 && $variantCount === 0) {
+                    if ($message === null) {
                         return;
                     }
 
                     Notification::make()
                         ->title('Cannot delete attribute')
-                        ->body("This attribute is used by {$productCount} product(s) and assigned on {$variantCount} variant(s). Remove it from them first.")
+                        ->body($message)
                         ->danger()
                         ->send();
 

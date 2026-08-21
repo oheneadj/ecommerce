@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Improved — the "cannot delete attribute" message now names what's blocking it
+- The block message added for in-use attribute deletion only said "used by N product(s) and assigned on N variant(s)" — an admin had no way to find out *which* ones without querying it by hand. Added `AttributeUsageSummary` to list the actual product names/variant SKUs (capped, "and N more" beyond 5) in both the single and bulk delete paths.
+
 ### Fixed — old backups were never pruned, growing storage unbounded
 - `config/backup.php`'s cleanup strategy (keep-all-30-days, then daily/weekly/monthly thinning) was fully configured but nothing ever scheduled `backup:clean` — every successful backup accumulated on the `gdrive` disk forever. Added a daily schedule entry, matching the existing `telescope:prune` pattern (bug hunt 9).
 

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Attributes\Tables;
 
 use App\Models\Attribute;
-use App\Models\ProductVariant;
+use App\Support\AttributeUsageSummary;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
@@ -57,18 +57,15 @@ class AttributesTable
                         ->requiresConfirmation()
                         ->before(function (Collection $records): void {
                             /** @var Collection<int, Attribute> $records */
-                            $productCount = $records->sum(fn (Attribute $attribute): int => $attribute->products()->count());
-                            $variantCount = ProductVariant::query()
-                                ->whereHas('attributeTerms', fn ($query) => $query->whereIn('attribute_id', $records->pluck('id')))
-                                ->count();
+                            $message = AttributeUsageSummary::forBlockedDelete($records);
 
-                            if ($productCount === 0 && $variantCount === 0) {
+                            if ($message === null) {
                                 return;
                             }
 
                             Notification::make()
                                 ->title('Cannot delete attributes')
-                                ->body("These attributes are used by {$productCount} product(s) and assigned on {$variantCount} variant(s) in total. Remove them from those first.")
+                                ->body($message)
                                 ->danger()
                                 ->send();
 

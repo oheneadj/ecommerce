@@ -138,11 +138,12 @@ class AttributeResourceTest extends TestCase
         $this->actingAs($this->admin());
 
         $attribute = Attribute::factory()->create();
-        $product = Product::factory()->create();
+        $product = Product::factory()->create(['name' => 'Classic Tee']);
         $attribute->products()->attach($product);
 
         Livewire::test(EditAttribute::class, ['record' => $attribute->getRouteKey()])
-            ->callAction('delete');
+            ->callAction('delete')
+            ->assertNotified('Cannot delete attribute');
 
         $this->assertModelExists($attribute);
     }
@@ -168,11 +169,12 @@ class AttributeResourceTest extends TestCase
 
         $unused = Attribute::factory()->create();
         $inUse = Attribute::factory()->create();
-        $product = Product::factory()->create();
+        $product = Product::factory()->create(['name' => 'Classic Tee']);
         $inUse->products()->attach($product);
 
         Livewire::test(ListAttributes::class)
-            ->callTableBulkAction('delete', [$unused, $inUse]);
+            ->callTableBulkAction('delete', [$unused, $inUse])
+            ->assertNotified('Cannot delete attributes');
 
         $this->assertModelExists($unused);
         $this->assertModelExists($inUse);

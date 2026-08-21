@@ -21,11 +21,17 @@
                 <h2 class="text-lg font-semibold text-zinc-900">{{ __('Are you sure you want to delete your account?') }}</h2>
 
                 <p class="text-sm text-zinc-500">
-                    {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.') }}
+                    @if ($this->hasPassword)
+                        {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.') }}
+                    @else
+                        {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. This action cannot be undone.') }}
+                    @endif
                 </p>
             </div>
 
-            <x-input wire:model="password" :label="__('Password')" type="password" viewable />
+            @if ($this->hasPassword)
+                <x-input wire:model="password" :label="__('Password')" type="password" viewable />
+            @endif
 
             <div class="flex justify-end space-x-2 rtl:space-x-reverse">
                 <x-modal-close>

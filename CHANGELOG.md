@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — phone/Google-only customers could never delete their own account
+- `DeleteUserForm` unconditionally required the current password via Laravel's `current_password` rule. A customer who registered via phone+OTP or Google-only (a deliberately supported flow — no password ever set, `users.password` is `null`) always failed this check, since `Hash::check()` against a null hash is always false — self-service account deletion was permanently unreachable for that account, with no alternate confirmation offered.
+- The password field/requirement is now skipped entirely for an account with no password — the already-authenticated session is the confirmation, same trust level the account's own login already established.
+- 4 new tests.
+
 ### Fixed — concurrent order status updates could double-restock a cancelled order
 - `UpdateOrderStatus` evaluated the no-op/transition-legality checks against the in-memory `$order` passed in, before the transaction opened, with no row lock — two requests racing on the same order (e.g. a doubled-up admin click, or two staff acting on the same order within milliseconds) could both read the same stale pre-cancellation status, both pass the transition check, and both restock the same cancelled order's items.
 - The order is now re-fetched and `lockForUpdate()`'d inside the transaction before any check runs, matching the locking pattern already used for stock/coupon/payment writes elsewhere in this app.

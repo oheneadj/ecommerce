@@ -292,6 +292,16 @@ class CheckoutPage extends Component
             return;
         }
 
+        // Re-validated against the currently active set, not just trusted
+        // from the posted value — a shipping method deactivated between
+        // page load and submit must never sneak through (same reasoning
+        // as the paymentProvider check below).
+        if (! $this->shippingMethods->contains('id', $this->selectedShippingMethodId)) {
+            $this->addError('selectedShippingMethodId', 'That shipping method is no longer available. Please choose another.');
+
+            return;
+        }
+
         // Re-validated against the currently enabled set, not just trusted
         // from the posted value — a provider disabled by the Super Admin
         // between page load and submit must never sneak through.

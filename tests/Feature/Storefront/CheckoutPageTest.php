@@ -400,6 +400,31 @@ class CheckoutPageTest extends TestCase
         $this->assertSame(0, Order::query()->count());
     }
 
+    /**
+     * Regression: a shipping method deactivated between page load and
+     * submission (or a tampered request carrying a stale/invalid id) was
+     * never re-checked server-side — placeOrder() just did a plain
+     * findOrFail(), unlike paymentProvider's re-validation right above it.
+     */
+    public function test_placing_an_order_with_a_deactivated_shipping_method_is_rejected(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+        AddItemToCart::run(GetCurrentCart::run($user), $variant, 1);
+        Address::factory()->create(['user_id' => $user->id, 'is_default' => true]);
+        $shippingMethod = ShippingMethod::factory()->create(['active' => true]);
+
+        $component = Livewire::test(CheckoutPage::class, ['lazy' => false])
+            ->assertSet('selectedShippingMethodId', $shippingMethod->id);
+
+        $shippingMethod->update(['active' => false]);
+
+        $component->call('placeOrder')->assertHasErrors('selectedShippingMethodId');
+
+        $this->assertSame(0, Order::query()->count());
+    }
+
     public function test_a_customer_cannot_select_another_customers_address(): void
     {
         $user = User::factory()->create();

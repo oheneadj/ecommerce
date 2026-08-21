@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — checkout accepted a deactivated shipping method
+- `CheckoutPage::placeOrder()` re-validates the posted payment provider against the currently-enabled set, but never did the same for `selectedShippingMethodId` — a method deactivated between page load and submission (or a tampered request) still passed a plain `findOrFail()` and got charged/snapshotted as if still valid. Now re-checked against the active set the same way payment provider already is (bug hunt 9).
+
 ### Fixed — deleting an attribute in use silently corrupted product variants
 - Deleting an `Attribute` still assigned to products/variants only showed a warning modal before proceeding — the cascade delete then silently stripped the attribute off every variant using it, leaving otherwise-distinct variants (e.g. Red/Large vs Blue/Large) indistinguishable with no record of why. Deletion (single and bulk) is now blocked while the attribute is still in use, matching `CategoryResource`'s existing guard.
 

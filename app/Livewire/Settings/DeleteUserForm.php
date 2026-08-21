@@ -93,11 +93,18 @@ class DeleteUserForm extends Component
     {
         $user = Auth::user();
 
+        // Matches Security.php's equivalent OTP-send actions — a stale
+        // "invalid code" error from a previous failed attempt must not
+        // keep showing next to a freshly emptied input after a resend, as
+        // if the just-sent code were already wrong.
+        $this->resetErrorBag();
+        $this->otpCode = '';
+
         try {
             if ($this->otpChannel() === 'phone') {
                 RequestOtp::run($user->phone, request()->ip(), self::OTP_PURPOSE);
             } elseif ($this->otpChannel() === 'mail') {
-                RequestEmailOtp::run($user->email, self::OTP_PURPOSE, 'Enter this code to confirm deleting your account.');
+                RequestEmailOtp::run($user->email, self::OTP_PURPOSE, 'Enter this code to confirm deleting your account.', request()->ip());
             } else {
                 return;
             }

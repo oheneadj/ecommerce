@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — account-deletion OTP resend left a stale error showing, and had no per-IP rate limit
+- `DeleteUserForm::sendDeletionCode()` never cleared a previous "invalid code" error before sending a fresh code — clicking "Resend code" after a wrong attempt kept the old error visible next to the newly-emptied input, confusingly implying the just-sent code was already wrong. Now resets the error bag and the input on resend, matching `Security.php`'s equivalent OTP-send actions.
+- `RequestEmailOtp` only rate-limited per-email (unlike `RequestOtp`'s phone equivalent, which also caps per-IP) — not exploitable via today's one call site (always the authenticated user's own email), but a real inconsistency and a gap for any future caller-supplied-email call site. Added the same 30/hour per-IP cap.
+
 ### Fixed — a discontinued variant in a customer's cart/checkout/wishlist crashed the page with no recovery
 - Deleting a product variant (a routine admin action — soft delete, per this app's own convention) left it sitting in any cart or wishlist that already referenced it forever, with no cleanup. `CartItem`/`WishlistItem`'s `productVariant()` relation then silently resolved to `null` (excluded by the default soft-delete scope), and every consuming page (`CartPage`, `CheckoutPage`, `WishlistPage`) dereferenced it unguarded (`$item->productVariant->price`), producing a hard 500. There was no self-service recovery either — the "remove item" action itself looks the variant up the same scoped way, so it also 404'd.
 - Stale items are now pruned automatically: `ResolveCurrentCart` (the single choke point every cart consumer resolves through — CartPage, CheckoutPage, and anywhere else) deletes any cart item whose variant no longer exists before returning the cart; `WishlistPage` does the same for wishlist items on render.

@@ -22,20 +22,24 @@ use Lorisleiva\Actions\Concerns\AsAction;
  * re-verification step, not just its already-authenticated session.
  * Shares `ConsumeOtpCode`/`otp_codes` with the phone flow (rows are
  * scoped by identifier + purpose regardless of delivery channel), only
- * the send side differs. Rate limited far more loosely than SMS — email
+ * the send side differs. Per-email limits are looser than SMS — email
  * carries no per-send cost, so this exists to blunt notification-spam
- * abuse, not to control spend.
+ * abuse, not to control spend. The per-IP cap exists for the same reason
+ * RequestOtp has one: today's only call site always passes the caller's
+ * own email, so it's not independently exploitable yet, but it closes
+ * the gap in advance for any future call site that accepts a
+ * caller-supplied address instead.
  */
 class RequestEmailOtp
 {
     use AsAction;
 
     /**
-     * @throws OtpRateLimitedException when the email has requested too many codes too recently
+     * @throws OtpRateLimitedException when the email (or its source IP) has requested too many codes too recently
      */
-    public function handle(string $email, string $purpose, string $reason): void
+    public function handle(string $email, string $purpose, string $reason, ?string $ip = null): void
     {
-        $this->assertNotRateLimited($email);
+        $this->assertNotRateLimited($email, $ip);
 
         $code = (string) random_int(100000, 999999);
 
@@ -50,12 +54,16 @@ class RequestEmailOtp
 
         RateLimiter::hit("email-otp-request-minute:{$email}", 60);
         RateLimiter::hit("email-otp-request-hour:{$email}", 3600);
+
+        if ($ip !== null) {
+            RateLimiter::hit("email-otp-request-ip-hour:{$ip}", 3600);
+        }
     }
 
     /**
      * @throws OtpRateLimitedException
      */
-    private function assertNotRateLimited(string $email): void
+    private function assertNotRateLimited(string $email, ?string $ip): void
     {
         if (RateLimiter::tooManyAttempts("email-otp-request-minute:{$email}", 1)) {
             throw new OtpRateLimitedException(RateLimiter::availableIn("email-otp-request-minute:{$email}"));
@@ -63,6 +71,10 @@ class RequestEmailOtp
 
         if (RateLimiter::tooManyAttempts("email-otp-request-hour:{$email}", 5)) {
             throw new OtpRateLimitedException(RateLimiter::availableIn("email-otp-request-hour:{$email}"));
+        }
+
+        if ($ip !== null && RateLimiter::tooManyAttempts("email-otp-request-ip-hour:{$ip}", 30)) {
+            throw new OtpRateLimitedException(RateLimiter::availableIn("email-otp-request-ip-hour:{$ip}"));
         }
     }
 }

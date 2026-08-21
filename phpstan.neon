@@ -10,4 +10,13 @@ parameters:
         - database/
         - routes/
 
+    # Vendor-published, unmodified stock migration (Laravel Pulse's own
+    # create_pulse_tables.php) — already run in every environment, so per
+    # CLAUDE.md §6 it must never be hand-edited to satisfy static analysis.
+    # Its match($this->driver()) is exhaustive in practice (mysql/mariadb/
+    # pgsql/sqlite are the only drivers Pulse supports) but not provably so
+    # from `driver()`'s generic `string` return type.
+    excludePaths:
+        - database/migrations/2026_08_20_124611_create_pulse_tables.php
+
     level: 7

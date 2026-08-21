@@ -11,6 +11,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The order is now re-fetched and `lockForUpdate()`'d inside the transaction before any check runs, matching the locking pattern already used for stock/coupon/payment writes elsewhere in this app.
 - 1 new test.
 
+### Fixed — concurrent payment-retry requests could start two live gateway sessions for one order
+- `InitiatePayment`'s idempotency check (look for an existing Pending payment) and the Payment row it writes ran with no locking — two concurrent retries against the same order (a stale page left open in two tabs, both hitting "retry payment") could each read "no existing Pending payment" and start their own independent live checkout session with the gateway.
+- Wrapped the check-through-write in `DB::transaction()` with the order row locked, matching `CreateOrderFromCart`'s existing double-submit protection. The lock does span the outbound gateway call (unlike `ProcessRefund`'s async-dispatched provider call) since a redirect-based checkout needs the gateway's response synchronously — an accepted tradeoff since retry is a rare, human-paced action, not a hot path.
+- Strengthened an existing idempotency test's docblock to note it now also covers this fix; no new test needed since the existing sequential idempotency assertion already exercises the locked path.
+
 ### Fixed — incomplete CSV/Excel formula-injection sanitization on exports
 - The Products export sanitized `name` against formula injection but not `category.name`/`brand.name` — both free-text fields a lower-privileged Store Keeper can also create/edit, so a planted payload could still execute when an Admin/SuperAdmin later opened the export. Same gap on the Customers export: `name` was sanitized, `email` wasn't (a self-registering customer's own free-text field).
 - Added the same `SanitizesExportFormulas::sanitize()` call to all three columns.

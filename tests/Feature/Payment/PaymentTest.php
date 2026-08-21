@@ -83,6 +83,14 @@ class PaymentTest extends TestCase
         return $order->fresh();
     }
 
+    /**
+     * Also covers the fix for a concurrent-retry race (e.g. a stale page
+     * left open in two tabs, both hitting "retry payment"): the
+     * idempotency check and the Payment write now happen inside a
+     * transaction against a locked, freshly-fetched order rather than an
+     * unlocked check-then-write, so a second call never creates a
+     * duplicate live gateway session for the same order.
+     */
     public function test_initiating_a_payment_is_idempotent_per_order(): void
     {
         $order = Order::factory()->create();

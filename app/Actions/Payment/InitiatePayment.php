@@ -63,31 +63,65 @@ class InitiatePayment
      */
     public function handle(Order $order, string $provider): Payment
     {
-        $existing = $order->payments()->where('status', PaymentStatus::Pending)->latest('id')->first();
+        // Locks the order row for the idempotency check through to the
+        // Payment row being written — retryPayment() lets a customer
+        // retry from a stale page left open in two tabs, and without this
+        // lock two concurrent requests could both read "no existing
+        // Pending payment" and each start their own live gateway checkout
+        // session for the same order. The lock does span the outbound
+        // gateway call (unlike ProcessRefund's async-dispatched provider
+        // call), because a redirect-based checkout needs the gateway's
+        // response synchronously to send the customer anywhere — but this
+        // path is a rare, human-paced retry, not a hot path, so holding
+        // the lock for one HTTP round trip is an acceptable tradeoff.
+        return DB::transaction(function () use ($order, $provider): Payment {
+            $lockedOrder = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
 
-        if ($existing !== null) {
-            return $existing;
-        }
+            $existing = $lockedOrder->payments()->where('status', PaymentStatus::Pending)->latest('id')->first();
 
-        // A $0 order (a free product, or a coupon/tax/shipping combination
-        // that zeroes the total) has nothing to charge — every gateway
-        // rejects a zero-amount transaction, and previously nothing here
-        // special-cased it, so a genuinely free order could never be
-        // completed: InitiatePayment would create a Failed payment every
-        // single time. Settled directly through the same fulfillment path
-        // a real successful payment uses (SettlePaymentSuccess), rather
-        // than duplicating stock/order-status logic here.
-        if ($order->grand_total === 0) {
-            // A free-order settlement transitions straight to Success
-            // within this same call, so the ordinary "existing Pending
-            // payment" idempotency check above never matches it on a
-            // second call — checked separately here against any payment
-            // at all for this order, not just a Pending one.
-            $existingSettled = $order->payments()->latest('id')->first();
+            if ($existing !== null) {
+                return $existing;
+            }
 
-            return $existingSettled ?? $this->settleFreeOrder($order);
-        }
+            // A $0 order (a free product, or a coupon/tax/shipping
+            // combination that zeroes the total) has nothing to charge —
+            // every gateway rejects a zero-amount transaction, and
+            // previously nothing here special-cased it, so a genuinely
+            // free order could never be completed: InitiatePayment would
+            // create a Failed payment every single time. Settled directly
+            // through the same fulfillment path a real successful payment
+            // uses (SettlePaymentSuccess), rather than duplicating
+            // stock/order-status logic here.
+            if ($lockedOrder->grand_total === 0) {
+                // A free-order settlement transitions straight to Success
+                // within this same call, so the ordinary "existing
+                // Pending payment" idempotency check above never matches
+                // it on a second call — checked separately here against
+                // any payment at all for this order, not just a Pending
+                // one.
+                $existingSettled = $lockedOrder->payments()->latest('id')->first();
 
+                return $existingSettled ?? $this->settleFreeOrder($lockedOrder);
+            }
+
+            return $this->initiateWithGateway($lockedOrder, $provider);
+        });
+    }
+
+    /**
+     * Calls the gateway and records the resulting Payment row — anything
+     * between the enabled-provider check and getting a response back (a
+     * missing/misconfigured API key, a network error, a malformed
+     * provider response) must never bubble up as an uncaught exception:
+     * the order already exists by this point in checkout, so a raw 500
+     * would strand the customer on a broken page with a real order they
+     * can't pay for. Instead this always returns a Payment row (a caught
+     * failure looks identical to a gateway-reported one — Failed status,
+     * a customer-safe message in metadata.error), and logs the underlying
+     * exception for whoever's on call to actually investigate.
+     */
+    private function initiateWithGateway(Order $order, string $provider): Payment
+    {
         $isEnabled = DB::table('payment_provider_settings')->where('provider', $provider)->where('enabled', true)->exists();
         $requestPayload = ['order_id' => $order->id, 'order_number' => $order->order_number, 'amount' => $order->grand_total];
 

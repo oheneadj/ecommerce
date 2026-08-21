@@ -68,6 +68,15 @@ Schedule::call(fn () => RunScheduledBackup::run())
     ->name('run-scheduled-backup')
     ->withoutOverlapping();
 
+// config/backup.php's cleanup strategy (keep-all-for-30-days, then
+// daily/weekly/monthly thinning) was already fully configured but never
+// actually invoked anywhere — every successful backup accumulated on the
+// gdrive disk forever with nothing pruning it.
+Schedule::command('backup:clean')
+    ->daily()
+    ->name('clean-old-backups')
+    ->withoutOverlapping();
+
 // Telescope records full request/query/job payloads to its own tables
 // with no automatic expiry — left running in production (see
 // TELESCOPE_ENABLED), this keeps it from growing unbounded. 72 hours is

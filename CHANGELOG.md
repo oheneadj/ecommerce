@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — old backups were never pruned, growing storage unbounded
+- `config/backup.php`'s cleanup strategy (keep-all-30-days, then daily/weekly/monthly thinning) was fully configured but nothing ever scheduled `backup:clean` — every successful backup accumulated on the `gdrive` disk forever. Added a daily schedule entry, matching the existing `telescope:prune` pattern (bug hunt 9).
+
 ### Fixed — replacing a payment provider's logo left the old file orphaned
 - Unlike Brand's logo (`BrandObserver`), `PaymentProviderSetting` had no observer cleaning up `logo_path` — every time a Super Admin swapped a provider's logo, the previous file stayed on the public disk forever. Added `PaymentProviderSettingObserver` mirroring the existing pattern (bug hunt 9).
 

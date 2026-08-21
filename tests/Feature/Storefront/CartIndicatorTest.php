@@ -68,4 +68,28 @@ class CartIndicatorTest extends TestCase
 
         $component->dispatch('cart-updated')->assertSee('1');
     }
+
+    /**
+     * Regression: this component renders on every storefront page (not
+     * just Cart/Checkout), so a soft-deleted variant left in the cart used
+     * to crash the entire site for that visitor rather than just one page.
+     */
+    public function test_a_soft_deleted_variant_is_pruned_instead_of_crashing_every_page(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $keptVariant = ProductVariant::factory()->create(['price' => 1000, 'stock' => 10]);
+        $deletedVariant = ProductVariant::factory()->create(['price' => 500, 'stock' => 10]);
+        $cart = GetCurrentCart::run($user);
+        AddItemToCart::run($cart, $keptVariant, 1);
+        AddItemToCart::run($cart, $deletedVariant, 1);
+        $deletedVariant->delete();
+
+        Livewire::test(CartIndicator::class)
+            ->assertOk()
+            ->assertSet('itemCount', 1)
+            ->assertSet('subtotal', 1000);
+
+        $this->assertSame(1, $cart->fresh()->items()->count());
+    }
 }

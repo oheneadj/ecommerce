@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — header cart indicator crashed the whole site on a soft-deleted variant
+- `CartIndicator` (rendered on every storefront page) queried the cart directly instead of going through `ResolveCurrentCart`'s pruning, then dereferenced `productVariant->price` unguarded — a discontinued (soft-deleted) variant left in any customer's cart crashed every page for that visitor, not just the cart page. Now prunes stale items the same way `ResolveCurrentCart` does.
+
+### Added — scheduled Telescope entry pruning
+- Telescope records full request/query/job payloads to its own tables with no automatic expiry — left running in production it grows unbounded. Added a daily `telescope:prune --hours=72` schedule entry.
+
 ### Fixed — three surfaces still hardcoded "GHS"/"GH₵" instead of reading the currency config
 - The storefront price-range filter slider, the Product JSON-LD structured data (`priceCurrency`), and every admin money input field (`MoneyInput`) all hardcoded the Ghana cedi regardless of `config('app.currency')` — inconsistent with every other price display in the app, which already read from it.
 - Extracted the currency-to-symbol mapping (previously duplicated between `HasFormattedMoney` and the `<x-money>` Blade component) into a single `App\Support\CurrencySymbol` helper, and pointed all three gaps at it (or, for the JSON-LD currency code, at `config('app.currency')` directly).

@@ -36,7 +36,13 @@ class CartIndicator extends Component
     /**
      * A non-creating lookup — unlike ResolveCurrentCart, the header
      * indicator must never create a cart row just because a page rendered;
-     * that would leave an empty cart behind for every anonymous visit.
+     * that would leave an empty cart behind for every anonymous visit. It
+     * still has to prune the same way ResolveCurrentCart does, though — a
+     * discontinued (soft-deleted) variant left in the cart is dereferenced
+     * unguarded by subtotal() below, and this component renders on every
+     * single storefront page, not just Cart/Checkout, so a stale item
+     * here crashes the whole site for that visitor rather than just one
+     * page.
      */
     #[Computed]
     public function cart(): ?Cart
@@ -47,7 +53,10 @@ class CartIndicator extends Component
 
         $cart = $query->open()->latest('id')->first();
 
-        $cart?->load(['items.productVariant.product', 'items.productVariant.images', 'items.productVariant.product.images']);
+        if ($cart !== null) {
+            $cart->items()->whereDoesntHave('productVariant')->delete();
+            $cart->load(['items.productVariant.product', 'items.productVariant.images', 'items.productVariant.product.images']);
+        }
 
         return $cart;
     }

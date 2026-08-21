@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — checkout crashed instead of failing gracefully when a variant was discontinued mid-checkout
+- `CreateOrderFromCart` didn't re-guard against a variant deleted between checkout-page-load and submission, crashing with a raw 500 (subtotal read off a null `productVariant`) instead of the same graceful `EmptyCartException` path an already-empty cart uses. Now excludes items whose variant no longer exists before totalling — the order still goes through for any remaining valid items.
+
 ### Added — missing indexes on orders.created_at and product_variants.stock
 - Both columns were unindexed despite being filtered/sorted in the app's hottest queries: the dashboard's date-range metrics and low-stock reporting on `orders.created_at`, and every storefront product listing/search query on `product_variants.stock`. Added composite indexes (`status, created_at` / `status, stock`) that also cover the existing status-only lookups.
 

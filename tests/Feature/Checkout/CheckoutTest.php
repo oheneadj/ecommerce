@@ -40,6 +40,41 @@ class CheckoutTest extends TestCase
         CreateOrderFromCart::run($cart, $address);
     }
 
+    /**
+     * Regression: a variant discontinued between checkout-page-load and
+     * submission used to crash with a raw 500 (subtotal read off a null
+     * productVariant) instead of failing the same graceful way an
+     * already-empty cart does.
+     */
+    public function test_checking_out_a_cart_whose_only_item_was_discontinued_mid_checkout_fails_gracefully(): void
+    {
+        $variant = ProductVariant::factory()->create(['stock' => 5]);
+        $cart = Cart::factory()->create();
+        AddItemToCart::run($cart, $variant, 1);
+        $address = Address::factory()->create(['user_id' => $cart->user_id]);
+        $variant->delete();
+
+        $this->expectException(EmptyCartException::class);
+
+        CreateOrderFromCart::run($cart, $address);
+    }
+
+    public function test_checking_out_when_one_of_several_items_was_discontinued_mid_checkout_orders_the_rest(): void
+    {
+        $keptVariant = ProductVariant::factory()->create(['stock' => 5, 'price' => 1000]);
+        $deletedVariant = ProductVariant::factory()->create(['stock' => 5, 'price' => 500]);
+        $cart = Cart::factory()->create();
+        AddItemToCart::run($cart, $keptVariant, 1);
+        AddItemToCart::run($cart, $deletedVariant, 1);
+        $address = Address::factory()->create(['user_id' => $cart->user_id]);
+        $deletedVariant->delete();
+
+        $order = CreateOrderFromCart::run($cart, $address);
+
+        $this->assertSame(1000, $order->subtotal);
+        $this->assertSame(1, $order->items()->count());
+    }
+
     public function test_stock_is_reserved_not_deducted_at_checkout(): void
     {
         $variant = ProductVariant::factory()->create(['stock' => 10]);

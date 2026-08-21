@@ -87,8 +87,15 @@ class CreateOrderFromCart
                 return $existing;
             }
 
-            $items = $cart->items()->with('productVariant.product.brand', 'productVariant.attributeValues', 'productVariant.images', 'productVariant.product.images')->get();
+            $items = $cart->items()->with('productVariant.product.brand', 'productVariant.attributeValues', 'productVariant.images', 'productVariant.product.images')
+                ->whereHas('productVariant')
+                ->get();
 
+            // A variant discontinued between checkout-page-load and this
+            // submission would otherwise crash below (price read off a
+            // null productVariant) instead of failing gracefully — the
+            // same EmptyCartException path CheckoutPage already catches
+            // and shows the customer a friendly message for.
             if ($items->isEmpty()) {
                 throw new EmptyCartException;
             }

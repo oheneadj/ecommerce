@@ -269,7 +269,12 @@ class ImagesRelationManager extends RelationManager
             // N+1 (previously silent; only surfaced once 2+ rows shared
             // the same scope, since Eloquent's lazy-loading guard skips a
             // relation that only ever batch-hydrates a single row).
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['productVariant', 'attributeTerm.attribute']))
+            // productVariant is loaded withTrashed() — a discontinued
+            // (soft-deleted) variant's images stay listed here (it's the
+            // admin's own edit screen for THIS product's images, not a
+            // customer-facing surface), and the default relation would
+            // resolve to null and crash the Scope column below.
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['productVariant' => fn ($query) => $query->withTrashed(), 'attributeTerm.attribute']))
             ->columns([
                 ImageColumn::make('path')
                     ->label('Image')

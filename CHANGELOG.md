@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — product images admin screen crashed on a discontinued variant's image
+- `ImagesRelationManager`'s Scope column dereferenced `productVariant->sku` unguarded; once an admin soft-deleted the variant an image was scoped to, the default relation resolved to null and the whole images table crashed. Now eager-loads `productVariant` with `withTrashed()` — the admin's own editor for a product still needs to show every image that belongs to it, including ones scoped to a since-discontinued variant.
+
 ### Fixed — dashboard page mixed raw server time with the store's configured timezone
 - `Dashboard.php`'s date-range filter defaults, "All time" shortcut, and subheading label all called raw `now()` while every widget on the same page reads dates through `DashboardMetricsQuery::storeNow()` (the store's configured timezone). A store timezone ahead of/behind the server's could make "Today" mean a different calendar day in the filter than in the widgets it filters. Now reads `storeNow()` throughout.
 

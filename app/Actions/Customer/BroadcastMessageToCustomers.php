@@ -65,7 +65,17 @@ class BroadcastMessageToCustomers
 
         RateLimiter::hit($rateLimitKey, 600);
 
-        FanOutCustomerBroadcast::dispatch($customerIds, $subject, $message, $channels);
+        // One job per chunk, not one job for the whole batch — if a job
+        // throws partway through processing (a transient DB error, a
+        // failed dispatch call) and gets retried, the retry only
+        // reprocesses that chunk's customers, not every customer already
+        // notified earlier in a single giant job. Chunk size matches
+        // FanOutCustomerBroadcast's own internal chunk(200, ...) — no
+        // reason for the dispatch-side and processing-side batch sizes to
+        // drift apart.
+        foreach (array_chunk($customerIds, 200) as $chunk) {
+            FanOutCustomerBroadcast::dispatch($chunk, $subject, $message, $channels);
+        }
 
         return count($customerIds);
     }

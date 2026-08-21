@@ -44,6 +44,31 @@ class BroadcastMessageToCustomersTest extends TestCase
         Bus::assertDispatched(FanOutCustomerBroadcast::class);
     }
 
+    /**
+     * Regression: a single job covering the whole targeted batch meant a
+     * mid-batch retry (a transient DB error, a failed dispatch call)
+     * reprocessed every customer already notified earlier in that same
+     * job, not just the ones after the failure point. Chunking into
+     * multiple jobs bounds a retry's blast radius to one chunk (200
+     * customers) instead of the entire broadcast.
+     */
+    public function test_a_batch_larger_than_the_chunk_size_dispatches_multiple_fan_out_jobs(): void
+    {
+        Bus::fake();
+
+        $customers = User::factory()->count(250)->create();
+
+        $count = BroadcastMessageToCustomers::run(
+            User::query()->whereIn('id', $customers->pluck('id')),
+            'Sale!',
+            'Everything is 20% off.',
+            ['email'],
+        );
+
+        $this->assertSame(250, $count);
+        Bus::assertDispatchedTimes(FanOutCustomerBroadcast::class, 2);
+    }
+
     public function test_no_job_is_dispatched_when_no_customers_match(): void
     {
         Bus::fake();

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — a broadcast retry could re-send to every already-notified customer
+- `FanOutCustomerBroadcast` processed an entire targeted batch (potentially thousands of customers) in one job with no progress tracking — if the job threw partway through (a transient DB error, a failed dispatch call) and Laravel retried it, every customer already emailed/texted/notified earlier in that same run got processed again.
+- `BroadcastMessageToCustomers` now dispatches one job per 200-customer chunk instead of one job for the whole batch, bounding a retry's blast radius to a single chunk instead of the entire broadcast.
+- 1 new test.
+
 ### Fixed — phone/Google-only customers could never delete their own account
 - `DeleteUserForm` unconditionally required the current password via Laravel's `current_password` rule. A customer who registered via phone+OTP or Google-only (a deliberately supported flow — no password ever set, `users.password` is `null`) always failed this check, since `Hash::check()` against a null hash is always false — self-service account deletion was permanently unreachable for that account, with no alternate confirmation offered.
 - The password field/requirement is now skipped entirely for an account with no password — the already-authenticated session is the confirmation, same trust level the account's own login already established.

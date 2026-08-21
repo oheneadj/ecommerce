@@ -12,9 +12,11 @@ use App\Concerns\HasFormattedMoney;
 use App\Concerns\HasUlid;
 use App\Concerns\LogsAdminActivity;
 use App\Enums\VariantStatus;
+use App\Observers\ProductVariantObserver;
 use Database\Factories\ProductVariantFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -44,6 +46,7 @@ use Illuminate\Support\Carbon;
  */
 #[Fillable(['product_id', 'sku', 'price', 'stock', 'low_stock_threshold', 'status'])]
 #[Hidden(['deleted_at'])]
+#[ObservedBy(ProductVariantObserver::class)]
 class ProductVariant extends Model
 {
     /** @use HasFactory<ProductVariantFactory> */

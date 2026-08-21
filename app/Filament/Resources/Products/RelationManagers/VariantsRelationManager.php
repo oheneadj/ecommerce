@@ -13,6 +13,7 @@ use App\Actions\Inventory\AdjustStockWithReservationCheck;
 use App\Actions\Inventory\RecordStockMovement;
 use App\Enums\StockMovementType;
 use App\Enums\VariantStatus;
+use App\Exceptions\DuplicateSkuException;
 use App\Exceptions\ProductVariantLimitExceededException;
 use App\Filament\Support\MoneyInput;
 use App\Models\AttributeTerm;
@@ -384,7 +385,7 @@ class VariantsRelationManager extends RelationManager
                         $data['sku_prefix'],
                         Auth::user(),
                     );
-                } catch (ProductVariantLimitExceededException $e) {
+                } catch (ProductVariantLimitExceededException|DuplicateSkuException $e) {
                     Notification::make()->title('Cannot generate variants')->body($e->getMessage())->danger()->send();
 
                     return;

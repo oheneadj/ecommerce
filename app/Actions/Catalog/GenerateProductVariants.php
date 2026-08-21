@@ -13,6 +13,7 @@ namespace App\Actions\Catalog;
 use App\Actions\Inventory\RecordStockMovement;
 use App\Enums\StockMovementType;
 use App\Enums\VariantStatus;
+use App\Exceptions\DuplicateSkuException;
 use App\Exceptions\ProductVariantLimitExceededException;
 use App\Models\AttributeTerm;
 use App\Models\Product;
@@ -79,6 +80,16 @@ class GenerateProductVariants
                 }
 
                 $terms = collect($termIds)->map(fn (int $id): AttributeTerm => $termsById[$id]);
+                $sku = $this->buildSku($skuPrefix, $terms);
+
+                // sku is globally unique, not scoped to this product — a
+                // prefix/term combo that collides with a live variant on
+                // ANY product (not just this one) would otherwise throw a
+                // raw QueryException mid-transaction instead of a friendly,
+                // actionable message.
+                if (ProductVariant::query()->where('sku', $sku)->exists()) {
+                    throw new DuplicateSkuException($sku);
+                }
 
                 // Created with `stock` at 0, not $defaultStock — the initial
                 // count is applied through RecordStockMovement below so it's
@@ -87,7 +98,7 @@ class GenerateProductVariants
                 // "never update stock directly" rule applies to a brand-new
                 // variant too, not just an existing one).
                 $variant = $product->variants()->create([
-                    'sku' => $this->buildSku($skuPrefix, $terms),
+                    'sku' => $sku,
                     'price' => $defaultPrice,
                     'stock' => 0,
                     'status' => VariantStatus::Active,

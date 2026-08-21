@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Catalog;
 
 use App\Actions\Catalog\GenerateProductVariants;
+use App\Exceptions\DuplicateSkuException;
 use App\Exceptions\ProductVariantLimitExceededException;
 use App\Models\Attribute;
 use App\Models\AttributeTerm;
@@ -22,6 +23,49 @@ use Tests\TestCase;
 class GenerateProductVariantsTest extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * Regression: sku is globally unique (not scoped per product), so a
+     * prefix/term combo colliding with a live variant on ANY product used
+     * to throw a raw QueryException mid-transaction instead of a friendly,
+     * actionable message.
+     */
+    public function test_a_colliding_sku_on_another_product_is_rejected_with_a_friendly_message(): void
+    {
+        $otherProduct = Product::factory()->create();
+        ProductVariant::factory()->create(['product_id' => $otherProduct->id, 'sku' => 'SHIRT-RED']);
+
+        $product = Product::factory()->create();
+        $color = Attribute::factory()->create(['name' => 'Color']);
+        $red = AttributeTerm::factory()->create(['attribute_id' => $color->id, 'value' => 'Red']);
+
+        $this->expectException(DuplicateSkuException::class);
+
+        GenerateProductVariants::run(
+            $product,
+            [[$red->id]],
+            defaultPrice: 3000,
+            defaultStock: 10,
+            skuPrefix: 'SHIRT',
+        );
+    }
+
+    /**
+     * Regression: without freeing the SKU on soft-delete, a discontinued
+     * variant permanently blocked its own SKU from ever being reused —
+     * even on a brand-new, unrelated variant.
+     */
+    public function test_a_soft_deleted_variants_sku_is_freed_for_reuse(): void
+    {
+        $product = Product::factory()->create();
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id, 'sku' => 'SHIRT-RED']);
+        $variant->delete();
+
+        $newVariant = ProductVariant::factory()->create(['sku' => 'SHIRT-RED']);
+
+        $this->assertModelExists($newVariant);
+        $this->assertStringContainsString('SHIRT-RED-deleted-', ProductVariant::withTrashed()->findOrFail($variant->id)->sku);
+    }
 
     public function test_it_creates_one_variant_per_combination(): void
     {

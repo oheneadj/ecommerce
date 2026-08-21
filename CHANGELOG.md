@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — bulk variant generation could crash on a SKU collision, and soft-deleted SKUs were never freed for reuse
+- `sku` is globally unique, not scoped per product, but nothing checked for a collision before insert — a prefix/term combo matching a live variant on *any* product threw a raw `QueryException` mid-transaction. Now checked up front and rejected with a friendly `DuplicateSkuException`.
+- Separately, `ProductVariant` never mutated `sku` on soft-delete (per CLAUDE.md §6), so a discontinued variant permanently blocked its own SKU from ever being reused — even by an unrelated new variant. Added `ProductVariantObserver` to free it on delete, matching the pattern already used for unique slugs/codes elsewhere. (The same gap likely exists on `Product.slug` and `User.email/phone/google_id` — flagged separately, not fixed in this pass.)
+
 ### Fixed — checkout accepted a deactivated shipping method
 - `CheckoutPage::placeOrder()` re-validates the posted payment provider against the currently-enabled set, but never did the same for `selectedShippingMethodId` — a method deactivated between page load and submission (or a tampered request) still passed a plain `findOrFail()` and got charged/snapshotted as if still valid. Now re-checked against the active set the same way payment provider already is (bug hunt 9).
 

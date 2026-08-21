@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — dashboard page mixed raw server time with the store's configured timezone
+- `Dashboard.php`'s date-range filter defaults, "All time" shortcut, and subheading label all called raw `now()` while every widget on the same page reads dates through `DashboardMetricsQuery::storeNow()` (the store's configured timezone). A store timezone ahead of/behind the server's could make "Today" mean a different calendar day in the filter than in the widgets it filters. Now reads `storeNow()` throughout.
+
 ### Fixed — header cart indicator crashed the whole site on a soft-deleted variant
 - `CartIndicator` (rendered on every storefront page) queried the cart directly instead of going through `ResolveCurrentCart`'s pruning, then dereferenced `productVariant->price` unguarded — a discontinued (soft-deleted) variant left in any customer's cart crashed every page for that visitor, not just the cart page. Now prunes stale items the same way `ResolveCurrentCart` does.
 

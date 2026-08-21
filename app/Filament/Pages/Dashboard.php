@@ -15,6 +15,7 @@ use App\Filament\Widgets\RecentOrdersWidget;
 use App\Filament\Widgets\TopProductsByRevenueWidget;
 use App\Filament\Widgets\TopProductsWidget;
 use App\Models\Order;
+use App\Queries\DashboardMetricsQuery;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Pages\Dashboard\Actions\FilterAction;
@@ -92,13 +93,13 @@ class Dashboard extends BaseDashboard
                         ->label('From')
                         ->native(false)
                         ->placeholder('Today')
-                        ->default(now()->toDateString()),
+                        ->default($this->storeNow()->toDateString()),
 
                     DatePicker::make('endDate')
                         ->label('To')
                         ->native(false)
                         ->placeholder('Today')
-                        ->default(now()->toDateString())
+                        ->default($this->storeNow()->toDateString())
                         ->afterOrEqual('startDate'),
                 ]),
 
@@ -114,7 +115,7 @@ class Dashboard extends BaseDashboard
                 ->action(function (): void {
                     $this->filters = [
                         'startDate' => $this->earliestOrderDate(),
-                        'endDate' => now()->toDateString(),
+                        'endDate' => $this->storeNow()->toDateString(),
                     ];
                 }),
 
@@ -141,10 +142,10 @@ class Dashboard extends BaseDashboard
         $end = $this->filters['endDate'] ?? null;
 
         if (! $start && ! $end) {
-            return now()->format('F').' Overview';
+            return $this->storeNow()->format('F').' Overview';
         }
 
-        if ($start === $this->earliestOrderDate() && $end === now()->toDateString()) {
+        if ($start === $this->earliestOrderDate() && $end === $this->storeNow()->toDateString()) {
             return 'All Time Overview';
         }
 
@@ -159,6 +160,18 @@ class Dashboard extends BaseDashboard
      */
     private function earliestOrderDate(): string
     {
-        return Order::query()->oldest()->value('created_at')?->toDateString() ?? now()->toDateString();
+        return Order::query()->oldest()->value('created_at')?->toDateString() ?? $this->storeNow()->toDateString();
+    }
+
+    /**
+     * The store's configured "now", not the server's — matches the
+     * semantics every widget on this page already uses (via
+     * DashboardMetricsQuery) so "today"/"this month" here means the same
+     * calendar day the widgets themselves are keyed off, not whatever the
+     * server's raw timezone happens to be.
+     */
+    private function storeNow(): Carbon
+    {
+        return app(DashboardMetricsQuery::class)->storeNow();
     }
 }

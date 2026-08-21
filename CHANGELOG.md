@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — missing indexes on orders.created_at and product_variants.stock
+- Both columns were unindexed despite being filtered/sorted in the app's hottest queries: the dashboard's date-range metrics and low-stock reporting on `orders.created_at`, and every storefront product listing/search query on `product_variants.stock`. Added composite indexes (`status, created_at` / `status, stock`) that also cover the existing status-only lookups.
+
 ### Fixed — staff disable/enable actions relied solely on the page-level gate
 - `StaffTable`'s disable/enable row and bulk actions had no `->authorize()` of their own, unlike the equivalent customer actions — currently not exploitable since `StaffResource::canViewAny()` already blocks non-Super-Admins from ever reaching the page, but a defense-in-depth gap if that page-level gate is ever loosened. Added matching `->authorize()` checks.
 

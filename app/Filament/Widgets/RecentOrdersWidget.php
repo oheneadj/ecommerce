@@ -7,6 +7,7 @@ namespace App\Filament\Widgets;
 use App\Enums\UserRole;
 use App\Filament\Resources\Orders\OrderResource;
 use App\Models\Order;
+use App\Models\StoreSetting;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
@@ -46,14 +47,19 @@ class RecentOrdersWidget extends TableWidget
 
         return $table
             ->query(function () use ($startDate, $endDate): Builder {
+                $store = StoreSetting::current();
                 $query = Order::query()->latest();
 
+                // Converted to the store's configured timezone before
+                // comparing against the always-UTC created_at column —
+                // otherwise an admin's "today"/date-range picks silently
+                // use UTC day boundaries instead of their own store's.
                 if ($startDate) {
-                    $query->whereDate('created_at', '>=', $startDate);
+                    $query->where('created_at', '>=', $store->startOfDayUtc($startDate));
                 }
 
                 if ($endDate) {
-                    $query->whereDate('created_at', '<=', $endDate);
+                    $query->where('created_at', '<=', $store->endOfDayUtc($endDate));
                 }
 
                 return $query->limit(10);

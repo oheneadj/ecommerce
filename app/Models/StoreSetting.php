@@ -194,6 +194,31 @@ class StoreSetting extends Model
     }
 
     /**
+     * The UTC instant that a calendar date starts at in the store's
+     * configured display timezone — e.g. "2026-08-21" in a UTC+5 store
+     * starts at "2026-08-20 19:00:00" UTC. Dashboard date-range filters
+     * are chosen by an admin thinking in their own local calendar day,
+     * but `created_at` is always stored in UTC — comparing a raw date
+     * string against it directly (`whereDate('created_at', '>=', $date)`)
+     * silently uses UTC day boundaries instead, which is invisible for a
+     * UTC-timezone store but genuinely miscounts "today"/date-range data
+     * by up to a day for any other configured timezone.
+     */
+    public function startOfDayUtc(string $date): Carbon
+    {
+        return Carbon::parse($date, $this->timezone)->startOfDay()->utc();
+    }
+
+    /**
+     * The UTC instant a calendar date ends at in the store's timezone —
+     * see startOfDayUtc() for why this matters.
+     */
+    public function endOfDayUtc(string $date): Carbon
+    {
+        return Carbon::parse($date, $this->timezone)->endOfDay()->utc();
+    }
+
+    /**
      * Only the social platforms actually set, keyed by the icon name
      * `<x-app-icon>` already knows (same names used for the product-share
      * icons) — keeps the storefront footer a plain loop instead of one

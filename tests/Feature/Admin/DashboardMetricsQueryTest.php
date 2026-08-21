@@ -16,9 +16,11 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Refund;
 use App\Models\StockMovement;
+use App\Models\StoreSetting;
 use App\Models\User;
 use App\Queries\DashboardMetricsQuery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -41,6 +43,34 @@ class DashboardMetricsQueryTest extends TestCase
         Payment::factory()->create(['status' => PaymentStatus::Success, 'amount' => 1000, 'created_at' => now()]);
         Payment::factory()->create(['status' => PaymentStatus::Pending, 'amount' => 5000, 'created_at' => now()]);
         Payment::factory()->create(['status' => PaymentStatus::Success, 'amount' => 9999, 'created_at' => now()->subDays(2)]);
+
+        $this->assertSame(1000, $this->metrics->todaysSales());
+    }
+
+    /**
+     * Regression: "today" used to always mean the UTC calendar day,
+     * regardless of the store's configured display timezone.
+     */
+    public function test_todays_sales_uses_the_stores_configured_timezone_not_utc(): void
+    {
+        StoreSetting::current()->update(['timezone' => 'America/New_York']);
+
+        // 2026-08-21 02:00:00 UTC is 2026-08-20 22:00:00 in
+        // America/New_York (UTC-4 in August) — "today" from the store's
+        // perspective is still the 20th, even though the UTC calendar
+        // date is already the 21st.
+        $this->travelTo(Carbon::parse('2026-08-21 02:00:00', 'UTC'));
+
+        // Stored (UTC) as 2026-08-20 — a raw whereDate('created_at',
+        // now()->toDateString()) comparison against '2026-08-21' (UTC
+        // "today") would have missed this row entirely, even though it's
+        // genuinely today (2026-08-20 19:30 local) from the store's own
+        // perspective.
+        Payment::factory()->create([
+            'status' => PaymentStatus::Success,
+            'amount' => 1000,
+            'created_at' => Carbon::parse('2026-08-20 23:30:00', 'UTC'),
+        ]);
 
         $this->assertSame(1000, $this->metrics->todaysSales());
     }
@@ -312,6 +342,12 @@ class DashboardMetricsQueryTest extends TestCase
             Order::factory()->create(['user_id' => $customer->id, 'status' => OrderStatus::Paid]);
         });
 
+        // Primed before the listener starts so its own (timezone-lookup)
+        // query doesn't count toward the assertion below — this test's
+        // actual invariant is "no N+1 across customers", not "zero
+        // queries besides the segment aggregate".
+        StoreSetting::current();
+
         $queryCount = 0;
         DB::listen(function () use (&$queryCount): void {
             $queryCount++;
@@ -319,7 +355,10 @@ class DashboardMetricsQueryTest extends TestCase
 
         $this->metrics->customerSegments();
 
-        $this->assertSame(1, $queryCount);
+        // 1 for the segment aggregate itself, 1 for DashboardMetricsQuery
+        // reading the store's timezone (to convert the date-range filter
+        // into a UTC boundary correctly) — still no per-customer query.
+        $this->assertSame(2, $queryCount);
     }
 
     public function test_orders_count_by_day_groups_correctly_across_the_range(): void

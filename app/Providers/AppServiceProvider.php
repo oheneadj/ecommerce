@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Notifications\Channels\SmsChannel;
 use App\Payments\PaymentManager;
 use App\Policies\ActivityPolicy;
+use App\Queries\DashboardMetricsQuery;
 use App\Sms\Contracts\SmsGateway;
 use App\Sms\SmsManager;
 use App\Support\PasswordPolicy;
@@ -66,6 +67,16 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SmsGateway::class, fn ($app) => $app->make(SmsManager::class)->driver());
 
         $this->app->singleton(PaymentManager::class);
+
+        // A dashboard render resolves this multiple times (once per
+        // widget's mount, again on every filter-triggered re-render) —
+        // singleton so its per-instance StoreSetting memoization (see
+        // DashboardMetricsQuery::store()) is actually shared across all
+        // of them within one request, not just within a single call.
+        // Safe as an app-lifetime singleton since this app doesn't run
+        // under Octane (no persistent-worker request reuse) — the
+        // container itself is destroyed at the end of every request.
+        $this->app->singleton(DashboardMetricsQuery::class);
     }
 
     /**

@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — admin dashboard "today"/date-range data used UTC instead of the store's configured timezone
+- Every "today"/"this month"/date-range/daily-trend query in `DashboardMetricsQuery`, plus `RecentOrdersWidget`'s own inline query, compared the always-UTC `created_at` column against date strings computed from the server's UTC clock — invisible for the current UTC-timezone deployment, but a real off-by-up-to-a-day miscount for any store configured with a different display timezone (a stated goal of this codebase as a multi-store template).
+- Added `StoreSetting::startOfDayUtc()`/`endOfDayUtc()` (convert a calendar date in the store's timezone to its UTC instant boundaries) and a `DashboardMetricsQuery::storeNow()` helper; every date-boundary comparison in the file now goes through them. `StoreSetting::current()` is memoized per `DashboardMetricsQuery` instance (itself now bound as a per-request singleton, since a dashboard render resolves it multiple times) to avoid adding a query per date calculation.
+- Left as a known, smaller, separate limitation: the three `*ByDay` methods' per-row `DATE(created_at)` grouping is still a raw UTC calendar day (only the overall range boundary is timezone-correct) — a timezone-aware SQL date truncation isn't portable across this app's MySQL/SQLite drivers.
+- 4 new tests.
+
 ### Fixed — a broadcast retry could re-send to every already-notified customer
 - `FanOutCustomerBroadcast` processed an entire targeted batch (potentially thousands of customers) in one job with no progress tracking — if the job threw partway through (a transient DB error, a failed dispatch call) and Laravel retried it, every customer already emailed/texted/notified earlier in that same run got processed again.
 - `BroadcastMessageToCustomers` now dispatches one job per 200-customer chunk instead of one job for the whole batch, bounding a retry's blast radius to a single chunk instead of the entire broadcast.

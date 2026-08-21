@@ -65,4 +65,38 @@ class StoreSettingTest extends TestCase
 
         StoreSetting::query()->create(['singleton_key' => 'singleton']);
     }
+
+    /**
+     * A calendar date in a UTC-behind store (e.g. America/New_York,
+     * UTC-4 in summer) starts later than midnight UTC — "2026-08-21"
+     * there doesn't start until "2026-08-21 04:00:00" UTC.
+     */
+    public function test_start_of_day_utc_converts_a_date_from_the_store_timezone(): void
+    {
+        $store = StoreSetting::current();
+        $store->update(['timezone' => 'America/New_York']);
+
+        $result = $store->startOfDayUtc('2026-08-21');
+
+        $this->assertSame('2026-08-21 04:00:00', $result->toDateTimeString());
+    }
+
+    public function test_end_of_day_utc_converts_a_date_from_the_store_timezone(): void
+    {
+        $store = StoreSetting::current();
+        $store->update(['timezone' => 'America/New_York']);
+
+        $result = $store->endOfDayUtc('2026-08-21');
+
+        $this->assertSame('2026-08-22 03:59:59', $result->toDateTimeString());
+    }
+
+    public function test_day_boundaries_are_unaffected_for_a_utc_store(): void
+    {
+        $store = StoreSetting::current();
+        $store->update(['timezone' => 'UTC']);
+
+        $this->assertSame('2026-08-21 00:00:00', $store->startOfDayUtc('2026-08-21')->toDateTimeString());
+        $this->assertSame('2026-08-21 23:59:59', $store->endOfDayUtc('2026-08-21')->toDateTimeString());
+    }
 }

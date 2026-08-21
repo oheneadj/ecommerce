@@ -17,10 +17,12 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\ProductVariant;
 use App\Models\Refund;
+use App\Models\StoreSetting;
 use App\Models\User;
 use Closure;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -42,26 +44,55 @@ class DashboardMetricsQuery
         OrderStatus::Delivered,
     ];
 
+    private ?StoreSetting $store = null;
+
+    /**
+     * Memoized per instance (a fresh instance is resolved per request/
+     * widget render, so this can never leak stale data across requests)
+     * — several methods here call this multiple times (or in a 12-month
+     * trend loop), and `StoreSetting::current()` itself always hits the
+     * database with no caching of its own.
+     */
+    private function store(): StoreSetting
+    {
+        return $this->store ??= StoreSetting::current();
+    }
+
+    /**
+     * "Now", in the store's configured display timezone — every "today"/
+     * "this month"/"N days ago" calculation below is anchored to this,
+     * not the server's UTC clock, so an admin outside UTC sees data
+     * bucketed by their own calendar day rather than the server's.
+     */
+    private function storeNow(): Carbon
+    {
+        return Carbon::now($this->store()->timezone);
+    }
+
     public function todaysSales(): int
     {
-        return $this->netRevenue(fn (Builder $query): Builder => $query->whereDate('created_at', now()->toDateString()));
+        $today = $this->storeNow()->toDateString();
+
+        return $this->revenueInRange($today, $today);
     }
 
     public function monthlyRevenue(): int
     {
-        return $this->revenueForMonth(now());
+        return $this->revenueForMonth($this->storeNow());
     }
 
     /**
      * Net revenue (successful payments minus successful refunds) for an
      * arbitrary calendar month — used by monthlyRevenue() for the current
-     * month and by MonthlyRevenueChart for each of the last 6.
+     * month and by MonthlyRevenueChart for each of the last 6. `$month`
+     * is interpreted as a calendar month in the store's timezone (via
+     * revenueInRange()'s UTC-boundary conversion), not a UTC one.
      */
     public function revenueForMonth(DateTimeInterface $month): int
     {
-        return $this->netRevenue(fn (Builder $query): Builder => $query
-            ->whereYear('created_at', $month->format('Y'))
-            ->whereMonth('created_at', $month->format('n')));
+        $month = Carbon::parse($month)->setTimezone($this->store()->timezone);
+
+        return $this->revenueInRange($month->copy()->startOfMonth()->toDateString(), $month->copy()->endOfMonth()->toDateString());
     }
 
     /**
@@ -89,17 +120,7 @@ class DashboardMetricsQuery
      */
     public function revenueInRange(?string $start, ?string $end): int
     {
-        return $this->netRevenue(function (Builder $query) use ($start, $end): Builder {
-            if ($start) {
-                $query->whereDate('created_at', '>=', $start);
-            }
-
-            if ($end) {
-                $query->whereDate('created_at', '<=', $end);
-            }
-
-            return $query;
-        });
+        return $this->netRevenue(fn (Builder $query): Builder => $this->scopeToRange($query, $start, $end));
     }
 
     /**
@@ -122,10 +143,20 @@ class DashboardMetricsQuery
      */
     public function ordersCountByDay(string $start, string $end): Collection
     {
+        $store = $this->store();
+
+        // The overall range boundary is timezone-correct (below), but the
+        // per-row `DATE(created_at)` grouping is still a raw UTC calendar
+        // day — a record near midnight in a non-UTC store's timezone can
+        // still land in the neighboring day's bucket. Doing this
+        // correctly needs a timezone-aware SQL date truncation, which
+        // isn't portable across this app's MySQL (production) and SQLite
+        // (test) drivers. Accepted as a smaller, separate limitation from
+        // the range-boundary bug this fixes.
         return Order::query()
             ->selectRaw('DATE(created_at) as day, COUNT(*) as count')
-            ->whereDate('created_at', '>=', $start)
-            ->whereDate('created_at', '<=', $end)
+            ->where('created_at', '>=', $store->startOfDayUtc($start))
+            ->where('created_at', '<=', $store->endOfDayUtc($end))
             ->groupBy('day')
             ->pluck('count', 'day');
     }
@@ -146,11 +177,13 @@ class DashboardMetricsQuery
      */
     public function newCustomersCountByDay(string $start, string $end): Collection
     {
+        $store = $this->store();
+
         return User::query()
             ->whereDoesntHave('roles')
             ->selectRaw('DATE(created_at) as day, COUNT(*) as count')
-            ->whereDate('created_at', '>=', $start)
-            ->whereDate('created_at', '<=', $end)
+            ->where('created_at', '>=', $store->startOfDayUtc($start))
+            ->where('created_at', '<=', $store->endOfDayUtc($end))
             ->groupBy('day')
             ->pluck('count', 'day');
     }
@@ -164,19 +197,21 @@ class DashboardMetricsQuery
      */
     public function revenueByDay(string $start, string $end): Collection
     {
+        $store = $this->store();
+
         $paymentsByDay = Payment::query()
             ->where('status', PaymentStatus::Success)
             ->selectRaw('DATE(created_at) as day, SUM(amount) as total')
-            ->whereDate('created_at', '>=', $start)
-            ->whereDate('created_at', '<=', $end)
+            ->where('created_at', '>=', $store->startOfDayUtc($start))
+            ->where('created_at', '<=', $store->endOfDayUtc($end))
             ->groupBy('day')
             ->pluck('total', 'day');
 
         $refundsByDay = Refund::query()
             ->where('status', RefundStatus::Success)
             ->selectRaw('DATE(created_at) as day, SUM(amount) as total')
-            ->whereDate('created_at', '>=', $start)
-            ->whereDate('created_at', '<=', $end)
+            ->where('created_at', '>=', $store->startOfDayUtc($start))
+            ->where('created_at', '<=', $store->endOfDayUtc($end))
             ->groupBy('day')
             ->pluck('total', 'day');
 
@@ -194,14 +229,16 @@ class DashboardMetricsQuery
      * @param  Builder<TModel>  $query
      * @return Builder<TModel>
      */
-    private function scopeToRange(Builder $query, ?string $start, ?string $end): Builder
+    private function scopeToRange(Builder $query, ?string $start, ?string $end, string $column = 'created_at'): Builder
     {
+        $store = $this->store();
+
         if ($start) {
-            $query->whereDate('created_at', '>=', $start);
+            $query->where($column, '>=', $store->startOfDayUtc($start));
         }
 
         if ($end) {
-            $query->whereDate('created_at', '<=', $end);
+            $query->where($column, '<=', $store->endOfDayUtc($end));
         }
 
         return $query;
@@ -215,9 +252,12 @@ class DashboardMetricsQuery
      */
     public function dailySalesTrend(int $days = 7): array
     {
+        $today = $this->storeNow();
+
         return collect(range($days - 1, 0))
-            ->map(fn (int $offset): float => $this->netRevenue(
-                fn (Builder $query): Builder => $query->whereDate('created_at', now()->subDays($offset)->toDateString()),
+            ->map(fn (int $offset): float => $this->revenueInRange(
+                $today->copy()->subDays($offset)->toDateString(),
+                $today->copy()->subDays($offset)->toDateString(),
             ) / 100)
             ->all();
     }
@@ -229,10 +269,13 @@ class DashboardMetricsQuery
      */
     public function dailyOrdersTrend(int $days = 7): array
     {
+        $today = $this->storeNow();
+
         return collect(range($days - 1, 0))
-            ->map(fn (int $offset): int => Order::query()
-                ->whereDate('created_at', now()->subDays($offset)->toDateString())
-                ->count())
+            ->map(fn (int $offset): int => $this->ordersCountInRange(
+                $today->copy()->subDays($offset)->toDateString(),
+                $today->copy()->subDays($offset)->toDateString(),
+            ))
             ->all();
     }
 
@@ -243,11 +286,13 @@ class DashboardMetricsQuery
      */
     public function dailyNewCustomersTrend(int $days = 7): array
     {
+        $today = $this->storeNow();
+
         return collect(range($days - 1, 0))
-            ->map(fn (int $offset): int => User::query()
-                ->whereDoesntHave('roles')
-                ->whereDate('created_at', now()->subDays($offset)->toDateString())
-                ->count())
+            ->map(fn (int $offset): int => $this->newCustomersCountInRange(
+                $today->copy()->subDays($offset)->toDateString(),
+                $today->copy()->subDays($offset)->toDateString(),
+            ))
             ->all();
     }
 
@@ -263,19 +308,14 @@ class DashboardMetricsQuery
         $labels = [];
         $current = [];
         $prior = [];
+        $now = $this->storeNow();
 
         foreach (range(11, 0) as $offset) {
-            $month = now()->subMonths($offset);
+            $month = $now->copy()->subMonths($offset);
             $labels[] = $month->format('M Y');
-            $current[] = Order::query()
-                ->whereYear('created_at', $month->year)
-                ->whereMonth('created_at', $month->month)
-                ->count();
+            $current[] = $this->ordersCountInRange($month->copy()->startOfMonth()->toDateString(), $month->copy()->endOfMonth()->toDateString());
             $priorMonth = $month->copy()->subYear();
-            $prior[] = Order::query()
-                ->whereYear('created_at', $priorMonth->year)
-                ->whereMonth('created_at', $priorMonth->month)
-                ->count();
+            $prior[] = $this->ordersCountInRange($priorMonth->copy()->startOfMonth()->toDateString(), $priorMonth->copy()->endOfMonth()->toDateString());
         }
 
         return ['labels' => $labels, 'current' => $current, 'prior' => $prior];
@@ -291,15 +331,12 @@ class DashboardMetricsQuery
     {
         $labels = [];
         $counts = [];
+        $now = $this->storeNow();
 
         foreach (range(11, 0) as $offset) {
-            $month = now()->subMonths($offset);
+            $month = $now->copy()->subMonths($offset);
             $labels[] = $month->format('M Y');
-            $counts[] = User::query()
-                ->whereDoesntHave('roles')
-                ->whereYear('created_at', $month->year)
-                ->whereMonth('created_at', $month->month)
-                ->count();
+            $counts[] = $this->newCustomersCountInRange($month->copy()->startOfMonth()->toDateString(), $month->copy()->endOfMonth()->toDateString());
         }
 
         return ['labels' => $labels, 'counts' => $counts];
@@ -360,17 +397,20 @@ class DashboardMetricsQuery
             ->join('products', 'products.id', '=', 'product_variants.product_id')
             ->whereIn('orders.status', $statuses);
 
+        $store = $this->store();
+
         if ($start || $end) {
             if ($start) {
-                $query->whereDate('orders.created_at', '>=', $start);
+                $query->where('orders.created_at', '>=', $store->startOfDayUtc($start));
             }
 
             if ($end) {
-                $query->whereDate('orders.created_at', '<=', $end);
+                $query->where('orders.created_at', '<=', $store->endOfDayUtc($end));
             }
         } else {
-            $query->whereYear('orders.created_at', now()->year)
-                ->whereMonth('orders.created_at', now()->month);
+            $now = $this->storeNow();
+            $query->where('orders.created_at', '>=', $store->startOfDayUtc($now->copy()->startOfMonth()->toDateString()))
+                ->where('orders.created_at', '<=', $store->endOfDayUtc($now->copy()->endOfMonth()->toDateString()));
         }
 
         return $query
@@ -461,11 +501,9 @@ class DashboardMetricsQuery
 
     public function newCustomersCount(): int
     {
-        return User::query()
-            ->whereDoesntHave('roles')
-            ->whereYear('created_at', now()->year)
-            ->whereMonth('created_at', now()->month)
-            ->count();
+        $now = $this->storeNow();
+
+        return $this->newCustomersCountInRange($now->copy()->startOfMonth()->toDateString(), $now->copy()->endOfMonth()->toDateString());
     }
 
     /**
@@ -503,21 +541,24 @@ class DashboardMetricsQuery
             ->where('stock_movements.type', StockMovementType::Return->value)
             ->where('stock_movements.reference_type', Refund::class);
 
+        $store = $this->store();
+
         if ($start || $end) {
             if ($start) {
-                $soldQuery->whereDate('orders.created_at', '>=', $start);
-                $returnedQuery->whereDate('stock_movements.created_at', '>=', $start);
+                $soldQuery->where('orders.created_at', '>=', $store->startOfDayUtc($start));
+                $returnedQuery->where('stock_movements.created_at', '>=', $store->startOfDayUtc($start));
             }
 
             if ($end) {
-                $soldQuery->whereDate('orders.created_at', '<=', $end);
-                $returnedQuery->whereDate('stock_movements.created_at', '<=', $end);
+                $soldQuery->where('orders.created_at', '<=', $store->endOfDayUtc($end));
+                $returnedQuery->where('stock_movements.created_at', '<=', $store->endOfDayUtc($end));
             }
         } else {
-            $soldQuery->whereYear('orders.created_at', now()->year)
-                ->whereMonth('orders.created_at', now()->month);
-            $returnedQuery->whereYear('stock_movements.created_at', now()->year)
-                ->whereMonth('stock_movements.created_at', now()->month);
+            $now = $this->storeNow();
+            $monthStart = $store->startOfDayUtc($now->copy()->startOfMonth()->toDateString());
+            $monthEnd = $store->endOfDayUtc($now->copy()->endOfMonth()->toDateString());
+            $soldQuery->where('orders.created_at', '>=', $monthStart)->where('orders.created_at', '<=', $monthEnd);
+            $returnedQuery->where('stock_movements.created_at', '>=', $monthStart)->where('stock_movements.created_at', '<=', $monthEnd);
         }
 
         $sold = $soldQuery

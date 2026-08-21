@@ -19,6 +19,7 @@ use App\Enums\UserRole;
 use App\Filament\Widgets\CustomerGrowthWidget;
 use App\Filament\Widgets\MonthlyRevenueChart;
 use App\Filament\Widgets\OrdersYearOverYearWidget;
+use App\Models\StoreSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +30,19 @@ use Tests\TestCase;
 class DashboardChartQueryCountTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Primed once here so its one-time row-creation cost (an INSERT
+        // plus an activity-log entry, since store_settings doesn't exist
+        // yet in a fresh RefreshDatabase test) never counts toward the
+        // query-count assertions below — those exist to catch a
+        // per-day/per-record fan-out, not to measure this unrelated
+        // first-touch cost.
+        StoreSetting::current();
+    }
 
     private function admin(): User
     {

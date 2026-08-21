@@ -67,3 +67,12 @@ Schedule::call(fn () => RunScheduledBackup::run())
     ->daily()
     ->name('run-scheduled-backup')
     ->withoutOverlapping();
+
+// Telescope records full request/query/job payloads to its own tables
+// with no automatic expiry — left running in production (see
+// TELESCOPE_ENABLED), this keeps it from growing unbounded. 72 hours is
+// enough to debug something noticed a day or two later, without keeping
+// data indefinitely.
+Schedule::command('telescope:prune --hours=72')
+    ->daily()
+    ->name('prune-telescope-entries');

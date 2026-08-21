@@ -8,9 +8,11 @@ use App\Filament\Resources\Attributes\AttributeResource;
 use App\Models\Attribute;
 use App\Models\ProductVariant;
 use Filament\Actions\DeleteAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Exceptions\Halt;
 
-/** Edits a single attribute, warning about product/variant impact before delete. */
+/** Edits a single attribute, blocking delete while it's still in use on any product/variant. */
 class EditAttribute extends EditRecord
 {
     protected static string $resource = AttributeResource::class;
@@ -21,23 +23,30 @@ class EditAttribute extends EditRecord
         return [
             DeleteAction::make()
                 ->requiresConfirmation()
-                // attribute_terms/attribute_product/product_variant_attribute_term
-                // all cascadeOnDelete() — deleting an attribute silently
-                // strips it from every product/variant using it. Spelling
-                // out the actual impact here (not just a generic "are you
-                // sure?") is the only thing standing between an admin and
-                // an irreversible mistake on a live catalog.
-                ->modalDescription(function (Attribute $record): string {
+                ->before(function (Attribute $record): void {
+                    // attribute_terms/attribute_product/product_variant_attribute_term
+                    // all cascadeOnDelete() — without this check, deleting an
+                    // attribute silently strips it off every product/variant
+                    // using it, and two variants that only differed by this
+                    // attribute (e.g. Red/Large vs Blue/Large) become
+                    // indistinguishable with no way to tell why. Blocking
+                    // here mirrors CategoryResource's same-shaped guard.
                     $productCount = $record->products()->count();
                     $variantCount = ProductVariant::query()
                         ->whereHas('attributeTerms', fn ($query) => $query->where('attribute_id', $record->id))
                         ->count();
 
                     if ($productCount === 0 && $variantCount === 0) {
-                        return 'This will permanently delete this attribute and all its values.';
+                        return;
                     }
 
-                    return "This attribute is used by {$productCount} product(s) and assigned on {$variantCount} variant(s). Deleting it removes it from all of them immediately and permanently.";
+                    Notification::make()
+                        ->title('Cannot delete attribute')
+                        ->body("This attribute is used by {$productCount} product(s) and assigned on {$variantCount} variant(s). Remove it from them first.")
+                        ->danger()
+                        ->send();
+
+                    throw new Halt;
                 }),
         ];
     }

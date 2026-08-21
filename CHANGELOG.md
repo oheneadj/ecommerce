@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — deleting an attribute in use silently corrupted product variants
+- Deleting an `Attribute` still assigned to products/variants only showed a warning modal before proceeding — the cascade delete then silently stripped the attribute off every variant using it, leaving otherwise-distinct variants (e.g. Red/Large vs Blue/Large) indistinguishable with no record of why. Deletion (single and bulk) is now blocked while the attribute is still in use, matching `CategoryResource`'s existing guard.
+
 ### Added — Sentry error tracking
 - Installed `sentry/sentry-laravel` and wired it into the global exception handler (`bootstrap/app.php`) — every unhandled exception is reported automatically once a DSN is configured. Ships disabled (`SENTRY_LARAVEL_DSN` blank by default), zero cost/impact on a deployment that doesn't set one.
 - Added `SENTRY_LARAVEL_DSN`/`SENTRY_TRACES_SAMPLE_RATE` to `.env`/`.env.example`, and an optional `sentry` log channel (`config/logging.php`) for also forwarding `Log::error()`+ calls, not just uncaught exceptions — opt in via `LOG_STACK=single,sentry`.

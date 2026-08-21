@@ -17,6 +17,8 @@ use App\Filament\Resources\Attributes\Pages\EditAttribute;
 use App\Filament\Resources\Attributes\Pages\ListAttributes;
 use App\Filament\Resources\Attributes\RelationManagers\TermsRelationManager;
 use App\Models\Attribute;
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -112,6 +114,68 @@ class AttributeResourceTest extends TestCase
             ->callTableBulkAction('delete', [$attribute]);
 
         $this->assertModelExists($attribute);
+    }
+
+    /**
+     * Regression: deleting an attribute still in use used to just warn and
+     * proceed, cascade-deleting its terms and silently stripping the
+     * attribute off every variant using it. Now it's blocked entirely.
+     */
+    public function test_deleting_an_unused_attribute_succeeds(): void
+    {
+        $this->actingAs($this->admin());
+
+        $attribute = Attribute::factory()->create();
+
+        Livewire::test(EditAttribute::class, ['record' => $attribute->getRouteKey()])
+            ->callAction('delete');
+
+        $this->assertModelMissing($attribute);
+    }
+
+    public function test_deleting_an_attribute_assigned_to_a_product_is_blocked(): void
+    {
+        $this->actingAs($this->admin());
+
+        $attribute = Attribute::factory()->create();
+        $product = Product::factory()->create();
+        $attribute->products()->attach($product);
+
+        Livewire::test(EditAttribute::class, ['record' => $attribute->getRouteKey()])
+            ->callAction('delete');
+
+        $this->assertModelExists($attribute);
+    }
+
+    public function test_deleting_an_attribute_assigned_to_a_variant_is_blocked(): void
+    {
+        $this->actingAs($this->admin());
+
+        $attribute = Attribute::factory()->create();
+        $term = $attribute->terms()->create(['value' => 'Red', 'slug' => 'red']);
+        $variant = ProductVariant::factory()->create();
+        $variant->attributeTerms()->attach($term);
+
+        Livewire::test(EditAttribute::class, ['record' => $attribute->getRouteKey()])
+            ->callAction('delete');
+
+        $this->assertModelExists($attribute);
+    }
+
+    public function test_bulk_deleting_attributes_is_blocked_while_any_selected_one_is_in_use(): void
+    {
+        $this->actingAs($this->admin());
+
+        $unused = Attribute::factory()->create();
+        $inUse = Attribute::factory()->create();
+        $product = Product::factory()->create();
+        $inUse->products()->attach($product);
+
+        Livewire::test(ListAttributes::class)
+            ->callTableBulkAction('delete', [$unused, $inUse]);
+
+        $this->assertModelExists($unused);
+        $this->assertModelExists($inUse);
     }
 
     public function test_admin_can_add_a_text_term_to_an_attribute(): void

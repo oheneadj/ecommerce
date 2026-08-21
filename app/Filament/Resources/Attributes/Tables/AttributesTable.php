@@ -10,12 +10,14 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Notifications\Notification;
+use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 
-/** Builds the attributes list table: columns, actions, and bulk delete with impact warnings. */
+/** Builds the attributes list table: columns, actions, and bulk delete blocked while any selected attribute is still in use. */
 class AttributesTable
 {
     /** Configures the attributes list table. */
@@ -53,7 +55,7 @@ class AttributesTable
                     DeleteBulkAction::make()
                         ->authorizeIndividualRecords('delete')
                         ->requiresConfirmation()
-                        ->modalDescription(function (Collection $records): string {
+                        ->before(function (Collection $records): void {
                             /** @var Collection<int, Attribute> $records */
                             $productCount = $records->sum(fn (Attribute $attribute): int => $attribute->products()->count());
                             $variantCount = ProductVariant::query()
@@ -61,10 +63,16 @@ class AttributesTable
                                 ->count();
 
                             if ($productCount === 0 && $variantCount === 0) {
-                                return 'This will permanently delete the selected attributes and all their values.';
+                                return;
                             }
 
-                            return "These attributes are used by {$productCount} product(s) and assigned on {$variantCount} variant(s) in total. Deleting them removes them from all of those immediately and permanently.";
+                            Notification::make()
+                                ->title('Cannot delete attributes')
+                                ->body("These attributes are used by {$productCount} product(s) and assigned on {$variantCount} variant(s) in total. Remove them from those first.")
+                                ->danger()
+                                ->send();
+
+                            throw new Halt;
                         }),
                 ]),
             ])

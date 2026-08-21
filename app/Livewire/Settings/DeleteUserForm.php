@@ -6,6 +6,7 @@ namespace App\Livewire\Settings;
 
 use App\Actions\Auth\ConsumeOtpCode;
 use App\Actions\Auth\DeleteAccount;
+use App\Actions\Auth\RequestEmailOtp;
 use App\Actions\Auth\RequestOtp;
 use App\Concerns\PasswordValidationRules;
 use App\Exceptions\InvalidOtpException;
@@ -37,12 +38,11 @@ class DeleteUserForm extends Component
      * A phone-OTP-only or Google-only customer never has a password
      * (users.password is null) — Laravel's `current_password` rule always
      * fails against a null hash, which used to make self-service deletion
-     * permanently unreachable for that account. A re-sent OTP (for an
-     * account with a phone) or a typed confirmation phrase (for one
-     * without) replaces the password check for these accounts — being
-     * logged in alone isn't an equivalent bar, the same reasoning a
-     * password-account's re-entered password exists for in the first
-     * place.
+     * permanently unreachable for that account. A re-sent OTP (via
+     * whichever verified channel the account actually has) replaces the
+     * password check for these accounts — being logged in alone isn't an
+     * equivalent bar, the same reasoning a password-account's re-entered
+     * password exists for in the first place.
      */
     #[Computed]
     public function hasPassword(): bool
@@ -51,26 +51,56 @@ class DeleteUserForm extends Component
     }
 
     /**
-     * Whether a code can be sent to re-verify this account — only an
-     * account with a verified phone has a channel to receive one.
+     * Whether a code can be sent to re-verify this account at all — an
+     * account with neither a phone nor a verified email has no channel to
+     * receive one on.
      */
     #[Computed]
-    public function hasPhone(): bool
+    public function canReceiveCode(): bool
     {
-        return Auth::user()?->phone !== null;
+        return $this->otpChannel() !== null;
     }
 
     /**
-     * Sends a fresh deletion-confirmation OTP to the account's own phone,
-     * scoped to its own `delete_account` purpose so it can never be
-     * confused with (or reused as) a login or phone-linking code.
+     * 'phone' or 'mail', matching whichever channel sendDeletionCode()
+     * actually used — the confirmation copy/input in the view reads this
+     * to say the right thing without duplicating the same has-phone/
+     * has-verified-email check.
+     */
+    #[Computed]
+    public function otpChannel(): ?string
+    {
+        $user = Auth::user();
+
+        if ($user?->phone !== null) {
+            return 'phone';
+        }
+
+        if ($user?->hasVerifiedEmailAddress()) {
+            return 'mail';
+        }
+
+        return null;
+    }
+
+    /**
+     * Sends a fresh deletion-confirmation OTP via whichever channel this
+     * account actually has — SMS to a phone, or email otherwise — scoped
+     * to its own `delete_account` purpose so it can never be confused
+     * with (or reused as) a login or phone-linking code.
      */
     public function sendDeletionCode(): void
     {
         $user = Auth::user();
 
         try {
-            RequestOtp::run($user->phone, request()->ip(), self::OTP_PURPOSE);
+            if ($this->otpChannel() === 'phone') {
+                RequestOtp::run($user->phone, request()->ip(), self::OTP_PURPOSE);
+            } elseif ($this->otpChannel() === 'mail') {
+                RequestEmailOtp::run($user->email, self::OTP_PURPOSE, 'Enter this code to confirm deleting your account.');
+            } else {
+                return;
+            }
         } catch (OtpRateLimitedException $e) {
             $this->addError('otpCode', $e->getMessage());
 
@@ -92,23 +122,27 @@ class DeleteUserForm extends Component
 
         if ($this->hasPassword()) {
             $this->validate(['password' => $this->currentPasswordRules()]);
-        } elseif ($this->hasPhone()) {
+        } elseif ($this->canReceiveCode()) {
             $this->validate(['otpCode' => ['required', 'digits:6']]);
 
+            $identifier = $this->otpChannel() === 'phone' ? $user->phone : $user->email;
+
             try {
-                ConsumeOtpCode::run($user->phone, $this->otpCode, self::OTP_PURPOSE);
+                ConsumeOtpCode::run($identifier, $this->otpCode, self::OTP_PURPOSE);
             } catch (InvalidOtpException|TooManyOtpVerificationAttemptsException $e) {
                 $this->addError('otpCode', $e->getMessage());
 
                 return;
             }
         } else {
-            // No password and no phone — a Google-only account with no
-            // channel an OTP could be sent to. A typed confirmation
-            // phrase is a weaker bar than a re-verified code, but it's
-            // still real, deliberate friction beyond "the session happens
-            // to still be logged in" — the same minimum this app already
-            // asks for other rare, no-better-option destructive actions.
+            // No password, no phone, and no verified email — no channel
+            // an OTP could be sent to at all (a rare edge case: an
+            // unverified Google email that collided with an existing
+            // account's, so it was never even stored — see
+            // LoginWithGoogle). A typed confirmation phrase is a weaker
+            // bar than a re-verified code, but it's still real,
+            // deliberate friction beyond "the session happens to still
+            // be logged in".
             $this->validate(['confirmationPhrase' => ['required', 'in:DELETE']], [
                 'confirmationPhrase.in' => 'Please type DELETE to confirm.',
             ]);

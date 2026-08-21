@@ -51,7 +51,7 @@ class DeleteUserFormTest extends TestCase
      * password (`users.password` is null) — Laravel's `current_password`
      * rule always fails against a null hash, which made self-service
      * deletion permanently unreachable for that account. An account with
-     * a phone on file now re-verifies via a fresh OTP instead of a
+     * a phone on file now re-verifies via a fresh SMS OTP instead of a
      * password.
      */
     public function test_a_password_less_account_with_a_phone_requires_a_correct_otp(): void
@@ -61,6 +61,7 @@ class DeleteUserFormTest extends TestCase
         $this->actingAs($user);
 
         Livewire::test(DeleteUserForm::class)
+            ->assertSet('otpChannel', 'phone')
             ->call('sendDeletionCode')
             ->assertSet('otpSent', true);
 
@@ -130,26 +131,80 @@ class DeleteUserFormTest extends TestCase
     }
 
     /**
-     * A Google-only account with no phone at all has no channel an OTP
-     * could be sent to — falls back to a typed confirmation phrase rather
-     * than silently letting the logged-in session alone be enough.
+     * A Google-only account has no phone, but still has a verified email
+     * (Google's own OAuth handshake independently confirms it) — the code
+     * goes there instead, rather than falling all the way back to a typed
+     * confirmation phrase.
      */
-    public function test_a_password_less_account_with_no_phone_requires_the_confirmation_phrase(): void
+    public function test_a_password_less_account_with_no_phone_but_a_verified_email_requires_a_correct_otp(): void
     {
-        $user = User::factory()->create(['password' => null, 'phone' => null, 'google_id' => 'google-123']);
+        Notification::fake();
+        $user = User::factory()->create([
+            'password' => null,
+            'phone' => null,
+            'google_id' => 'google-123',
+            'email' => 'shopper@example.com',
+            'email_verified_at' => now(),
+        ]);
         $this->actingAs($user);
 
         Livewire::test(DeleteUserForm::class)
-            ->assertSet('hasPhone', false)
+            ->assertSet('otpChannel', 'mail')
+            ->call('sendDeletionCode')
+            ->assertSet('otpSent', true);
+
+        $otp = OtpCode::query()->where('identifier', 'shopper@example.com')->where('purpose', 'delete_account')->first();
+        $this->assertNotNull($otp);
+    }
+
+    public function test_a_password_less_account_with_no_phone_can_delete_itself_with_the_correct_email_code(): void
+    {
+        $user = User::factory()->create([
+            'password' => null,
+            'phone' => null,
+            'google_id' => 'google-123',
+            'email' => 'shopper@example.com',
+            'email_verified_at' => now(),
+        ]);
+        $this->actingAs($user);
+        OtpCode::query()->create([
+            'identifier' => 'shopper@example.com',
+            'code_hash' => Hash::make('123456'),
+            'purpose' => 'delete_account',
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        Livewire::test(DeleteUserForm::class)
+            ->set('otpCode', '123456')
+            ->call('deleteUser')
+            ->assertHasNoErrors();
+
+        $this->assertTrue($user->fresh()->trashed());
+    }
+
+    /**
+     * The rare true no-channel edge case: no password, no phone, and no
+     * verified email (e.g. an unverified Google email that collided with
+     * an existing account's, so LoginWithGoogle never even stored it).
+     * Falls back to a typed confirmation phrase rather than silently
+     * letting the logged-in session alone be enough.
+     */
+    public function test_a_password_less_account_with_no_channel_at_all_requires_the_confirmation_phrase(): void
+    {
+        $user = User::factory()->create(['password' => null, 'phone' => null, 'email' => null, 'email_verified_at' => null, 'google_id' => 'google-123']);
+        $this->actingAs($user);
+
+        Livewire::test(DeleteUserForm::class)
+            ->assertSet('canReceiveCode', false)
             ->call('deleteUser')
             ->assertHasErrors(['confirmationPhrase']);
 
         $this->assertFalse($user->fresh()->trashed());
     }
 
-    public function test_a_password_less_account_with_no_phone_can_delete_itself_by_typing_delete(): void
+    public function test_a_password_less_account_with_no_channel_at_all_can_delete_itself_by_typing_delete(): void
     {
-        $user = User::factory()->create(['password' => null, 'phone' => null, 'google_id' => 'google-123']);
+        $user = User::factory()->create(['password' => null, 'phone' => null, 'email' => null, 'email_verified_at' => null, 'google_id' => 'google-123']);
         $this->actingAs($user);
 
         Livewire::test(DeleteUserForm::class)

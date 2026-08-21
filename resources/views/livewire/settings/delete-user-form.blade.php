@@ -23,8 +23,10 @@
                 <p class="text-sm text-zinc-500">
                     @if ($this->hasPassword)
                         {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.') }}
-                    @elseif ($this->hasPhone)
+                    @elseif ($this->otpChannel === 'phone')
                         {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Send a verification code to your phone to confirm.') }}
+                    @elseif ($this->otpChannel === 'mail')
+                        {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Send a verification code to your email to confirm.') }}
                     @else
                         {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Type DELETE below to confirm.') }}
                     @endif
@@ -33,7 +35,7 @@
 
             @if ($this->hasPassword)
                 <x-input wire:model="password" :label="__('Password')" type="password" viewable />
-            @elseif ($this->hasPhone)
+            @elseif ($this->canReceiveCode)
                 @if (! $otpSent)
                     <x-button type="button" variant="filled" wire:click="sendDeletionCode">
                         {{ __('Send verification code') }}

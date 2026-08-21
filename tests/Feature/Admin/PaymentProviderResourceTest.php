@@ -197,4 +197,26 @@ class PaymentProviderResourceTest extends TestCase
         $this->assertNotNull($setting->fresh()->logo_path);
         Storage::disk('public')->assertExists($setting->fresh()->logo_path);
     }
+
+    /**
+     * Regression: replacing a provider's logo never cleaned up the old
+     * file — unlike Brand's own logo (BrandObserver), nothing deleted the
+     * previous upload, leaving it orphaned on the public disk forever.
+     * Tests the observer directly against the model rather than through
+     * Filament's FileUpload action (which pre-fills/re-processes the
+     * upload in ways that obscure what's actually being asserted here).
+     */
+    public function test_replacing_a_logo_deletes_the_old_file(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('payment-providers/old.webp', 'old-contents');
+        $setting = PaymentProviderSetting::factory()->create([
+            'provider' => PaymentProvider::Moolre,
+            'logo_path' => 'payment-providers/old.webp',
+        ]);
+
+        $setting->update(['logo_path' => 'payment-providers/new.webp']);
+
+        Storage::disk('public')->assertMissing('payment-providers/old.webp');
+    }
 }

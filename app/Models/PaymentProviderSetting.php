@@ -11,8 +11,10 @@ namespace App\Models;
 use App\Concerns\LogsAdminActivity;
 use App\Enums\PaymentProvider;
 use App\Enums\PaystackCheckoutMode;
+use App\Observers\PaymentProviderSettingObserver;
 use Database\Factories\PaymentProviderSettingFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -40,6 +42,7 @@ use Illuminate\Support\Facades\Storage;
  * @property Carbon|null $updated_at
  */
 #[Fillable(['provider', 'logo_path', 'description', 'checkout_mode', 'enabled', 'sort_order'])]
+#[ObservedBy(PaymentProviderSettingObserver::class)]
 class PaymentProviderSetting extends Model
 {
     /** @use HasFactory<PaymentProviderSettingFactory> */

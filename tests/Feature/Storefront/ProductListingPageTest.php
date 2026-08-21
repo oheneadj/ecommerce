@@ -167,6 +167,40 @@ class ProductListingPageTest extends TestCase
     }
 
     /**
+     * Regression: a manually edited or shared URL with minPrice > maxPrice
+     * reached the slider's Alpine state with no ordering check, rendering
+     * the fill bar and thumbs visibly inverted.
+     */
+    public function test_an_inverted_price_range_url_is_swapped_into_order(): void
+    {
+        // Priced well above the values set below so the catalog ceiling
+        // never clamps them — this test isolates the ordering swap only.
+        $this->purchasableProduct([], ['price' => 200000]);
+
+        $component = Livewire::test(ProductListingPage::class)
+            ->set('minPrice', 1000)
+            ->set('maxPrice', 10);
+
+        $this->assertSame(10.0, $component->get('minPrice'));
+        $this->assertSame(1000.0, $component->get('maxPrice'));
+    }
+
+    /**
+     * Regression: a maxPrice far beyond the real catalog ceiling (e.g. a
+     * stale shared link from before prices changed) pushed the slider's
+     * max thumb and fill bar past 100% of the visible track.
+     */
+    public function test_a_max_price_beyond_the_catalog_ceiling_is_clamped(): void
+    {
+        $this->purchasableProduct([], ['price' => 5000]);
+
+        $component = Livewire::test(ProductListingPage::class)
+            ->set('maxPrice', 999999);
+
+        $this->assertSame($component->instance()->catalogMaxPrice(), $component->get('maxPrice'));
+    }
+
+    /**
      * Regression test: minPrice/maxPrice used to be applied as two
      * independent `whereHas('variants', ...)` calls, so a product with one
      * variant below the range and another above it satisfied both

@@ -88,10 +88,53 @@ class ProductListingPage extends Component
         return SearchProducts::run($this->search, SearchProducts::CANDIDATE_LIMIT)->pluck('id')->all();
     }
 
+    /**
+     * `minPrice`/`maxPrice` are URL-bound — a manually edited or shared
+     * link (`?minPrice=1000&maxPrice=10`, or `?maxPrice=999999` far past
+     * the real catalog ceiling) reached the slider's Alpine `x-data` with
+     * no bounds/ordering check, rendering the fill bar and thumbs
+     * inverted or pushed off the visible track. Clamped here on first
+     * load so the slider always starts from a sane state.
+     */
+    public function mount(): void
+    {
+        $this->clampPriceRange();
+    }
+
     public function updating(string $name): void
     {
         if (in_array($name, ['search', 'category', 'brand', 'minPrice', 'maxPrice'], true)) {
             $this->resetPage();
+        }
+    }
+
+    /**
+     * Re-clamps after minPrice/maxPrice change post-mount too — not just
+     * a URL edit, `commit()` in the slider's own Alpine code sets both via
+     * `$wire.set()`, and a network hiccup or double-fired event could
+     * still land an inverted pair.
+     */
+    public function updated(string $name): void
+    {
+        if (in_array($name, ['minPrice', 'maxPrice'], true)) {
+            $this->clampPriceRange();
+        }
+    }
+
+    private function clampPriceRange(): void
+    {
+        $ceiling = $this->catalogMaxPrice();
+
+        if ($this->minPrice !== null) {
+            $this->minPrice = max(0.0, min($this->minPrice, $ceiling));
+        }
+
+        if ($this->maxPrice !== null) {
+            $this->maxPrice = max(0.0, min($this->maxPrice, $ceiling));
+        }
+
+        if ($this->minPrice !== null && $this->maxPrice !== null && $this->minPrice > $this->maxPrice) {
+            [$this->minPrice, $this->maxPrice] = [$this->maxPrice, $this->minPrice];
         }
     }
 

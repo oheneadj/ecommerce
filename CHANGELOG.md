@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — price-range slider rendered inverted/off-track for malformed URL values
+- `minPrice`/`maxPrice` are URL-bound (`#[Url]`) and reached the slider's Alpine `x-data` with no bounds/ordering check — a manually edited or shared link with `minPrice > maxPrice` rendered the fill bar and thumbs visibly inverted, and a `maxPrice` far beyond the real catalog ceiling pushed the max thumb off the visible track.
+- Both values are now clamped to `[0, catalogMaxPrice]` and swapped into order if inverted, in a new `mount()` (initial URL load) and `updated()` (post-mount changes, including the slider's own `commit()`) hook.
+- 2 new tests.
+
 ### Fixed — payment gateway calls hardcoded 'GHS' independent of the currency config
 - `PaystackGateway`, `MoolreGateway`, and `InitiatePayment`'s free-order/payment-record paths all hardcoded `'currency' => 'GHS'` rather than reading `config('app.currency')` — `HasFormattedMoney` (display) already read this config key, but it was never actually defined in `config/app.php`, so it silently always fell back to the hardcoded 'GHS' default anyway. A future deployment of this multi-store template configured for a different currency would still display correctly but charge through the gateway in GHS.
 - Added `'currency' => env('APP_CURRENCY', 'GHS')` to `config/app.php` and switched every hardcoded 'GHS' to read from it.

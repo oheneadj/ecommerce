@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — deleting an in-use shipping method or coupon crashed with a raw 500
+- `shipments.shipping_method_id` and `coupon_usages.coupon_id` are both `restrictOnDelete()` at the DB level, but neither `EditShippingMethod`/`ShippingMethodsTable` nor `EditCoupon`/`CouponsTable` checked for existing references before attempting delete — the same bug class `EditCategory`/`CategoriesTable` already guards against for `products.category_id`, just never applied here.
+- Both single-record and bulk delete now check for existing shipments/coupon usages first and show a clear "deactivate instead of deleting" message, matching the Category precedent exactly.
+- 6 new tests.
+
 ### Improved — the "cannot delete attribute" message now names what's blocking it
 - The block message added for in-use attribute deletion only said "used by N product(s) and assigned on N variant(s)" — an admin had no way to find out *which* ones without querying it by hand. Added `AttributeUsageSummary` to list the actual product names/variant SKUs (capped, "and N more" beyond 5) in both the single and bulk delete paths.
 

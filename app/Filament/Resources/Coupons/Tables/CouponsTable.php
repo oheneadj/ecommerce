@@ -13,6 +13,7 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
+use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -74,7 +75,28 @@ class CouponsTable
                 BulkActionGroup::make([
                     self::toggleActiveBulkAction('activate', true),
                     self::toggleActiveBulkAction('deactivate', false),
-                    DeleteBulkAction::make()->authorizeIndividualRecords('delete'),
+                    DeleteBulkAction::make()
+                        ->authorizeIndividualRecords('delete')
+                        ->before(function (Collection $records): void {
+                            // Same restrictOnDelete() constraint as the
+                            // single-record delete (EditCoupon) — checked
+                            // up front here too, so a bulk selection that
+                            // includes even one already-used coupon
+                            // doesn't crash with an unhandled
+                            // QueryException.
+                            /** @var Collection<int, Coupon> $records */
+                            $inUse = $records->filter(fn (Coupon $coupon): bool => $coupon->usages()->exists());
+
+                            if ($inUse->isNotEmpty()) {
+                                Notification::make()
+                                    ->title('Cannot delete coupons')
+                                    ->body("{$inUse->count()} of the selected coupons have already been used on an order. Deactivate them instead of deleting.")
+                                    ->danger()
+                                    ->send();
+
+                                throw new Halt;
+                            }
+                        }),
                 ]),
             ])
             ->emptyStateHeading('No coupons yet')

@@ -11,6 +11,7 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
+use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -50,7 +51,28 @@ class ShippingMethodsTable
                 BulkActionGroup::make([
                     self::toggleActiveBulkAction('activate', true),
                     self::toggleActiveBulkAction('deactivate', false),
-                    DeleteBulkAction::make()->authorizeIndividualRecords('delete'),
+                    DeleteBulkAction::make()
+                        ->authorizeIndividualRecords('delete')
+                        ->before(function (Collection $records): void {
+                            // Same restrictOnDelete() constraint as the
+                            // single-record delete (EditShippingMethod) —
+                            // checked up front here too, so a bulk
+                            // selection that includes even one in-use
+                            // method doesn't crash with an unhandled
+                            // QueryException.
+                            /** @var Collection<int, ShippingMethod> $records */
+                            $inUse = $records->filter(fn (ShippingMethod $method): bool => $method->shipments()->exists());
+
+                            if ($inUse->isNotEmpty()) {
+                                Notification::make()
+                                    ->title('Cannot delete shipping methods')
+                                    ->body("{$inUse->count()} of the selected shipping methods are still used by shipments. Deactivate them instead of deleting.")
+                                    ->danger()
+                                    ->send();
+
+                                throw new Halt;
+                            }
+                        }),
                 ]),
             ])
             ->emptyStateHeading('No shipping methods yet')

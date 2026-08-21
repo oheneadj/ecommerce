@@ -42,7 +42,7 @@
                 'offers' => $cheapestVariant !== null ? [
                     '@type' => 'Offer',
                     'url' => route('products.show', $metaProduct->slug),
-                    'priceCurrency' => 'GHS',
+                    'priceCurrency' => config('app.currency', 'GHS'),
                     'price' => $cheapestVariant->price_decimal,
                     'availability' => $cheapestVariant->stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
                 ] : null,

@@ -154,6 +154,21 @@ class ProductListingPageTest extends TestCase
         $response->assertSeeHtml('M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15');
     }
 
+    /**
+     * Regression: the price-range slider hardcoded "GH₵" instead of
+     * reading the configured currency, unlike every other price display
+     * on the storefront.
+     */
+    public function test_the_price_slider_uses_the_configured_currency_symbol(): void
+    {
+        config(['app.currency' => 'NGN']);
+
+        $response = $this->get('/products');
+
+        $response->assertDontSee('GH₵');
+        $response->assertSee('NGN');
+    }
+
     public function test_filtering_by_price_range_excludes_products_outside_it(): void
     {
         $this->purchasableProduct(['name' => 'Cheap Item'], ['price' => 1000]);

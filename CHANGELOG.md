@@ -6,7 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Fixed — account-deletion OTP resend left a stale error showing, and had no per-IP rate limit
+### Fixed — three surfaces still hardcoded "GHS"/"GH₵" instead of reading the currency config
+- The storefront price-range filter slider, the Product JSON-LD structured data (`priceCurrency`), and every admin money input field (`MoneyInput`) all hardcoded the Ghana cedi regardless of `config('app.currency')` — inconsistent with every other price display in the app, which already read from it.
+- Extracted the currency-to-symbol mapping (previously duplicated between `HasFormattedMoney` and the `<x-money>` Blade component) into a single `App\Support\CurrencySymbol` helper, and pointed all three gaps at it (or, for the JSON-LD currency code, at `config('app.currency')` directly).
+- 4 new tests.
 - `DeleteUserForm::sendDeletionCode()` never cleared a previous "invalid code" error before sending a fresh code — clicking "Resend code" after a wrong attempt kept the old error visible next to the newly-emptied input, confusingly implying the just-sent code was already wrong. Now resets the error bag and the input on resend, matching `Security.php`'s equivalent OTP-send actions.
 - `RequestEmailOtp` only rate-limited per-email (unlike `RequestOtp`'s phone equivalent, which also caps per-IP) — not exploitable via today's one call site (always the authenticated user's own email), but a real inconsistency and a gap for any future caller-supplied-email call site. Added the same 30/hour per-IP cap.
 

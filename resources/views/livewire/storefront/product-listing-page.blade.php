@@ -212,10 +212,11 @@
                 @touchmove.window="onMove($event)"
                 @touchend.window="stopDrag()"
             >
-                <h2 class="text-sm font-medium">{{ __('Price (GH₵)') }}</h2>
+                @php $currencySymbol = \App\Support\CurrencySymbol::for(); @endphp
+                <h2 class="text-sm font-medium">{{ __('Price (:currency)', ['currency' => trim($currencySymbol)]) }}</h2>
                 <div class="mt-3 flex items-center justify-between text-xs text-zinc-500">
-                    <span x-text="'GH₵' + min"></span>
-                    <span x-text="'GH₵' + max"></span>
+                    <span x-text="{{ json_encode($currencySymbol) }} + min"></span>
+                    <span x-text="{{ json_encode($currencySymbol) }} + max"></span>
                 </div>
                 <div
                     x-ref="track"

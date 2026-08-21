@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Support;
 
+use App\Support\CurrencySymbol;
 use Filament\Forms\Components\TextInput;
 
 /**
@@ -23,7 +24,7 @@ class MoneyInput
         return TextInput::make($name)
             ->numeric()
             ->step(0.01)
-            ->prefix('GH₵')
+            ->prefix(CurrencySymbol::for())
             ->afterStateHydrated(function (TextInput $component, mixed $state): void {
                 $component->state($state === null ? null : round(((float) $state) / 100, 2));
             })

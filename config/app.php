@@ -82,6 +82,21 @@ return [
 
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Store Currency
+    |--------------------------------------------------------------------------
+    |
+    | The ISO 4217 currency code money is charged/displayed in — read by
+    | HasFormattedMoney (display) and every payment gateway driver
+    | (the actual amount sent to the provider). This app's multi-store
+    | template goal means a future deployment can differ from this one's
+    | GHS default without touching gateway code.
+    |
+    */
+
+    'currency' => env('APP_CURRENCY', 'GHS'),
+
     'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
 
     /*

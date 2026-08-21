@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — payment gateway calls hardcoded 'GHS' independent of the currency config
+- `PaystackGateway`, `MoolreGateway`, and `InitiatePayment`'s free-order/payment-record paths all hardcoded `'currency' => 'GHS'` rather than reading `config('app.currency')` — `HasFormattedMoney` (display) already read this config key, but it was never actually defined in `config/app.php`, so it silently always fell back to the hardcoded 'GHS' default anyway. A future deployment of this multi-store template configured for a different currency would still display correctly but charge through the gateway in GHS.
+- Added `'currency' => env('APP_CURRENCY', 'GHS')` to `config/app.php` and switched every hardcoded 'GHS' to read from it.
+- 1 new test.
+
 ### Fixed — admin dashboard "today"/date-range data used UTC instead of the store's configured timezone
 - Every "today"/"this month"/date-range/daily-trend query in `DashboardMetricsQuery`, plus `RecentOrdersWidget`'s own inline query, compared the always-UTC `created_at` column against date strings computed from the server's UTC clock — invisible for the current UTC-timezone deployment, but a real off-by-up-to-a-day miscount for any store configured with a different display timezone (a stated goal of this codebase as a multi-store template).
 - Added `StoreSetting::startOfDayUtc()`/`endOfDayUtc()` (convert a calendar date in the store's timezone to its UTC instant boundaries) and a `DashboardMetricsQuery::storeNow()` helper; every date-boundary comparison in the file now goes through them. `StoreSetting::current()` is memoized per `DashboardMetricsQuery` instance (itself now bound as a per-request singleton, since a dashboard render resolves it multiple times) to avoid adding a query per date calculation.

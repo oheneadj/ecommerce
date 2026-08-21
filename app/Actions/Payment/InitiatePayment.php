@@ -171,7 +171,7 @@ class InitiatePayment
             'provider' => $provider,
             'provider_reference' => $providerReference,
             'amount' => $order->grand_total,
-            'currency' => 'GHS',
+            'currency' => config('app.currency', 'GHS'),
             'status' => $paymentStatus,
             'metadata' => [
                 'redirect_url' => $redirectUrl,
@@ -196,7 +196,7 @@ class InitiatePayment
             'provider' => 'free',
             'provider_reference' => null,
             'amount' => 0,
-            'currency' => 'GHS',
+            'currency' => config('app.currency', 'GHS'),
             'status' => PaymentStatus::Pending,
             'metadata' => ['note' => 'Order total is zero — settled automatically, no payment gateway involved.'],
         ]);

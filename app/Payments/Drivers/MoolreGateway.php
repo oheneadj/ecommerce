@@ -39,7 +39,11 @@ readonly class MoolreGateway implements PaymentGateway
         $response = $this->client()->post('/payment/request', [
             'reference' => $order->order_number.'-'.now()->timestamp,
             'amount' => $order->grand_total,
-            'currency' => 'GHS',
+            // Moolre is a Ghana-specific mobile money aggregator and may
+            // never actually see a non-GHS value in practice, but reads
+            // from config rather than hardcoding it regardless, matching
+            // every other gateway/display code path in this app.
+            'currency' => config('app.currency', 'GHS'),
             'recipient' => $order->guest_phone ?? optional($order->user)->phone,
         ]);
 

@@ -39,6 +39,29 @@ class PaystackGatewayTest extends TestCase
             && $request['callback_url'] === route('orders.confirmation', ['order' => $order]));
     }
 
+    /**
+     * Regression: the currency sent to Paystack was hardcoded to 'GHS'
+     * regardless of config('app.currency') — a real functional gap for
+     * this app's stated multi-store template goal, since a differently-
+     * configured deployment would still charge in GHS.
+     */
+    public function test_initiate_sends_the_configured_currency(): void
+    {
+        config(['app.currency' => 'NGN']);
+        $order = Order::factory()->create();
+
+        Http::fake([
+            'api.paystack.co/transaction/initialize' => Http::response([
+                'status' => true,
+                'data' => ['reference' => 'ref-1', 'authorization_url' => 'https://checkout.paystack.com/ref-1', 'access_code' => 'access-code-1'],
+            ]),
+        ]);
+
+        (new PaystackGateway(secretKey: 'test-secret'))->initiate($order);
+
+        Http::assertSent(fn ($request): bool => $request['currency'] === 'NGN');
+    }
+
     public function test_initiate_returns_the_access_code_for_popup_checkout(): void
     {
         $order = Order::factory()->create();

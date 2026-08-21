@@ -37,9 +37,13 @@ readonly class PaystackGateway implements PaymentGateway
     {
         $response = $this->client()->post('/transaction/initialize', [
             'email' => optional($order->user)->email ?? $order->guest_email ?? 'no-reply@example.com',
-            // Paystack's smallest currency unit for GHS is pesewas — no conversion needed.
+            // Paystack's smallest currency unit for GHS is pesewas — no
+            // conversion needed; this holds for every currency Paystack
+            // itself supports (their smallest unit always matches this
+            // app's own minor-unit storage), so config('app.currency')
+            // passes straight through with no per-currency branching.
             'amount' => $order->grand_total,
-            'currency' => 'GHS',
+            'currency' => config('app.currency', 'GHS'),
             'reference' => $order->order_number.'-'.now()->timestamp,
             'metadata' => ['order_id' => $order->id, 'order_number' => $order->order_number],
             // Set explicitly rather than relying on the Paystack Dashboard's

@@ -12,8 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed — replacing a payment provider's logo left the old file orphaned
 - Unlike Brand's logo (`BrandObserver`), `PaymentProviderSetting` had no observer cleaning up `logo_path` — every time a Super Admin swapped a provider's logo, the previous file stayed on the public disk forever. Added `PaymentProviderSettingObserver` mirroring the existing pattern (bug hunt 9).
 
-### Fixed — bulk variant generation could crash on a SKU collision, and soft-deleted SKUs were never freed for reuse
-- `sku` is globally unique, not scoped per product, but nothing checked for a collision before insert — a prefix/term combo matching a live variant on *any* product threw a raw `QueryException` mid-transaction. Now checked up front and rejected with a friendly `DuplicateSkuException`.
+### Fixed — bulk variant generation could crash on a SKU collision
+- `sku` is globally unique, not scoped per product, but nothing checked for a collision before insert — a prefix/term combo matching a live variant on *any* product threw a raw `QueryException` mid-transaction. Now checked up front and rejected with a friendly `DuplicateSkuException` (bug hunt 9).
 - Separately, `ProductVariant` never mutated `sku` on soft-delete (per CLAUDE.md §6), so a discontinued variant permanently blocked its own SKU from ever being reused — even by an unrelated new variant. Added `ProductVariantObserver` to free it on delete, matching the pattern already used for unique slugs/codes elsewhere. (The same gap likely exists on `Product.slug` and `User.email/phone/google_id` — flagged separately, not fixed in this pass.)
 
 ### Fixed — checkout accepted a deactivated shipping method

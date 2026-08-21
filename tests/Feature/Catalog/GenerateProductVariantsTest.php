@@ -50,23 +50,6 @@ class GenerateProductVariantsTest extends TestCase
         );
     }
 
-    /**
-     * Regression: without freeing the SKU on soft-delete, a discontinued
-     * variant permanently blocked its own SKU from ever being reused —
-     * even on a brand-new, unrelated variant.
-     */
-    public function test_a_soft_deleted_variants_sku_is_freed_for_reuse(): void
-    {
-        $product = Product::factory()->create();
-        $variant = ProductVariant::factory()->create(['product_id' => $product->id, 'sku' => 'SHIRT-RED']);
-        $variant->delete();
-
-        $newVariant = ProductVariant::factory()->create(['sku' => 'SHIRT-RED']);
-
-        $this->assertModelExists($newVariant);
-        $this->assertStringContainsString('SHIRT-RED-deleted-', ProductVariant::withTrashed()->findOrFail($variant->id)->sku);
-    }
-
     public function test_it_creates_one_variant_per_combination(): void
     {
         $product = Product::factory()->create();

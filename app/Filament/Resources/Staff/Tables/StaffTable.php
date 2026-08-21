@@ -17,6 +17,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Builds the admin table for browsing and managing staff accounts.
@@ -109,6 +110,7 @@ class StaffTable
             ->icon(Heroicon::OutlinedNoSymbol)
             ->color('danger')
             ->visible(fn (User $record): bool => $record->disabled_at === null)
+            ->authorize(fn (): bool => self::isSuperAdmin())
             ->requiresConfirmation()
             ->modalDescription('This immediately signs the account out everywhere. They will not be able to log in until re-enabled.')
             ->action(function (User $record): void {
@@ -128,6 +130,7 @@ class StaffTable
             ->icon(Heroicon::OutlinedCheckCircle)
             ->color('success')
             ->visible(fn (User $record): bool => $record->disabled_at !== null)
+            ->authorize(fn (): bool => self::isSuperAdmin())
             ->requiresConfirmation()
             ->modalDescription('This sends a new set-password invite — their previous password will no longer work.')
             ->action(function (User $record): void {
@@ -146,6 +149,7 @@ class StaffTable
             ->label('Disable selected')
             ->icon(Heroicon::OutlinedNoSymbol)
             ->color('danger')
+            ->authorize(fn (): bool => self::isSuperAdmin())
             ->requiresConfirmation()
             ->modalDescription('This immediately signs the selected accounts out everywhere. They will not be able to log in until re-enabled.')
             ->action(function (Collection $records): void {
@@ -168,6 +172,7 @@ class StaffTable
             ->label('Enable selected')
             ->icon(Heroicon::OutlinedCheckCircle)
             ->color('success')
+            ->authorize(fn (): bool => self::isSuperAdmin())
             ->requiresConfirmation()
             ->modalDescription('This sends a new set-password invite to each selected account — their previous passwords will no longer work.')
             ->action(function (Collection $records): void {
@@ -179,5 +184,16 @@ class StaffTable
 
                 Notification::make()->title("{$records->count()} staff member(s) enabled")->success()->send();
             });
+    }
+
+    /**
+     * Matches StaffResource::canViewAny() — the page itself already gates
+     * every non-Super-Admin panel user out before this table ever
+     * mounts, but these actions authorize independently too rather than
+     * relying solely on that page-level gate.
+     */
+    private static function isSuperAdmin(): bool
+    {
+        return Auth::user()?->hasRole(UserRole::SuperAdmin->value) ?? false;
     }
 }

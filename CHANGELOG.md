@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed — staff disable/enable actions relied solely on the page-level gate
+- `StaffTable`'s disable/enable row and bulk actions had no `->authorize()` of their own, unlike the equivalent customer actions — currently not exploitable since `StaffResource::canViewAny()` already blocks non-Super-Admins from ever reaching the page, but a defense-in-depth gap if that page-level gate is ever loosened. Added matching `->authorize()` checks.
+
 ### Fixed — product images admin screen crashed on a discontinued variant's image
 - `ImagesRelationManager`'s Scope column dereferenced `productVariant->sku` unguarded; once an admin soft-deleted the variant an image was scoped to, the default relation resolved to null and the whole images table crashed. Now eager-loads `productVariant` with `withTrashed()` — the admin's own editor for a product still needs to show every image that belongs to it, including ones scoped to a since-discontinued variant.
 
